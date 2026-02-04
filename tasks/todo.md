@@ -80,3 +80,4 @@
 - [ ] Remove or resolve deprecation warnings (`punycode`, `componentWillReceiveProps`, Ace basePath)
 - [ ] Review `TablePagination` DOM nesting warnings and adjust layout if needed
 - [ ] Revisit protobuf/eval build warnings with dependency refresh or bundler config if necessary
+- [ ] Remove `snapshot-diff` (Jest dependency) and replace with Vitest-native snapshot/diff helpers
