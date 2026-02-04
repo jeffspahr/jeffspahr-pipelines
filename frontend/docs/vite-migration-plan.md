@@ -148,6 +148,7 @@
     - Context: NewRunSwitcher fallback path hit v1 endpoints without mocks; stubs prevent localhost fetches in Vitest.
   - [x] Unplanned: upgrade `react-router`/`react-router-dom` to 5.3.4 and `react-vis` to 1.12.1.
     - Context: legacy versions emitted React 16 lifecycle warnings; upgrades reduce that surface and align with Node 22.
+    - Note: `react-vis` was later replaced by `recharts` during the React 17 upgrade.
   - [x] Unplanned: include experiment ID in the React Query key for `RecurringRunDetailsV2FC` experiment fetches.
     - Context: query keys without IDs allowed cached experiment data to bleed across tests; adding the ID fixes caching
       and avoids false positives/negatives.
@@ -159,6 +160,7 @@
       snapshots stable without relaxing assertions.
   - [x] Unplanned: refresh CompareV1/ROCCurve/ViewerContainer snapshots after react-vis upgrade.
     - Context: react-vis 1.12.1 trims class whitespace and normalizes SVG numeric output.
+    - Note: superseded by the later recharts migration.
 - [x] Phase 3: Storybook keep-alive
   - [x] Remove `@storybook/preset-create-react-app` from Storybook addons.
   - [x] Add minimal webpack rules for TS/CSS/assets + `src` alias.
@@ -342,7 +344,7 @@
 
 ## Known warnings from latest test runs (UI + server)
 - **React.createFactory deprecations** across many UI tests.
-  - Source: legacy React 16 + recompose/react-vis usage.
+  - Source: legacy React 16 + recompose usage (react-vis replacement handled in the React 17 upgrade).
   - Status: deferred (tracked with React/MUI/visualization upgrades).
 - **React 16 lifecycle warnings** (`componentWillReceiveProps`) from `re-resizable`.
   - Status: deferred (requires dependency upgrade + React patch bump).
@@ -433,7 +435,7 @@ Key fixes:
       - Why deferred: upgrading React (even a patch) risks scope creep during the Vite migration.
     - `react-motion@0.5.2` (transitive via `react-vis@1.12.1`) also uses legacy lifecycles.
       - Clean fix: replace `react-vis` with a maintained chart lib (or remove animation usage).
-      - Why deferred: chart replacement would be a behavioral change that needs dedicated review.
+      - Status: now tracked/handled in the React 17 upgrade with the recharts migration.
 - Track remaining build-time bundler warnings once the migration is merged.
   - Protobuf dependencies use `eval` (`google-protobuf`, `protobufjs`), which Vite warns about.
     - Why deferred: requires upstream dependency changes or alternate protobuf builds; out of scope for the migration.

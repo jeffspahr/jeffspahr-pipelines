@@ -24,7 +24,7 @@ Suggested quick checks:
 ## Compatibility Audit (before changing React)
 Dependencies
 - Identify packages with React 16-only peer ranges and plan upgrades/replacements.
-- Specifically review: `enzyme-adapter-react-16`, `@types/enzyme-adapter-react-16`, Storybook React preset, `@material-ui/core` v3, `react-virtualized`, `react-vis`, `react-flow-renderer`, `react-dropzone`, `react-ace`, and `react-query`.
+- Specifically review: `enzyme-adapter-react-16`, `@types/enzyme-adapter-react-16`, Storybook React preset, `@material-ui/core` v3, `react-virtualized`, `recharts`, `react-flow-renderer`, `react-dropzone`, `react-ace`, and `react-query`.
 
 Code patterns
 - Legacy lifecycles: `componentWillMount`, `componentWillReceiveProps`, `componentWillUpdate` and `UNSAFE_` variants.

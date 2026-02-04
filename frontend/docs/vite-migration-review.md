@@ -71,7 +71,7 @@ Breaking: Frontend browser support is now modern-only (ESM-capable browsers). We
 
 ### 6. Dependency Upgrades Handled Strategically
 - `react-router` 4→5.3.4: Reduces lifecycle warnings, maintains API compatibility
-- `react-vis` 1.11→1.12.1: Aligns with Node 22
+- `react-vis` 1.11→1.12.1: Aligns with Node 22 (later replaced by `recharts` in the React 17 upgrade)
 - `re-resizable` 4.9→4.11: Minor bump within v4
 
 ---
@@ -220,7 +220,7 @@ Dev Server:
 
 ## Manual UI Smoke Checklist (runtime dependency upgrades)
 
-These checks mitigate the risk from `react-router`, `react-vis`, and `re-resizable` upgrades that can impact
+These checks mitigate the risk from `react-router`, `recharts`, and `re-resizable` upgrades that can impact
 runtime behavior and visuals beyond unit/snapshot coverage.
 
 Run locally after `npm run start:proxy-and-server` (or against a deployed env):
@@ -228,7 +228,7 @@ Run locally after `npm run start:proxy-and-server` (or against a deployed env):
   - Run list → Run details; verify back/forward works and URLs update correctly.
   - Pipeline list → Pipeline details; check route params render correct entity.
   - Experiment list → Experiment details; verify breadcrumbs link to correct pages.
-- **Charts/visualizations (react-vis)**:
+- **Charts/visualizations (recharts)**:
   - Run details → Visualizations tab; confirm charts render and tooltips/axes appear.
   - Compare (v1/v2) → Confusion matrix / ROC / metrics plots render correctly.
 - **Resizable panels (re-resizable)**:
@@ -280,7 +280,7 @@ Notes:
 ## Known Warnings From Latest Test Runs
 
 - **React.createFactory deprecations** across many UI tests.
-  - Source: legacy React 16 + recompose/react-vis usage.
+  - Source: legacy React 16 + recompose usage (react-vis replacement handled in the React 17 upgrade).
   - Status: deferred (tracked with React/MUI/visualization upgrades).
 - **React 16 lifecycle warnings** (`componentWillReceiveProps`) from `re-resizable`.
   - Status: deferred (requires dependency upgrade + React patch bump).

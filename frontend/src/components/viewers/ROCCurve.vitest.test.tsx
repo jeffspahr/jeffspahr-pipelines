@@ -16,8 +16,6 @@
 
 import * as React from 'react';
 import { render, screen } from '@testing-library/react';
-import renderer from 'react-test-renderer';
-import { LineSeries } from 'react-vis';
 import { PlotType } from './Viewer';
 import ROCCurve from './ROCCurve';
 
@@ -46,11 +44,9 @@ describe('ROCCurve', () => {
   });
 
   it('renders a reference base line series', () => {
-    const tree = renderer.create(
-      <ROCCurve configs={[{ data, type: PlotType.ROC }]} disableAnimation />,
-    );
-    const lineSeries = tree.root.findAllByType(LineSeries);
-    expect(lineSeries.length).toBeGreaterThanOrEqual(2);
+    const { container } = render(<ROCCurve configs={[{ data, type: PlotType.ROC }]} />);
+    const referenceLines = container.querySelectorAll('.recharts-reference-line-line');
+    expect(referenceLines.length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders an ROC curve using three configs', () => {
@@ -61,10 +57,12 @@ describe('ROCCurve', () => {
 
   it('renders three lines with three different colors', () => {
     const config = { data, type: PlotType.ROC };
-    const tree = renderer.create(<ROCCurve configs={[config, config, config]} disableAnimation />);
-    const lineSeries = tree.root.findAllByType(LineSeries);
-    expect(lineSeries.length).toBeGreaterThanOrEqual(4); // +1 for baseline
-    const dataLineColors = lineSeries.map(series => series.props.color).filter(Boolean);
+    const { container } = render(<ROCCurve configs={[config, config, config]} />);
+    const dataLines = Array.from(container.querySelectorAll('.recharts-line-curve'));
+    expect(dataLines.length).toBeGreaterThanOrEqual(3);
+    const dataLineColors = dataLines
+      .map(line => line.getAttribute('stroke'))
+      .filter((stroke): stroke is string => !!stroke);
     expect(new Set(dataLineColors).size).toBeGreaterThanOrEqual(3);
   });
 

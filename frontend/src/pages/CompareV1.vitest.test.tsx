@@ -76,8 +76,24 @@ const normalizeMuiIds = (fragment: DocumentFragment) => {
   fragment.querySelectorAll('[aria-describedby]').forEach(el => updateAttr(el, 'aria-describedby'));
 };
 
+const normalizeRechartsIds = (fragment: DocumentFragment) => {
+  const idMap = new Map<string, string>();
+  let nextId = 0;
+  fragment.querySelectorAll('[id^="recharts"]').forEach(el => {
+    const oldId = el.getAttribute('id');
+    if (!oldId) {
+      return;
+    }
+    if (!idMap.has(oldId)) {
+      idMap.set(oldId, `recharts-id-${nextId++}`);
+    }
+    el.setAttribute('id', idMap.get(oldId)!);
+  });
+};
+
 const expectStableSnapshot = (fragment: DocumentFragment) => {
   normalizeMuiIds(fragment);
+  normalizeRechartsIds(fragment);
   expect(fragment).toMatchSnapshot();
 };
 

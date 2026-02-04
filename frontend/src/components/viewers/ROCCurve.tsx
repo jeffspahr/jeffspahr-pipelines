@@ -16,18 +16,15 @@
 
 import * as React from 'react';
 import {
-  Crosshair,
-  DiscreteColorLegend,
-  Highlight,
-  HorizontalGridLines,
-  LineSeries,
-  VerticalGridLines,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceArea,
+  ReferenceLine,
+  Tooltip,
   XAxis,
-  XYPlot,
   YAxis,
-  // @ts-ignore
-} from 'react-vis';
-import 'react-vis/dist/style.css';
+} from 'recharts';
 import Viewer, { ViewerConfig } from './Viewer';
 import { color, fontsize, commonCss } from '../../Css';
 import { stylesheet } from 'typestyle';
@@ -46,6 +43,18 @@ const css = stylesheet({
   crosshairLabel: {
     fontWeight: 'bold',
     whiteSpace: 'nowrap',
+  },
+  legendItem: {
+    alignItems: 'center',
+    display: 'flex',
+    marginRight: 12,
+  },
+  legendSwatch: {
+    borderRadius: 2,
+    display: 'inline-block',
+    height: 10,
+    marginRight: 6,
+    width: 10,
   },
   root: {
     margin: 'auto',
@@ -87,9 +96,10 @@ interface ROCCurveProps {
 }
 
 interface ROCCurveState {
-  hoveredValues: DisplayPoint[];
   lastDrawLocation: { left: number; right: number } | null;
   highlightIndex: number;
+  refAreaLeft: number | null;
+  refAreaRight: number | null;
 }
 
 class ROCCurve extends Viewer<ROCCurveProps, ROCCurveState> {
@@ -97,9 +107,10 @@ class ROCCurve extends Viewer<ROCCurveProps, ROCCurveState> {
     super(props);
 
     this.state = {
-      hoveredValues: new Array(this.props.configs.length).fill(''),
       lastDrawLocation: null,
       highlightIndex: -1, // -1 indicates no curve is highlighted
+      refAreaLeft: null,
+      refAreaRight: null,
     };
   }
 
@@ -116,130 +127,191 @@ class ROCCurve extends Viewer<ROCCurveProps, ROCCurveState> {
     const height = width * 0.65;
     const isSmall = width < 600;
     const datasets = this.props.configs.map(d => d.data);
-    const numLines = datasets.length;
     const labels = this.props.configs.map((_, i) => `threshold (Series #${i + 1})`);
-    const baseLineData = Array.from(Array(100).keys()).map(x => ({ x: x / 100, y: x / 100 }));
-
-    const { hoveredValues, lastDrawLocation, highlightIndex } = this.state;
+    const { lastDrawLocation, highlightIndex, refAreaLeft, refAreaRight } = this.state;
+    const chartData = this.buildChartData(datasets);
+    const xDomain = lastDrawLocation
+      ? ([lastDrawLocation.left, lastDrawLocation.right] as [number, number])
+      : ([0, 1] as [number, number]);
+    const colors = this.props.colors || lineColors;
+    const showLegend = this.props.forceLegend || datasets.length > 1;
 
     return (
       <div>
-        <XYPlot
+        <LineChart
           width={width}
           height={height}
-          animation={!this.props.disableAnimation && !isSmall}
-          classes={{ root: css.root }}
-          onMouseLeave={() => this.setState({ hoveredValues: new Array(numLines).fill('') })}
-          xDomain={lastDrawLocation && [lastDrawLocation.left, lastDrawLocation.right]}
-        >
-          <VerticalGridLines />
-          <HorizontalGridLines />
-
-          {/* Draw the axes from the first config in case there are several */}
-          <XAxis title={'fpr'} className={css.axis} />
-          <YAxis title={'tpr'} className={css.axis} />
-
-          {/* Reference line */}
-          <LineSeries
-            color={color.disabledBg}
-            strokeWidth={1}
-            data={baseLineData}
-            strokeStyle='dashed'
-          />
-
-          {/* Lines */}
-          {datasets.map(
-            (data, i) =>
-              highlightIndex !== i && (
-                <LineSeries
-                  key={i}
-                  color={
-                    this.props.colors
-                      ? this.props.colors[i]
-                      : lineColors[i] || lineColors[lineColors.length - 1]
+          data={chartData}
+          className={css.root}
+          onMouseDown={
+            !isSmall
+              ? e => {
+                  if (e?.activeLabel == null) {
+                    return;
                   }
-                  strokeWidth={2}
-                  data={data}
-                  onNearestX={(d: any) => this._lineHovered(i, d)}
-                  curve='curveBasis'
-                />
-              ),
-          )}
-
-          {/* Highlighted line, if present */}
-          {highlightIndex >= 0 && (
-            <LineSeries
-              key={highlightIndex}
-              color={
-                this.props.colors
-                  ? this.props.colors[highlightIndex]
-                  : lineColors[highlightIndex] || lineColors[lineColors.length - 1]
-              }
-              strokeWidth={5}
-              data={datasets[highlightIndex]}
-              onNearestX={(d: any) => this._lineHovered(highlightIndex, d)}
-              curve='curveBasis'
+                  this.setState({ refAreaLeft: Number(e.activeLabel), refAreaRight: null });
+                }
+              : undefined
+          }
+          onMouseMove={
+            !isSmall && refAreaLeft != null
+              ? e => {
+                  if (e?.activeLabel == null) {
+                    return;
+                  }
+                  this.setState({ refAreaRight: Number(e.activeLabel) });
+                }
+              : undefined
+          }
+          onMouseUp={
+            !isSmall && refAreaLeft != null
+              ? () => {
+                  if (refAreaRight == null || refAreaLeft === refAreaRight) {
+                    this.setState({ refAreaLeft: null, refAreaRight: null });
+                    return;
+                  }
+                  const left = Math.min(refAreaLeft, refAreaRight);
+                  const right = Math.max(refAreaLeft, refAreaRight);
+                  this.setState({
+                    lastDrawLocation: { left, right },
+                    refAreaLeft: null,
+                    refAreaRight: null,
+                  });
+                }
+              : undefined
+          }
+        >
+          <CartesianGrid />
+          <XAxis
+            type='number'
+            dataKey='x'
+            domain={xDomain}
+            tick={{ fontSize: fontsize.medium, fontWeight: 700 }}
+            label={{ value: 'fpr', position: 'insideBottom', offset: -6 }}
+          />
+          <YAxis
+            type='number'
+            domain={[0, 1]}
+            tick={{ fontSize: fontsize.medium, fontWeight: 700 }}
+            label={{ value: 'tpr', angle: -90, position: 'insideLeft' }}
+          />
+          <ReferenceLine
+            segment={[
+              { x: 0, y: 0 },
+              { x: 1, y: 1 },
+            ]}
+            stroke={color.disabledBg}
+            strokeWidth={1}
+            strokeDasharray='4 4'
+          />
+          {datasets.map((_, i) => (
+            <Line
+              key={i}
+              type='basis'
+              dataKey={`y${i}`}
+              stroke={colors[i] || colors[colors.length - 1]}
+              strokeWidth={highlightIndex === i ? 4 : 2}
+              dot={false}
+              isAnimationActive={!this.props.disableAnimation && !isSmall}
+              connectNulls={true}
+            />
+          ))}
+          {!isSmall && refAreaLeft != null && refAreaRight != null && (
+            <ReferenceArea
+              x1={Math.min(refAreaLeft, refAreaRight)}
+              x2={Math.max(refAreaLeft, refAreaRight)}
+              strokeOpacity={0.1}
             />
           )}
-
           {!isSmall && (
-            <Highlight
-              onBrushEnd={(area: any) => this.setState({ lastDrawLocation: area })}
-              enableY={false}
-              onDrag={(area: any) =>
-                this.setState({
-                  lastDrawLocation: {
-                    left: (lastDrawLocation ? lastDrawLocation.left : 0) - (area.right - area.left),
-                    right:
-                      (lastDrawLocation ? lastDrawLocation.right : 0) - (area.right - area.left),
-                  },
-                })
-              }
+            <Tooltip
+              cursor={{ stroke: '#9aa0a6' }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) {
+                  return null;
+                }
+                const rows = payload
+                  .filter(entry => typeof entry.dataKey === 'string' && entry.dataKey.startsWith('y'))
+                  .map(entry => {
+                    const key = entry.dataKey as string;
+                    const index = Number(key.slice(1));
+                    const label = (entry.payload as Record<string, string>)[`label${index}`] || '';
+                    return { index, label };
+                  });
+                if (!rows.length) {
+                  return null;
+                }
+                return (
+                  <div className={css.crosshair}>
+                    {rows.map(row => (
+                      <div key={row.index} className={css.crosshairLabel}>
+                        {`${labels[row.index]}: ${row.label}`}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }}
             />
           )}
-
-          {/* Hover effect to show labels */}
-          {!isSmall && (
-            <Crosshair values={hoveredValues}>
-              <div className={css.crosshair}>
-                {hoveredValues.map((value, i) => (
-                  <div key={i} className={css.crosshairLabel}>{`${labels[i]}: ${value.label}`}</div>
-                ))}
-              </div>
-            </Crosshair>
-          )}
-        </XYPlot>
+        </LineChart>
 
         <div className={commonCss.flex}>
           {/* Legend */}
-          {(this.props.forceLegend || datasets.length > 1) && (
+          {showLegend && (
             <div style={{ flexGrow: 1 }}>
-              <DiscreteColorLegend
-                items={datasets.map((_, i) => ({
-                  color: this.props.colors ? this.props.colors[i] : lineColors[i],
-                  title: 'Series #' + (i + 1),
-                }))}
-                orientation='horizontal'
-                onItemMouseEnter={(_: any, i: number) => {
-                  this.setState({ highlightIndex: i });
-                }}
-                onItemMouseLeave={() => {
-                  this.setState({ highlightIndex: -1 });
-                }}
-              />
+              <div className={commonCss.flex}>
+                {datasets.map((_, i) => (
+                  <div
+                    key={`legend-${i}`}
+                    className={css.legendItem}
+                    onMouseEnter={() => this.setState({ highlightIndex: i })}
+                    onMouseLeave={() => this.setState({ highlightIndex: -1 })}
+                  >
+                    <span
+                      className={css.legendSwatch}
+                      style={{
+                        backgroundColor: colors[i] || colors[colors.length - 1],
+                      }}
+                    />
+                    <span>{`Series #${i + 1}`}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {lastDrawLocation && <span>Click to reset zoom</span>}
+          {lastDrawLocation && (
+            <span
+              role='button'
+              onClick={() => this.setState({ lastDrawLocation: null })}
+              style={{ cursor: 'pointer' }}
+            >
+              Click to reset zoom
+            </span>
+          )}
         </div>
       </div>
     );
   }
 
-  private _lineHovered(lineIdx: number, data: any): void {
-    const hoveredValues = this.state.hoveredValues;
-    hoveredValues[lineIdx] = data;
-    this.setState({ hoveredValues });
+  private buildChartData(datasets: DisplayPoint[][]): Array<Record<string, number | string | null>> {
+    const pointsBySeries = datasets.map(data => {
+      const map = new Map<number, DisplayPoint>();
+      data.forEach(point => map.set(point.x, point));
+      return map;
+    });
+    const xValues = new Set<number>();
+    pointsBySeries.forEach(map => map.forEach((_value, key) => xValues.add(key)));
+    const sortedX = Array.from(xValues).sort((a, b) => a - b);
+    return sortedX.map(xValue => {
+      const row: Record<string, number | string | null> = { x: xValue };
+      pointsBySeries.forEach((map, index) => {
+        const point = map.get(xValue);
+        row[`y${index}`] = point ? point.y : null;
+        row[`label${index}`] = point ? point.label : '';
+      });
+      return row;
+    });
   }
 }
 

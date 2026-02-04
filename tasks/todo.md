@@ -34,7 +34,8 @@
 - [ ] PR3: React 17 core upgrade (react/react-dom/types/test-renderer)
 - [ ] PR4: Fixes for React 17 runtime/test issues + optional JSX runtime decision
 - [ ] PR5: Docs + CI verification polish
-- [ ] PR6: Post-React 17 cleanup (address deprecation warnings + dependency hygiene)
+- [ ] PR6: Replace `react-vis`/`react-svg-line-chart` with `recharts` + inline SVG
+- [ ] PR7: Post-React 17 cleanup (address deprecation warnings + dependency hygiene)
 
 ## PR2 Plan (Dependency Alignment)
 - [x] Acceptance criteria
@@ -51,7 +52,7 @@
 - [x] Replaced `Editor` snapshots with targeted assertions because Ace DOM output is large and environment-dependent.
   Rationale: full DOM snapshots for third-party widgets are brittle and noisy on upgrades; asserting key behaviors (placeholder visibility/content) preserves test intent with far less churn.
 - [x] Verification run: `npm run test -- src/components/Editor.vitest.test.tsx`, `npm run build` (lint + typecheck + vite build).
-- [ ] Remaining blockers: `@material-ui/core` v3 + `@material-ui/icons` v3 (peer deps only React 16); `react-vis` (no React 17-compatible release).
+- [ ] Remaining blockers: `react-vis`/`react-svg-line-chart` replacements (React 17 peer ranges).
 
 ## MUI v4 Rationale
 - [x] Upgrade to Material-UI v4 (not v5/v7) because it is the smallest step that unlocks React 17 peer-compatibility while keeping the `@material-ui/*` namespace and minimizing breaking changes.
@@ -68,15 +69,23 @@
 - [x] Update lockfile via `npm install`
 - [x] Fix React 17 typecheck regressions
 - [x] Verify: `npm run lint`, `npm run test`, `npm run build`
-- [ ] Decide on `react-vis` / `react-svg-line-chart` peer‑dep handling (keep + document vs replacement)
+- [x] Decide on `react-vis` / `react-svg-line-chart` peer‑dep handling (ship PR3, replace in follow-up PR)
 
 ## Results
 - [x] Added `frontend/docs/react-17-upgrade-checklist.md` with prerequisites, baseline audit steps, and verification commands.
 - [x] Upgraded `@material-ui/core`/`@material-ui/icons` to v4 with required theme/provider/class key updates.
 - [x] Updated MUI Select/TablePagination tests to use v4 interaction patterns and stabilized snapshots where MUI ids are generated.
 - [x] Verified: `npm run lint`, `npm run test`, `npm run build`.
+- [x] Replaced `react-vis` and `react-svg-line-chart` with `recharts` + inline SVG, updated tests/docs, and re-verified lint/tests/build.
 
-## Post-React 17 Cleanup Targets (PR6)
+## PR6 Plan (Recharts Replacement)
+- [x] Replace `react-svg-line-chart` with inline SVG in `mlmd` edge rendering
+- [x] Replace `react-vis` ROC chart with `recharts` equivalent (legend, tooltip, zoom)
+- [x] Update tests/snapshots for `ROCCurve`
+- [x] Remove `react-vis`/`react-svg-line-chart` dependencies + update docs
+- [x] Verify: `npm run lint`, `npm run test`, `npm run build`
+
+## Post-React 17 Cleanup Targets (PR7)
 - [ ] Remove or resolve deprecation warnings (`punycode`, `componentWillReceiveProps`, Ace basePath)
 - [ ] Review `TablePagination` DOM nesting warnings and adjust layout if needed
 - [ ] Revisit protobuf/eval build warnings with dependency refresh or bundler config if necessary
