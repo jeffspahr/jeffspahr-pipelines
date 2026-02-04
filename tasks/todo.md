@@ -26,9 +26,11 @@
 ## Proposed Shippable Slices (PRs)
 - [x] PR1: Baseline audit + compatibility checklist
 - [ ] PR2: Dependency alignment for React 17 (no React bump yet)
+- [x] PR2b: Material-UI v4 upgrade (unblocks React 17 peer deps)
 - [ ] PR3: React 17 core upgrade (react/react-dom/types/test-renderer)
 - [ ] PR4: Fixes for React 17 runtime/test issues + optional JSX runtime decision
 - [ ] PR5: Docs + CI verification polish
+- [ ] PR6: Post-React 17 cleanup (address deprecation warnings + dependency hygiene)
 
 ## PR2 Plan (Dependency Alignment)
 - [x] Acceptance criteria
@@ -47,5 +49,23 @@
 - [x] Verification run: `npm run test -- src/components/Editor.vitest.test.tsx`, `npm run build` (lint + typecheck + vite build).
 - [ ] Remaining blockers: `@material-ui/core` v3 + `@material-ui/icons` v3 (peer deps only React 16); `react-vis` (no React 17-compatible release).
 
+## MUI v4 Rationale
+- [x] Upgrade to Material-UI v4 (not v5/v7) because it is the smallest step that unlocks React 17 peer-compatibility while keeping the `@material-ui/*` namespace and minimizing breaking changes.
+- [x] Deferring v5/v7 avoids the larger styling engine and API migrations (e.g., `@mui/material`, emotion/styled), which would otherwise turn this into a larger redesign instead of a React 17 unblocker.
+
+## PR2b Plan (Material-UI v4)
+- [x] Update `@material-ui/core` and `@material-ui/icons` to v4
+- [x] Run `npm install` to refresh lockfile
+- [x] Fix any TS/test regressions from the upgrade
+- [x] Verify: `npm run lint`, `npm run test`, `npm run build`
+
 ## Results
 - [x] Added `frontend/docs/react-17-upgrade-checklist.md` with prerequisites, baseline audit steps, and verification commands.
+- [x] Upgraded `@material-ui/core`/`@material-ui/icons` to v4 with required theme/provider/class key updates.
+- [x] Updated MUI Select/TablePagination tests to use v4 interaction patterns and stabilized snapshots where MUI ids are generated.
+- [x] Verified: `npm run lint`, `npm run test`, `npm run build`.
+
+## Post-React 17 Cleanup Targets (PR6)
+- [ ] Remove or resolve deprecation warnings (`punycode`, `componentWillReceiveProps`, Ace basePath)
+- [ ] Review `TablePagination` DOM nesting warnings and adjust layout if needed
+- [ ] Revisit protobuf/eval build warnings with dependency refresh or bundler config if necessary
