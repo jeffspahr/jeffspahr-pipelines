@@ -22,6 +22,10 @@
 - [ ] PR1 output: `frontend/docs/react-17-upgrade-checklist.md`.
 - [ ] Keep changes minimal and independently shippable; avoid refactors not required for React 17.
 - [ ] Prefer dependency updates that are React 17-compatible while still supporting React 16 to reduce risk.
+- [x] PR3 started: bumped React core packages to 17 and updated lockfile.
+- [x] React 17 typecheck fixes: `CustomTable` event target typings and `SubDagLayer` style typing.
+- [x] React 17 verification run: `npm run lint`, `npm run test`, `npm run build`.
+- [ ] React 17 peer warnings remain for `react-vis` and `react-svg-line-chart` (track for PR6 or replacement PR).
 
 ## Proposed Shippable Slices (PRs)
 - [x] PR1: Baseline audit + compatibility checklist
@@ -58,6 +62,13 @@
 - [x] Run `npm install` to refresh lockfile
 - [x] Fix any TS/test regressions from the upgrade
 - [x] Verify: `npm run lint`, `npm run test`, `npm run build`
+
+## PR3 Plan (React 17 core)
+- [x] Bump `react`, `react-dom`, `react-test-renderer`, and React 17 `@types/*`
+- [x] Update lockfile via `npm install`
+- [x] Fix React 17 typecheck regressions
+- [x] Verify: `npm run lint`, `npm run test`, `npm run build`
+- [ ] Decide on `react-vis` / `react-svg-line-chart` peer‑dep handling (keep + document vs replacement)
 
 ## Results
 - [x] Added `frontend/docs/react-17-upgrade-checklist.md` with prerequisites, baseline audit steps, and verification commands.
