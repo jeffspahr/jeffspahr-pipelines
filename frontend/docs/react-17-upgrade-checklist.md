@@ -7,12 +7,15 @@ Purpose: capture a minimal, auditable checklist for upgrading the frontend from 
 ## Prerequisites (must be true before upgrading)
 - PR #12754 (Vite/Vitest migration) merged into the target branch.
 - PR #12756 (frontend server ESM + dev workflow) merged into the target branch.
+- MUI v4 baseline is present in the target branch (`@material-ui/core` 4.x and `@material-ui/icons` 4.x),
+  via PR #12793 or an equivalent merge.
 
-If either prerequisite is not true in the target branch, stop and rebase before proceeding.
+If any prerequisite is not true in the target branch, stop and rebase before proceeding.
 
 Current status on 2026-02-15:
 - PR #12754 merged on 2026-02-09.
 - PR #12756 merged on 2026-02-06.
+- This branch is already on MUI v4 (`@material-ui/core@^4.12.4`, `@material-ui/icons@^4.11.3`).
 
 ## Baseline Snapshot (fill in before starting)
 - React core: `react`, `react-dom`, `@types/react`, `@types/react-dom`, `react-test-renderer` versions.
@@ -24,13 +27,17 @@ Current status on 2026-02-15:
 
 Suggested quick checks:
 - `rg -n "react-scripts|vite|vitest" frontend/package.json`
-- `rg -n "enzyme|adapter" frontend/package.json`
+- `rg -n "@material-ui/core|@material-ui/icons|react-motion|react-vis|re-resizable" frontend/package.json`
+- `rg -n "enzyme|adapter|jsdom-sixteen" frontend/package.json`
 - `rg -n "componentWill|UNSAFE_|findDOMNode" frontend/src`
 
 ## Compatibility Audit (before changing React)
 Dependencies
-- Identify packages with React 16-only peer ranges and plan upgrades/replacements.
-- Specifically review: `enzyme-adapter-react-16`, `@types/enzyme-adapter-react-16`, Storybook React preset, `@material-ui/core` v3, `react-virtualized`, `react-vis`, `react-flow-renderer`, `react-dropzone`, `react-ace`, and `react-query`.
+- Identify packages with peer ranges or runtime behavior that can still block/stress a React 17 bump.
+- Specifically review: `react`/`react-dom`/`react-test-renderer` + `@types/*` alignment, `react-motion`
+  (transitive via `react-vis`), `react-vis`, `re-resizable`, Storybook 6.x compatibility, and any dependency
+  that still emits React 16 lifecycle warnings during tests.
+- Confirm Enzyme and `jest-environment-jsdom-sixteen` remain absent (migration should stay Testing Library + Vitest for UI).
 
 Code patterns
 - Legacy lifecycles: `componentWillMount`, `componentWillReceiveProps`, `componentWillUpdate` and `UNSAFE_` variants.
@@ -39,6 +46,7 @@ Code patterns
 - Tests relying on `react-dom/test-utils` behaviors.
 
 ## Verification Commands (baseline and after each slice)
+- `npm run test:ci` (required pre-PR verification; mirrors CI gate)
 - `npm run lint`
 - `npm run test`
 - `npm run build`
