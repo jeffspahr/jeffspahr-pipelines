@@ -394,7 +394,7 @@ describe('deploy helloworld sample run', () => {
     await browser.keys(pipelineName);
 
     const pipelineRowSelector =
-      `//*[@data-testid="table-row"][.//a[normalize-space()="${pipelineName}"]]`;
+      `//*[contains(@class,"tableRow")][.//a[normalize-space()="${pipelineName}"]]`;
 
     await browser.waitUntil(
       async () => (await $(pipelineRowSelector).isExisting()),

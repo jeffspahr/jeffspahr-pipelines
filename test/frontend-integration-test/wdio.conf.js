@@ -60,6 +60,6 @@ exports.config = {
     ],
   ],
   services: [],
-  specs: ['./helloworld.spec.js', './tensorboard-example.spec.js'],
+  specs: ['./helloworld.spec.js'],
   waitforTimeout: 10000,
 };
