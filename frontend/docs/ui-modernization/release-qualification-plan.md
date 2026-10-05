@@ -34,7 +34,15 @@ follow-ups under the existing CI-only delivery plan; they do not count as qualif
 
 Measure current and pinned original legacy source
 `02cbc725ac9ddcd950f4400d8355dd78bfcd6c57` on the same disposable hosted runner.
-Also rebuild the last qualified modern source `439304aa4ed3a20ae5a7c004b96936cb65c3aff0`.
+Also rebuild the pre-compression modern control `dc1b3cfbaba17444408c9a59eb8ab9354b2dfd79`.
+This is the rebased equivalent of the previously qualified `439304aa4ed3a20ae5a7c004b96936cb65c3aff0`,
+with the same application code and candidate dependency lockfile. Master’s React Query
+5.104.0 and XYFlow 12.12.0 updates increased candidate entry gzip by 62 bytes
+(596,806 to 596,868), so the old dependency set is no longer a matched control for
+the additional zero-growth compression check. Both original legacy and graph checkpoint
+references, all accepted budgets, and the zero-growth assertion remain unchanged.
+Retain historical results under their original source identities; this control update
+requires a fresh hosted comparison and does not retroactively qualify the new dependencies.
 Use seven interleaved trials per build, rotating all six build orders, fresh contexts, identical fixtures,
 4x CPU slowdown, explicit numeric network conditions and retained raw traces.
 Finish builds before sampling. Preserve all samples and failed attempts.

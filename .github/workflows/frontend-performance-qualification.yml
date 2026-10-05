@@ -39,7 +39,7 @@ jobs:
           - variant: checkpoint
             ref: 'e79f8d423e6b118e5df94815ee2f36f68570a9a9'
           - variant: previous
-            ref: '439304aa4ed3a20ae5a7c004b96936cb65c3aff0'
+            ref: 'dc1b3cfbaba17444408c9a59eb8ab9354b2dfd79'
           - variant: candidate
             ref: ''
     defaults:

@@ -66,7 +66,7 @@ const instrumentation = Object.fromEntries(
 const sources = {
   legacy: '02cbc725ac9ddcd950f4400d8355dd78bfcd6c57',
   checkpoint: 'e79f8d423e6b118e5df94815ee2f36f68570a9a9',
-  previous: '439304aa4ed3a20ae5a7c004b96936cb65c3aff0',
+  previous: 'dc1b3cfbaba17444408c9a59eb8ab9354b2dfd79',
   candidate: process.env.GITHUB_SHA,
 };
 const expectedEditor = dump(
