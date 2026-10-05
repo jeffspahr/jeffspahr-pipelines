@@ -411,6 +411,15 @@ try {
   });
   if (!mobile)
     await command('POST', `/session/${session}/window/rect`, { width: 1440, height: 900 });
+  // Safari's initial fixture navigation may still be at about:blank when the
+  // session returns. Observe its origin before any native address completion.
+  if (mobile) {
+    report.nativeSafariInitialUrl = await wait(
+      (origin) => (location.origin === origin ? location.href : null),
+      'initial Safari fixture origin',
+      base.origin,
+    );
+  }
   // Browser-owned onboarding and address editing can obstruct the first page query.
   await prepareMobileTap();
   await command('POST', `/session/${session}/url`, { url: new URL('#/runs', base).href });

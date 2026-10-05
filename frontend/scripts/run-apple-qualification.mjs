@@ -502,6 +502,7 @@ async function main() {
         )),
         derivedDataPath,
         simulator,
+        destinationTimeoutSeconds: simulatorBootTimeout / 1000,
         timeoutMs: 480_000,
         status: 'building',
       };
@@ -519,6 +520,8 @@ async function main() {
             derivedDataPath,
             '-destination',
             `id=${simulator}`,
+            '-destination-timeout',
+            String(report.wdaBuild.destinationTimeoutSeconds),
             `IPHONEOS_DEPLOYMENT_TARGET=${config.platformVersion}`,
             'GCC_TREAT_WARNINGS_AS_ERRORS=0',
             'COMPILER_INDEX_STORE_ENABLE=NO',
