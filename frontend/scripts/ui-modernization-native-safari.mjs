@@ -81,6 +81,59 @@ export async function prepareNativeSafariTap(command, session, evidence, snapsho
     command('POST', `${path}/elements`, { using: '-ios predicate string', value: predicate });
   try {
     await command('POST', `${path}/context`, { name: 'NATIVE_APP' });
+    // Complete browser address editing first: on iPad its active editor can keep
+    // the keyboard open even when a native Hide keyboard click reports success.
+    const addresses = await command('POST', `${path}/elements`, {
+      using: 'xpath',
+      value: safariActiveAddressSelector,
+    });
+    assert.ok(addresses.length <= 1, 'Safari has ambiguous active browser Address fields');
+    if (addresses.length) {
+      const url = new URL(currentUrl);
+      assert.ok(
+        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname),
+        'Safari address completion requires a loopback fixture URL',
+      );
+      assert.equal(url.protocol, 'http:', 'Safari address completion requires an HTTP fixture');
+      assert.equal(
+        url.origin,
+        fixtureOrigin,
+        'Safari address completion must preserve the configured fixture origin',
+      );
+      assert.ok(!url.username && !url.password, 'Safari fixture URL must not contain credentials');
+      entry.addressCompletion = {
+        url: currentUrl,
+        method: 'native Address clear/value and Return',
+      };
+      await snapshot(await command('GET', `${path}/source`), 'safari-address-edit');
+      const addressPath = `${path}/element/${addresses[0][elementKey]}`;
+      await command('POST', `${addressPath}/clear`, {});
+      // XCUITest 12.13.3 native setValue passes newline through to WDA Return.
+      await command('POST', `${addressPath}/value`, { text: `${currentUrl}\n` });
+      let active = addresses;
+      const deadline = Date.now() + 5000;
+      do {
+        active = await command('POST', `${path}/elements`, {
+          using: 'xpath',
+          value: safariActiveAddressSelector,
+        });
+        if (!active.length) break;
+        if (Date.now() >= deadline) break;
+        await delay(250);
+      } while (Date.now() < deadline);
+      assert.equal(active.length, 0, 'Safari address editor remained active after native Return');
+      await snapshot(await command('GET', `${path}/source`), 'safari-address-completed');
+      await command('POST', `${path}/context`, { name: context });
+      const actualUrl = await command('GET', `${path}/url`);
+      entry.addressCompletion.actualUrl = actualUrl;
+      assert.equal(
+        actualUrl,
+        currentUrl,
+        'Safari address completion changed the current fixture route',
+      );
+      entry.actions.push('completed active Safari Address through native typing and Return');
+      await command('POST', `${path}/context`, { name: 'NATIVE_APP' });
+    }
     if (await mobile('isKeyboardShown')) {
       // iPhone Safari exposes Done in its form accessory toolbar, outside the
       // keyboard subtree searched by WDA's generic keyboard dismissal.
@@ -152,56 +205,6 @@ export async function prepareNativeSafariTap(command, session, evidence, snapsho
         'Safari onboarding tip remained after its native dismissal',
       );
       entry.actions.push(`dismissed Safari ${tip.name} tip through native accessibility`);
-    }
-    const addresses = await command('POST', `${path}/elements`, {
-      using: 'xpath',
-      value: safariActiveAddressSelector,
-    });
-    assert.ok(addresses.length <= 1, 'Safari has ambiguous active browser Address fields');
-    if (addresses.length) {
-      const url = new URL(currentUrl);
-      assert.ok(
-        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname),
-        'Safari address completion requires a loopback fixture URL',
-      );
-      assert.equal(url.protocol, 'http:', 'Safari address completion requires an HTTP fixture');
-      assert.equal(
-        url.origin,
-        fixtureOrigin,
-        'Safari address completion must preserve the configured fixture origin',
-      );
-      assert.ok(!url.username && !url.password, 'Safari fixture URL must not contain credentials');
-      entry.addressCompletion = {
-        url: currentUrl,
-        method: 'native Address clear/value and Return',
-      };
-      await snapshot(await command('GET', `${path}/source`), 'safari-address-edit');
-      const addressPath = `${path}/element/${addresses[0][elementKey]}`;
-      await command('POST', `${addressPath}/clear`, {});
-      // XCUITest 12.13.3 native setValue passes newline through to WDA Return.
-      await command('POST', `${addressPath}/value`, { text: `${currentUrl}\n` });
-      let active = addresses;
-      const deadline = Date.now() + 5000;
-      do {
-        active = await command('POST', `${path}/elements`, {
-          using: 'xpath',
-          value: safariActiveAddressSelector,
-        });
-        if (!active.length) break;
-        if (Date.now() >= deadline) break;
-        await delay(250);
-      } while (Date.now() < deadline);
-      assert.equal(active.length, 0, 'Safari address editor remained active after native Return');
-      await snapshot(await command('GET', `${path}/source`), 'safari-address-completed');
-      await command('POST', `${path}/context`, { name: context });
-      const actualUrl = await command('GET', `${path}/url`);
-      entry.addressCompletion.actualUrl = actualUrl;
-      assert.equal(
-        actualUrl,
-        currentUrl,
-        'Safari address completion changed the current fixture route',
-      );
-      entry.actions.push('completed active Safari Address through native typing and Return');
     }
     entry.status = 'passed';
   } catch (error) {

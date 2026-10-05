@@ -277,6 +277,7 @@ function safariPreparationFixture({
   dismissError,
   restoreError,
   activeAddressCount = 0,
+  addressReturnDismissesKeyboard = true,
   currentUrl = 'http://127.0.0.1:4174/#/runs/details/current?tab=graph',
   actualUrl,
   addressError,
@@ -285,17 +286,26 @@ function safariPreparationFixture({
   const evidence = [];
   const snapshots = [];
   let addressCompleted = false;
+  let currentContext = 'WEBVIEW_1';
   let tipClicked = false;
   const element = (id) => ({ 'element-6066-11e4-a52e-4f735466cecf': id });
   const command = async (method, path, body) => {
     calls.push({ method, path, body });
-    if (method === 'GET' && path.endsWith('/url'))
+    if (method === 'GET' && path.endsWith('/url')) {
+      assert.equal(currentContext, 'WEBVIEW_1');
       return addressCompleted ? actualUrl || currentUrl : currentUrl;
+    }
     if (method === 'GET' && path.endsWith('/context')) return 'WEBVIEW_1';
     if (method === 'POST' && path.endsWith('/context')) {
       if (body.name === 'WEBVIEW_1' && restoreError) throw restoreError;
+      currentContext = body.name;
       return null;
     }
+    assert.equal(
+      currentContext,
+      'NATIVE_APP',
+      'Native preparation command must use native context',
+    );
     if (path.endsWith('/source')) return '<native-source />';
     if (path.endsWith('/elements') && body.value === safariActiveAddressSelector)
       return Array.from({ length: activeAddressCount }, (_, i) => element(`address-${i}`));
@@ -304,6 +314,7 @@ function safariPreparationFixture({
       if (addressError) throw addressError;
       activeAddressCount = 0;
       addressCompleted = true;
+      if (addressReturnDismissesKeyboard) keyboard = false;
       return null;
     }
     if (path.endsWith('/elements') && body.value === safariKeyboardHideSelector)
@@ -1278,4 +1289,47 @@ test('iPad Hide keyboard selector accepts captured native identity only', () => 
       dom.window.close();
     }
   }
+});
+
+test('active iPad Address completes before keyboard dismissal that cannot hide its keyboard', async () => {
+  // Captured failure: Safari Start Page/address editor is active over the fixture;
+  // clicking its visible native Hide keyboard returns success but leaves it open.
+  const fixture = safariPreparationFixture({
+    activeAddressCount: 1,
+    keyboard: true,
+    keyboardHideCount: 1,
+    toolbarDoneDismisses: false,
+    startPageTip: true,
+  });
+  await fixture.run();
+  const completed = fixture.calls.findIndex(({ path }) =>
+    path.endsWith('/element/address-0/value'),
+  );
+  const keyboardRead = fixture.calls.findIndex(
+    ({ body }) => body?.script === 'mobile: isKeyboardShown',
+  );
+  assert.ok(completed >= 0 && keyboardRead > completed);
+  assert.equal(
+    fixture.calls.some(({ path }) => path.endsWith('/element/hide-0/click')),
+    false,
+  );
+  assert.equal(
+    fixture.evidence[0].addressCompletion.actualUrl,
+    fixture.evidence[0].addressCompletion.url,
+  );
+  assert.equal(fixture.evidence[0].status, 'passed');
+  assert.deepEqual(fixture.calls.at(-1).body, { name: 'WEBVIEW_1' });
+
+  // If Return does not dismiss the keyboard, retain the normal native dismissal
+  // and strict disappearance assertion rather than treating address success as enough.
+  const stuck = safariPreparationFixture({
+    activeAddressCount: 1,
+    keyboard: true,
+    keyboardHideCount: 1,
+    addressReturnDismissesKeyboard: false,
+    toolbarDoneDismisses: false,
+  });
+  await assert.rejects(stuck.run(), /keyboard remained after native dismissal/);
+  assert.equal(stuck.calls.filter(({ path }) => path.endsWith('/element/hide-0/click')).length, 1);
+  assert.deepEqual(stuck.calls.at(-1).body, { name: 'WEBVIEW_1' });
 });
