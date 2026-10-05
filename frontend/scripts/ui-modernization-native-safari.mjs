@@ -36,6 +36,12 @@ const onboardingTips = [
   },
 ];
 
+// One native query handles the common case where neither onboarding tip exists.
+// Positive matches still use each tip's exact lookup and scoped dismissal below.
+export const safariOnboardingTipPredicate = onboardingTips
+  .map(({ predicate }) => `(${predicate})`)
+  .join(' OR ');
+
 export const safariKeyboardDoneSelector =
   '//XCUIElementTypeToolbar[@visible="true" and not(ancestor::XCUIElementTypeWebView)]' +
   '[.//XCUIElementTypeButton[@name="Previous"] and .//XCUIElementTypeButton[@name="Next"]]' +
@@ -178,7 +184,8 @@ export async function prepareNativeSafariTap(command, session, evidence, snapsho
       );
       entry.actions.push('dismissed keyboard through native WebDriver');
     }
-    for (const tip of onboardingTips) {
+    const visibleTips = await tips(safariOnboardingTipPredicate);
+    for (const tip of visibleTips.length ? onboardingTips : []) {
       if (!(await tips(tip.predicate)).length) continue;
       await snapshot(await command('GET', `${path}/source`), tip.evidenceLabel);
       // Use only the control scoped to the identified browser-owned tip.

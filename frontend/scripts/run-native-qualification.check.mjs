@@ -28,6 +28,7 @@ import {
   safariKeyboardDoneGeometrySelector,
   safariActiveAddressSelector,
   safariStartPageCloseSelector,
+  safariOnboardingTipPredicate,
 } from './ui-modernization-native-safari.mjs';
 import { JSDOM } from 'jsdom';
 import { join } from 'node:path';
@@ -326,6 +327,9 @@ function safariPreparationFixture({
     if (path.endsWith('/elements') && body.using === 'xpath')
       return Array.from({ length: closeCount }, (_, i) => element(`close-${i}`));
     if (path.endsWith('/elements')) {
+      if (body.value === safariOnboardingTipPredicate) {
+        return [...(tip ? [element('tip')] : []), ...(startPageTip ? [element('start-tip')] : [])];
+      }
       if (tipClicked && tip && !tipNeverDismisses) {
         if (tipDismissalReads > 0) tipDismissalReads--;
         else tip = false;
@@ -1332,4 +1336,42 @@ test('active iPad Address completes before keyboard dismissal that cannot hide i
   await assert.rejects(stuck.run(), /keyboard remained after native dismissal/);
   assert.equal(stuck.calls.filter(({ path }) => path.endsWith('/element/hide-0/click')).length, 1);
   assert.deepEqual(stuck.calls.at(-1).body, { name: 'WEBVIEW_1' });
+});
+
+test('Safari combines absent onboarding queries without caching between preparations', async () => {
+  const fixture = safariPreparationFixture();
+  await fixture.run();
+  await fixture.run();
+  const lookups = fixture.calls.filter(({ body }) => body?.using === '-ios predicate string');
+  assert.equal(lookups.length, 2, 'Exactly one absent-tip query per preparation');
+  assert.ok(lookups.every(({ body }) => body.value === safariOnboardingTipPredicate));
+  assert.equal(
+    fixture.calls.some(({ path }) => path.endsWith('/click')),
+    false,
+  );
+});
+
+test('combined onboarding gate retains exact one-tip and both-tip dismissal verification', async () => {
+  for (const options of [
+    { tip: true },
+    { startPageTip: true },
+    { tip: true, startPageTip: true },
+  ]) {
+    const fixture = safariPreparationFixture(options);
+    await fixture.run();
+    const count = Number(!!options.tip) + Number(!!options.startPageTip);
+    const lookups = fixture.calls.filter(({ body }) => body?.using === '-ios predicate string');
+    assert.equal(lookups[0].body.value, safariOnboardingTipPredicate);
+    assert.equal(
+      lookups.length,
+      3 + count,
+      'One gate, two exact lookups, and one post-click observation per tip',
+    );
+    assert.equal(fixture.calls.filter(({ path }) => path.endsWith('/click')).length, count);
+    assert.equal(fixture.evidence[0].tipDismissals.length, count);
+    assert.ok(
+      fixture.evidence[0].tipDismissals.every(({ visibleCounts }) => visibleCounts.at(-1) === 0),
+    );
+    assert.equal(fixture.evidence[0].status, 'passed');
+  }
 });
