@@ -1,4 +1,4 @@
-# KEP: One Kubeflow Pipelines control plane, multiple execution clusters
+# KEP: Multi-cluster execution with optional isolated KFP cells
 
 | Metadata | Value |
 | --- | --- |
@@ -12,14 +12,18 @@
 
 ## Summary
 
-Allow one Kubeflow Pipelines (KFP) API, UI, and database to manage runs on
-multiple registered Kubernetes clusters. Users submit runs normally; KFP resolves
-the execution cluster through administrator-defined placement policy. Authorized
+Allow a Kubeflow Pipelines (KFP) control plane to manage runs on one or more
+registered Kubernetes clusters. Each independently usable control plane is a
+**cell**, owning its API, execution state, database and catalog. One cell is the
+default deployment; operators may use multiple isolated cells behind an optional
+unified entry point when scale or failure containment requires it.
+
+Users submit runs normally; KFP resolves the execution cluster through administrator-defined placement policy. Authorized
 users may optionally override that policy with an explicit cluster selection.
-The resolved execution location becomes immutable Run identity and governs creation, observation, logs, termination, deletion, and
-eventually retry and recurring runs. Requests that omit a target use placement
-policy from day one;
-single-cluster installations retain their configured default behavior.
+The resolved execution location becomes immutable Run identity and governs
+creation, observation, logs, termination, deletion, and eventually retry and
+recurring runs. Requests that omit a target use placement
+policy from day one; single-cluster installations retain their configured default behavior.
 
 The proposal introduces a target-aware execution backend, durable operation
 intent, authenticated execution provenance, and a separation between central
@@ -28,7 +32,7 @@ uses direct Kubernetes client bundles and a separate observation context per
 cluster. A per-cluster execution agent is an evaluated alternative behind the
 same semantic boundary, not an initial implementation requirement.
 
-The MVP retains one central catalog and metadata database, includes transparent
+The core MVP retains one catalog and metadata database per cell, includes transparent
 static policy placement for ad hoc runs, and requires shared reachable object
 storage. It does not introduce capacity-aware scheduling, cross-cluster task
 scheduling, or failover that restarts a Run on another cluster.
@@ -38,7 +42,10 @@ scheduling, or failover that restarts a Run on another cluster.
 Organizations may operate separate clusters for GPUs, geographic placement,
 capacity, or administrative boundaries while wanting one pipeline catalog and
 run history. A separate full KFP installation in each cluster duplicates control
-planes, user-facing endpoints, and metadata stores.
+planes, user-facing endpoints, and metadata stores. Conversely, concentrating an
+entire provider fleet behind one database creates an excessive failure domain.
+The deployment model must support both a simple standalone installation and
+optional isolation without imposing fleet-management components on every operator.
 
 Current KFP associates execution with a namespace and Workflow name, supplemented
 by UID and resource version in saved Workflow manifests. Its backend clients and
@@ -50,7 +57,9 @@ cluster. See the [source investigation](source-investigation.md).
 
 ### Goals
 
-- Retain one KFP API/UI and one central KFP database/catalog.
+- Retain one independently usable KFP control plane and database/catalog per cell.
+- Default to one cell, with no required fleet gateway, cell registry or extra database.
+- Support optional multi-cell isolation without a global runtime dependency.
 - Resolve placement transparently using administrator-defined policy from day one.
 - Permit explicit cluster selection as an optional, separately authorized override.
 - Bind every execution mutation and observation to immutable target identity.
@@ -69,19 +78,76 @@ cluster. See the [source investigation](source-investigation.md).
 - Moving an existing Run or its retry to a different cluster.
 - Splitting a single Run's tasks across clusters.
 - Provisioning Kubernetes clusters or synchronizing arbitrary Secrets/PVCs.
-- Federating independent KFP databases or importing their live runs.
+- Merging databases across cells, importing live runs, cross-cell search and
+  tenant migration in the core MVP. These require separate extension contracts.
 - Guaranteeing exactly-once execution of user task side effects.
 - Supporting every historical KFP release's MLMD/cache architecture with this design.
 
 ## Proposal
 
-The central service owns Run identity, tenant policy, durable intent, metadata,
+Within each cell, the central service owns Run identity, tenant policy, durable intent, metadata,
 and API behavior. Execution clusters own Workflows, pods, local storage resources,
 service accounts, and the Argo controller that executes those Workflows.
 
 A registered cluster is an administrator-controlled destination, not a user
 supplied Kubernetes endpoint or kubeconfig. The API resolves the destination
 before execution, persists it, and never changes it in response to a failure.
+
+### Deployment profiles and cell boundary
+
+A cell is a complete, independently usable KFP control plane, not an additional
+mandatory service or a synonym for an execution cluster. It owns authoritative
+Run/Task/artifact metadata, durable operations, authorization decisions, placement
+policy and cluster registrations. In this proposal, **central** means central to
+that cell, not one mandatory fleet-wide API or database.
+
+| Profile | Deployment | Additional requirements |
+| --- | --- | --- |
+| Simple (default) | One cell, one execution cluster, existing UI/API endpoint and database | No gateway, cell registry, tenant-routing service or extra database; preserve existing SDK/API usage |
+| Multi-cluster | One cell, multiple execution clusters | Target-aware execution and transparent static placement; no fleet layer required |
+| Provider scale (optional) | Multiple isolated cells, each with one or more execution clusters | Optional unified entry point and tenant-to-cell routing; independent capacity, rollout and recovery boundaries |
+
+There are two distinct decisions. The optional fleet layer assigns a tenant to an
+owning cell; the cell resolves a submitted Run to an execution cluster. Ordinary
+submissions do not invoke a global scheduler. Assignments are stable, and an
+unavailable cell must not cause requests to be transparently sent to another
+cell that lacks its state. Within a cell, replacing an execution cluster remains
+register-new, place-new-Runs, drain-old; moving a tenant between cells is a separate
+data/ownership migration, not a routing-only update.
+
+Single-cell operators address the cell directly. They do not configure a public
+cell ID, use a global registry, or provision another database. Multi-cell extensions
+must provide stable cell identity and route using authenticated tenant context and
+resource ownership. Run IDs alone are not routing or authorization authority:
+links, caches and gateway requests must preserve their owning-cell context without
+requiring a new argument in ordinary single-cell SDK calls. Exact fleet routing
+and discovery APIs belong to the extension contract, not mandatory core schema.
+
+Every cell must continue normal execution using its own authoritative state while
+an optional fleet management service is unavailable. Runtime pods call their
+owning cell; required pipeline definitions, policy and configuration are available
+locally as versioned data. A fleet catalog/search index, if provided later, is not
+a synchronous execution dependency. Existing cell identity and storage dependencies
+still require an explicit availability contract; caching policy does not imply
+unlimited offline authorization or bypass revocation semantics.
+
+For provider deployments, redundant regional gateways use replicated/cached
+assignments rather than a live global lookup for every request. Fleet management
+handles provisioning, assignments and configuration distribution separately from
+execution. Cells have independently recoverable databases and resource budgets;
+putting all cell databases on one failure-prone shared database service does not
+provide the intended isolation. Cell-by-cell canaries and limits on concurrent
+rollouts contain software and schema-change failures. Identity, DNS, ingress,
+storage, secrets and configuration distribution also need a shared-dependency
+review. Regional disaster recovery requires explicit ownership fencing and tested
+data-recovery guarantees; neither extra cells nor replication alone supplies it.
+
+The core MVP establishes independently usable cells and the ownership/dependency
+boundaries above. A unified multi-cell gateway, fleet manager, cross-cell search,
+tenant migration and regional failover are optional extensions with separate
+delivery/review gates. A provider service must validate its chosen extensions and
+failure containment before claiming a fleet-wide availability objective. Small
+installations need not deploy them or meet provider-scale capacity targets.
 
 ### User stories
 
@@ -98,7 +164,32 @@ before execution, persists it, and never changes it in response to a failure.
 4. An existing single-cluster installation upgrades without changing SDK calls;
    new submissions continue using the registered legacy/default cluster.
 
-### Proposed architecture
+### Optional multi-cell architecture
+
+```text
+Single-cell default: Users / SDK --> Cell A --> Kubernetes A (and optionally B)
+                                    |-- own API/UI, database, workers
+                                    No fleet services required
+
+Optional provider deployment:
+                   One public endpoint / UI
+                              |
+                  Redundant regional gateways
+                  Cached tenant-to-cell routing
+                      /        |        \
+                     v         v         v
+                  Cell A     Cell B     Cell C
+                  API/UI     API/UI     API/UI
+                  own DB     own DB     own DB
+                  workers    workers    workers
+                    |          |          |
+                  K8s A/B    K8s C/D    K8s E/F
+
+          Optional fleet management --> versioned assignments/config
+          Runtime pods --> owning cell (no fleet-management lookup)
+```
+
+### Architecture within one cell
 
 ```text
                          Users / SDK
@@ -142,8 +233,9 @@ before execution, persists it, and never changes it in response to a failure.
 ```
 
 One control plane means one logical API/UI and KFP metadata store, not one
-process or database instance. Production multi-cluster deployments require
-redundant serving and execution components plus an HA database. The diagram shows
+process or database instance. KFP must support HA serving, execution components
+and database configurations; operators choose the availability level they deploy.
+A small installation may use single replicas. The diagram shows
 logical responsibilities; replica counts and failure domains are deployment
 concerns governed by the [resilience requirements](#control-plane-availability-and-capacity).
 
@@ -456,8 +548,11 @@ Adding execution clusters does not automatically scale API serving, observation,
 metadata writes or database capacity. Without redundancy and isolation, central
 components become bottlenecks and single points of failure.
 
-The following are required mitigations for the production multi-cluster MVP,
-not claims that the current repository already implements or validates them:
+The core MVP must support the following mitigations and document their limits;
+these are not claims that the current repository already implements or validates
+them. Operators choose a simple or HA deployment. Provider deployments require a
+validated HA profile plus multi-cell isolation appropriate to their availability
+objectives; small installations are not required to run redundant infrastructure:
 
 - **Redundant serving:** support stateless UI/API replicas behind an HA ingress or
   load balancer, spread across supported failure domains. Shared authentication,
@@ -494,7 +589,9 @@ not claims that the current repository already implements or validates them:
   do not imply unlimited horizontal scale or invent unmeasured guarantees.
 
 An HA database removes a single database-instance failure point; it remains a
-shared dependency and possible write bottleneck. Availability of a logical control
+shared dependency and possible write bottleneck within its cell. Optional cells
+bound that impact only if their dependencies and operations are isolated.
+Availability of a logical control
 plane does not imply regional disaster tolerance. Restore procedures must reconcile
 recovered intent/identity with surviving remote Workflows before dispatch resumes;
 restoring an older database must not blindly duplicate accepted work.
@@ -624,6 +721,10 @@ baseline. [S8](source-investigation.md#s8-cache-and-metadata)
 
 ### Artifacts, roots, logs, and storage trust
 
+Shared storage below means shared by execution clusters within a cell. A single
+fleet-wide bucket or storage service is not required; any shared provider storage
+must be included in the failure-domain assessment.
+
 The MVP requires administrator-approved shared object storage reachable from all
 enabled execution clusters and the authorized content-serving path. Resolve and
 persist the selected storage profile/root for each Run; do not re-resolve old
@@ -704,6 +805,11 @@ prevent another's cleanup. [S6](source-investigation.md#s6-database-retention-an
 
 ## Migration and compatibility
 
+An existing installation is implicitly one standalone cell; upgrading does not
+require a fleet registry, cell-routing configuration or an additional database.
+Enabling an optional fleet layer later must preserve existing resource ownership
+and URLs/API compatibility through an explicit onboarding contract.
+
 1. Add schema fields/tables and read-compatible handling for null/empty cluster
    identity. Install a fixed legacy registration matching the old execution
    cluster. Backfill Run and Job targets; recover namespaces from existing
@@ -736,10 +842,11 @@ rows to the local default to make a downgrade appear compatible.
 
 | Stage | Deliverable |
 | --- | --- |
-| 0 | Identity/schema, operation-intent semantics, cluster registry, static placement policy and provenance, API/SDK contract and migration tests. |
+| 0 | Independently usable single-cell ownership/dependency contract; identity/schema, operation-intent semantics, cluster registry, static placement policy and provenance, API/SDK contract and migration tests. |
 | 1 | Explicit client configuration and semantic execution backend; prove default-cluster parity. |
 | 2 | Remote ad hoc creation, trusted per-cluster observation, runtime authentication/API connectivity, safe terminate/delete, shared storage and remote cache restrictions. |
-| 3 | Supported HA topology, worker takeover, capacity/failure tests and outage/recovery contract; transparent UI submission, optional authorized override and resolved-target display, routed logs, unsupported-path guards, outage/cleanup observability and two-cluster E2E validation. These complete the alpha MVP. |
+| 3 | Simple deployment parity and supported optional HA topology, worker takeover, capacity/failure tests and outage/recovery contract; transparent UI submission, optional authorized override and resolved-target display, routed logs, unsupported-path guards, outage/cleanup observability and two-cluster E2E validation. These complete the alpha MVP. |
+| Optional fleet extensions | Unified gateway/routing and fleet management with isolation validation; separately reviewed cross-cell search, tenant migration and regional recovery. None is a prerequisite for standalone use. |
 | Later | Capability constraints and dynamic capacity-aware scheduling; target-aware retry, schedules, scoped cache, storage profiles/content API, remote viewers/plugins, and optional execution agents. |
 
 The MVP supports transparent static policy placement with an optional authorized
@@ -753,7 +860,9 @@ scheduling, reservations or failover; cross-cluster task execution/cache reuse; 
 storage; arbitrary namespace remapping; unsupported remote plugins/viewers; and
 self-service registration/forced removal. Reject these combinations explicitly.
 The MVP also excludes guaranteed execution autonomy during prolonged central
-outages; production HA and bounded-load mitigations are required from day one.
+outages. HA support and bounded-load mitigations are required from day one;
+redundant infrastructure is an operator choice. Provider profiles require validated
+HA and cell isolation, while the core MVP remains deployable as one simple cell.
 
 ## Test plan
 
@@ -810,6 +919,10 @@ implementation. Current coverage measurements have not been collected.
 
 ### Availability and capacity tests
 
+Exercise the supported HA profile for failover claims. Also verify the simple
+profile works without redundant replicas or any fleet services; its documented
+availability limits are acceptable when chosen by the operator.
+
 - Kill UI/API replicas and fail serving nodes; verify traffic recovery, consistent
   authentication/configuration and no loss of durably accepted intent.
 - Kill dispatch/observer owners during writes and takeover; verify bounded recovery,
@@ -847,13 +960,28 @@ implementation. Current coverage measurements have not been collected.
 - Drain a registration and verify no new dispatch, continued cleanup, and blocked
   retirement while unresolved operations remain.
 
+### Optional multi-cell extension validation
+
+Before a provider profile is supported, test tenant/cell routing authorization,
+resource-link ownership, cache partitioning and prevention of cross-cell data
+access. Fail one cell and its database while verifying other cells meet their
+objectives. Take fleet management and assignment distribution offline and verify
+existing assignments and execution remain usable within the documented validity
+window. Test staged software/schema rollouts and shared-dependency failures.
+Tenant migration and regional recovery require separate fencing/recovery tests
+before those capabilities are advertised. These are extension release gates,
+not prerequisites for deploying the core as a standalone cell.
+
 ### Graduation criteria
 
 **Alpha:** feature gated, static registrations, two-cluster tests passing for the
 MVP, supported-version prerequisites documented, migration/rollback restrictions
 tested, and security review of runtime identity and cleanup completed. A supported
-HA topology, initial measured workload envelope, passing availability/failure
-tests, and documented outage/recovery behavior are also required for the MVP.
+optional HA topology, initial measured workload envelope, passing profile-specific
+availability/failure tests, simple single-cell deployment parity, and documented
+outage/recovery behavior are required for the core MVP. Multi-cell provider
+extensions have the additional isolation gates above; their infrastructure is
+not a mandatory installation dependency.
 
 **Beta:** evidence from sustained multi-cluster operation; bounded per-cluster
 resource use and failure isolation; reviewed target-aware retry/schedule support
@@ -867,7 +995,9 @@ scalability targets agreed by maintainers. No release version is promised here.
 
 | Risk | Mitigation / review requirement |
 | --- | --- |
-| Central UI/API/database becomes a bottleneck or single point of failure | Require redundant serving, independently scalable workers with safe takeover, supported HA database/failover and tested restore, bounded connections/queues/streams, measured capacity limits and availability tests. See [control-plane requirements](#control-plane-availability-and-capacity). The logical database remains a shared dependency. |
+| Central UI/API/database becomes a bottleneck or single point of failure | Support redundant serving, independently scalable workers with safe takeover, supported HA database/failover and tested restore, bounded connections/queues/streams, measured capacity limits and availability tests. See [control-plane requirements](#control-plane-availability-and-capacity). Operators choose the deployment profile; the logical database remains a shared dependency within a cell. Provider profiles require validated HA and bounded cell failure domains. |
+| Fleet-wide outage despite multiple cells | Independent state, capacity and staged rollouts; cached routing without a live fleet lookup on execution paths; validate shared identity/DNS/storage/ingress dependencies and regional recovery. Multiple cells alone are not an availability guarantee. |
+| Provider requirements overcomplicate small installations | Default standalone cell with existing endpoint/database; no required fleet service, cell-selection argument or redundant infrastructure. Verify simple-profile parity separately from provider extension gates. |
 | Central outage stalls remote execution | Audit runtime API dependencies; test retries and central/network/database outages; document what continues, stalls or fails and how pending work recovers. Do not equate remote Argo availability or agents with execution autonomy. |
 | Wrong-cluster mutation or report | Immutable target, qualified clients/queues/principals, origin validation and collision tests. |
 | Central credential compromise | Least-privilege per-target credentials, external secret references, rotation/audit; agent alternative for stronger custody requirements. |
@@ -890,7 +1020,9 @@ reconciliation, runtime configuration and UI work beyond a client factory change
 Operations must preserve enough state to recover safely, adding schema and
 operational complexity. Shared storage and static placement policy limit the first
 release's flexibility. Multi-cluster capability also expands the supported
-deployment/test matrix.
+deployment/test matrix. Optional fleet components add routing and operational
+complexity only for operators who adopt them; core interfaces must not acquire
+mandatory global dependencies merely to support that option.
 
 ## Alternatives
 
@@ -930,8 +1062,12 @@ cannot be inferred from a generic RPC success acknowledgment.
 
 ### Other alternatives
 
-- **Separate KFP installation per cluster:** strongest immediate isolation, but
-  does not meet the one-API/UI/database goal.
+- **Separate KFP installation per execution cluster:** remains a valid simple
+  one-cell/one-cluster profile. It does not provide multi-cluster orchestration
+  within a cell; an optional fleet layer can unify access to independent cells.
+- **One mandatory fleet-wide API/database:** simpler global queries but an
+  excessive common failure domain for providers; retain the one-cell option
+  without requiring every operator to consolidate all tenants into it.
 - **Only add `Run.cluster_id` and a Workflow client factory:** misses schedules,
   core/pod clients, authentication, cache/storage, reporting and UI dependencies.
 - **Treat namespace as a global cluster-qualified string everywhere:** conflates
@@ -959,15 +1095,22 @@ cannot be inferred from a generic RPC success acknowledgment.
 7. Whether deployment requirements demand the agent design before the MVP.
 8. Supported HA database/serving topology, availability and recovery objectives,
    workload envelope, worker partition boundaries, and runtime retry budgets.
-   These must be resolved and tested for the production MVP.
+   Resolve and test these for each advertised profile; operators choose which
+   profile to deploy.
+9. Optional fleet routing/resource-identity contract, tenant assignment ownership,
+   shared-dependency limits and provider availability objectives. Resolve before
+   supporting the extension, without blocking a standalone-cell release.
 
 ## Implementation history
 
 - Initial author draft prepared from the source investigation in this proposal.
 - Revised the MVP to include transparent static policy placement from day one;
   explicit cluster selection is an optional authorized override.
-- Added central control-plane capacity/availability risks and required HA,
-  isolation, recovery and load/failure-testing mitigations for the MVP.
+- Added central control-plane capacity/availability risks and HA, isolation,
+  recovery and load/failure-testing mitigations; deployment requirements are now
+  scoped to operator-selected profiles below.
+- Clarified the default standalone cell, optional provider-scale cell isolation,
+  and operator-selected availability profiles without mandatory fleet services.
 - No upstream issue/KEP number assigned, review approval recorded, or production
   implementation started.
 
