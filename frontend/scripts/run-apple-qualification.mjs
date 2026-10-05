@@ -97,6 +97,20 @@ export async function configureDesktopTextInput(
   return configuration;
 }
 
+// The first simctl call starts CoreSimulator services on a cold hosted image.
+// Give inventory the existing boot allowance; do not change ordinary command,
+// inspector connection, or browser-check deadlines.
+export async function readSimulatorInventory(run) {
+  const inventory = JSON.parse(
+    await run('/usr/bin/xcrun', ['simctl', 'list', '-j'], 'simulators', simulatorBootTimeout),
+  );
+  assert.ok(
+    inventory && Array.isArray(inventory.runtimes) && Array.isArray(inventory.devicetypes),
+    'Simulator inventory must contain runtime and device-type arrays',
+  );
+  return inventory;
+}
+
 export function selectSimulator(inventory, config) {
   const runtime = inventory.runtimes.find(
     (item) =>
@@ -401,9 +415,8 @@ async function main() {
       const driver = start('/usr/bin/safaridriver', ['--port', '4444'], 'safaridriver');
       await ready('http://127.0.0.1:4444/status', driver);
     } else {
-      const inventory = JSON.parse(
-        await run('/usr/bin/xcrun', ['simctl', 'list', '-j'], 'simulators'),
-      );
+      report.simulatorInventory = { timeoutMs: simulatorBootTimeout };
+      const inventory = await readSimulatorInventory(run);
       await writeFile(
         join(out, 'simulator-inventory.json'),
         `${JSON.stringify(inventory, null, 2)}\n`,

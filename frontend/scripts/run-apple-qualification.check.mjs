@@ -24,6 +24,7 @@ import {
   stopOwnedAppleChild,
   requireHostedAppleRunner,
   selectSimulator,
+  readSimulatorInventory,
 } from './run-apple-qualification.mjs';
 
 const hosted = {
@@ -304,5 +305,54 @@ test('WDA output inspection rejects incomplete builds and records completed buil
     await assert.rejects(inspectWdaBuild(root), /build output is empty/);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('cold simulator inventory gets one bounded startup call without changing runtime identity', async () => {
+  const expected = {
+    runtimes: [
+      {
+        identifier: 'com.apple.CoreSimulator.SimRuntime.iOS-26-5',
+        version: '26.5',
+        buildversion: '23F77',
+        isAvailable: true,
+      },
+    ],
+    devicetypes: [
+      { name: 'iPhone 17', identifier: 'com.apple.CoreSimulator.SimDeviceType.iPhone-17' },
+    ],
+  };
+  const calls = [];
+  const inventory = await readSimulatorInventory(async (...args) => {
+    calls.push(args);
+    return JSON.stringify(expected);
+  });
+  assert.deepEqual(calls, [['/usr/bin/xcrun', ['simctl', 'list', '-j'], 'simulators', 300000]]);
+  assert.deepEqual(inventory, expected);
+  const selected = selectSimulator(inventory, appleQualification.iphone);
+  assert.deepEqual(selected.runtime, expected.runtimes[0]);
+  assert.deepEqual(selected.deviceType, expected.devicetypes[0]);
+});
+
+test('cold inventory allowance never retries command failures or accepts malformed inventory', async () => {
+  const failure = new Error('simctl service startup failed');
+  let calls = 0;
+  await assert.rejects(
+    readSimulatorInventory(async () => {
+      calls++;
+      throw failure;
+    }),
+    (error) => error === failure,
+  );
+  assert.equal(calls, 1);
+  for (const output of ['', '{bad', 'null', '{}', '{"runtimes":[],"devicetypes":{}}']) {
+    let attempts = 0;
+    await assert.rejects(
+      readSimulatorInventory(async () => {
+        attempts++;
+        return output;
+      }),
+    );
+    assert.equal(attempts, 1);
   }
 });
