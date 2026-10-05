@@ -53,6 +53,7 @@ const xcuitestVersion = '12.13.3';
 // First-boot OS migration on a hosted simulator has a separate bounded budget.
 const simulatorBootTimeout = 300_000;
 const mobileIdleTimeoutSeconds = 2;
+const mobileInspectorTimeoutMs = 120_000;
 const wdaLocalPort = 8100;
 
 export function requireHostedAppleRunner(env = process.env, platform = process.platform) {
@@ -561,9 +562,9 @@ async function main() {
         // Native Safari input can require three calibrated taps. Bound each XCTest idle
         // wait while retaining quiescence checks and the harness's explicit DOM readiness.
         'appium:waitForIdleTimeout': mobileIdleTimeoutSeconds,
-        // Cold hosted simulators can publish Safari's inspector application after
-        // the driver's 5-second default discovery deadline.
-        'appium:webviewConnectTimeout': 60000,
+        // Hosted iOS 26 has published its inspector application after 65.7s;
+        // bound this startup discovery separately from browser-check deadlines.
+        'appium:webviewConnectTimeout': mobileInspectorTimeoutMs,
         'appium:safariLogAllCommunication': true,
         'appium:newCommandTimeout': 120,
         'appium:nativeWebTap': true,
@@ -571,6 +572,7 @@ async function main() {
         'appium:safariInitialUrl': 'http://127.0.0.1:4174/',
       };
       report.nativeInteraction = {
+        inspectorTimeoutMs: mobileInspectorTimeoutMs,
         waitForIdleTimeoutSeconds: mobileIdleTimeoutSeconds,
         quiescence: 'Enabled by the pinned XCUITest driver',
         wdaUrl: `http://127.0.0.1:${wdaLocalPort}`,
