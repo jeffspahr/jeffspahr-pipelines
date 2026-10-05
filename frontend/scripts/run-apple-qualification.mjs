@@ -591,11 +591,19 @@ async function main() {
       KFP_BROWSER_FLOOR_URL: 'http://127.0.0.1:4174/',
       KFP_BROWSER_FLOOR_OUTPUT: join(out, 'checks'),
     });
+    report.nativeCheckProcessBudget = {
+      startupAllowanceMs: mode === 'desktop' ? 0 : 600_000,
+      executionAllowanceMs: 900_000,
+      semantics: 'One aggregate process deadline; allocations are not independent phase deadlines',
+    };
+    report.nativeCheckProcessBudget.timeoutMs =
+      report.nativeCheckProcessBudget.startupAllowanceMs +
+      report.nativeCheckProcessBudget.executionAllowanceMs;
     await run(
       process.execPath,
       ['scripts/ui-modernization-browser-floor.mjs'],
       'native-checks',
-      900_000,
+      report.nativeCheckProcessBudget.timeoutMs,
     );
     report.status = report.processErrors?.length ? 'failed' : 'passed';
   } catch (error) {
