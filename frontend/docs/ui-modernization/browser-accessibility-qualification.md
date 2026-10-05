@@ -58,7 +58,7 @@ The populated creation snapshot used the ordinary pipeline selector to establish
 
 ### Remaining accessibility limits
 
-The unit DOM and automated browsers cannot establish representative screen-reader announcements, actual Windows high-contrast behavior, touch/zoom usability on physical Safari/iOS devices, or every layout at 320 CSS pixels and 400% zoom. The forced-colors probe is browser emulation rather than an operating-system or assistive-technology test. The final production matrix covers pointer/keyboard resizing, focus, dismissal and desktop/narrow viewport transitions. Acceptance by representative assistive-technology and device users remains an explicit release gate; no blanket conformance claim is made.
+The unit DOM and automated browsers cannot establish representative screen-reader announcements, actual Windows high-contrast behavior, touch/zoom usability on physical Safari/iOS devices, or every layout at 320 CSS pixels and 400% zoom. The forced-colors probe is browser emulation rather than an operating-system or assistive-technology test. The final production matrix covers pointer/keyboard resizing, focus, dismissal and desktop/narrow viewport transitions. This historical checkpoint originally called for representative assistive-technology and device-user acceptance. The later approved [automated qualification policy](../browser-support.md#automated-qualification) supersedes that manual-testing requirement: untested assistive-technology behavior remains a disclosed limitation and coverage follow-up, with no blanket conformance claim. Supported-browser failures affecting keyboard access or reachable content still block release.
 
 ## Historical browser compatibility qualification
 
