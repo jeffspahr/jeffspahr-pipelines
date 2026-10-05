@@ -4,8 +4,8 @@ These notes prepare [PR #14584](https://github.com/kubeflow/pipelines/pull/14584
 for review. They do not announce a published release. The
 [tracking issue](https://github.com/kubeflow/pipelines/issues/14572) owns the design,
 compatibility requirements and current release checklist; no KEP is required.
-Source-specific results are retained in the [October 5 qualification report](release-qualification-2026-10-05/README.md).
-Rebased-head checks and the eventual release-image checks must be assessed separately.
+Source-specific results are retained in the [rebased qualification report and dated matrix](release-qualification-2026-10-05-rebased/README.md).
+Subsequent harness changes and eventual release-image checks must be assessed separately.
 
 ## What changes for users
 
