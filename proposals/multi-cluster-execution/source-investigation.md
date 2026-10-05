@@ -381,8 +381,16 @@ Generated files and tests must accompany implementation; this draft edits neithe
 | H. Metadata | Central metadata API with target-bound runtime identity; Task derives target, legacy MLMD investigated separately | [S8](#s8-cache-and-metadata), [S9](#s9-authentication-and-service-accounts): runtime ClientManager, Task/Artifact stores, Run authorization |
 | I. Artifacts / storage / logs | Explicit shared-storage profile, remote endpoint configuration, backend logs/events/content authorization, local PVC semantics | [S4](#s4-run-lifecycle-and-failure-ordering), [S10](#s10-runtime-configuration-storage-and-plugins), [S11](#s11-frontend-and-independent-kubernetes-access) |
 | J. Security | Separate tenant and placement checks, per-target TokenReview, cluster-qualified runtime principals, protected credential refs and RBAC | [S9](#s9-authentication-and-service-accounts): authenticator, IsAuthorized, projected token; [S10](#s10-runtime-configuration-storage-and-plugins): plugin/secret readers |
-| K. Deployment | Static target registry and versioned tenant/experiment placement mappings for MVP, remote Argo/RBAC/config installation, explicit central endpoints, per-target health/budgets, retention protections | [S1](#s1-client-construction-and-routing), [S6](#s6-database-retention-and-health), [S10](#s10-runtime-configuration-storage-and-plugins): constructors, GC lease, launcher config |
+| K. Deployment | Supported HA serving/database topology, worker partition/takeover and bounded connections/queues with load/failure validation; static target registry and versioned tenant/experiment placement mappings for MVP, remote Argo/RBAC/config installation, explicit central endpoints, per-target health/budgets, retention protections | [S1](#s1-client-construction-and-routing), [S6](#s6-database-retention-and-health), [S10](#s10-runtime-configuration-storage-and-plugins): constructors, GC lease, launcher config |
 | L. UI / SDK | Transparent submission, optional authorized override, resolved target/provenance/freshness display, regenerated clients, execution UI through backend, explicit unsupported remote capability guards | [S3](#s3-public-run-api), [S11](#s11-frontend-and-independent-kubernetes-access): protobuf, Python client, frontend helpers/handlers |
+
+Central availability/capacity mitigations are proposed requirements, not verified
+HA or throughput guarantees of the current source. See the
+[control-plane requirements](README.md#control-plane-availability-and-capacity)
+for serving/worker redundancy, database failover/recovery, failure isolation and
+runtime outage limits. Relevant evidence is the shared clients in S1, observation
+and cleanup ordering in S5, central leases/health in S6, and runtime API dependencies
+in S8/S10; those paths need load and failure validation before production support.
 
 ## Ten prototype starting points
 

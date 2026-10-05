@@ -141,8 +141,11 @@ before execution, persists it, and never changes it in response to a failure.
         Cluster-specific TokenReview --> qualified runtime identity
 ```
 
-One central database means one logical KFP metadata store. It does not require
-all runtime Kubernetes resources to move into the control-plane cluster.
+One control plane means one logical API/UI and KFP metadata store, not one
+process or database instance. Production multi-cluster deployments require
+redundant serving and execution components plus an HA database. The diagram shows
+logical responsibilities; replica counts and failure domains are deployment
+concerns governed by the [resilience requirements](#control-plane-availability-and-capacity).
 
 ### Constraints
 
@@ -445,6 +448,76 @@ separate. Report metrics for target health, observation lag, ambiguous writes,
 pending cancellation/deletion age, and reconciliation outcomes with bounded
 label cardinality.
 
+### Control-plane availability and capacity
+
+**Architectural risk:** concentrating more execution clusters behind one logical
+UI/API/database increases aggregate load and the impact of a central outage.
+Adding execution clusters does not automatically scale API serving, observation,
+metadata writes or database capacity. Without redundancy and isolation, central
+components become bottlenecks and single points of failure.
+
+The following are required mitigations for the production multi-cluster MVP,
+not claims that the current repository already implements or validates them:
+
+- **Redundant serving:** support stateless UI/API replicas behind an HA ingress or
+  load balancer, spread across supported failure domains. Shared authentication,
+  signing/configuration state must work across replicas. No singleton UI/API
+  requirement; document resilient dependencies such as identity, DNS and secrets.
+- **Separate requests from execution work:** dispatch and long-running observation
+  run in independently scalable workers, outside request-serving capacity. Persist
+  intent before dispatch and preserve existing RPC completion semantics; asynchronous
+  processing must not falsely report execution or cleanup as complete. Durable
+  operation records provide recovery; an external message broker is not required.
+- **Worker ownership and takeover:** partition dispatch/observer ownership by
+  cluster, with namespace subdivision where scale requires it. Use leases and
+  fenced database updates, relist after takeover, and retain existing UID/version/
+  generation and tombstone protections. A lease cannot fence a Kubernetes request
+  already in flight. No singleton execution worker is required, and API replica
+  scaling must not multiply all watches and reconciliation work unintentionally.
+- **Bounded resource use:** apply per-cluster and per-tenant queue, concurrency,
+  retry/backoff and request budgets. Paginate reads, bound log-stream concurrency
+  and duration, and protect lifecycle/runtime API capacity from bulk historical
+  reads. A disconnected or noisy cluster must not exhaust healthy clusters' budgets.
+- **Database availability and capacity:** document a supported HA database topology,
+  automatic failover, backups and tested restore procedures. Bound aggregate
+  connection pools across all replicas/workers, index lifecycle/target queries,
+  and batch or coalesce observation writes only when identity checks, durable
+  intents and terminal-state ordering remain correct. Read replicas may serve
+  suitably stale historical views; authorization, idempotency and lifecycle
+  decisions require the necessary consistency. Store artifact bodies and archived
+  log payloads in object storage, not as database blobs.
+- **Measured operating envelope:** define and load-test supported cluster count,
+  active Runs/tasks, submission rate, API latency/error rate, concurrent log streams,
+  observation lag and database write/connection load. Document capacity thresholds,
+  backpressure and scaling procedures. Specify availability objectives and recovery
+  time/data-loss objectives for the supported HA deployment before alpha approval;
+  do not imply unlimited horizontal scale or invent unmeasured guarantees.
+
+An HA database removes a single database-instance failure point; it remains a
+shared dependency and possible write bottleneck. Availability of a logical control
+plane does not imply regional disaster tolerance. Restore procedures must reconcile
+recovered intent/identity with surviving remote Workflows before dispatch resumes;
+restoring an older database must not blindly duplicate accepted work.
+
+**Runtime dependency and outage contract:** current v2 drivers/launchers use the
+central KFP API for task, metadata and cache operations; see
+[S8](source-investigation.md#s8-cache-and-metadata) and
+[S10](source-investigation.md#s10-runtime-configuration-storage-and-plugins).
+Argo may continue managing existing Workflows and running pods during a central
+outage, but KFP execution progress can stall or fail at central API calls depending
+on existing retry behavior. Agents alone do not remove this dependency. Audit and
+test timeout/retry/idempotency behavior rather than promise uninterrupted execution.
+
+Document and test which reads remain available, which execution steps can continue,
+and which operations wait or return retryable errors in each failure scenario.
+Historical Get/List remains available during a target-cluster outage only while
+the central API and database are available. During a central database outage,
+new submissions and lifecycle intent must not be acknowledged without durability;
+accepted intents survive within the database's documented durability guarantees.
+After recovery, reconcile pending work and stale observations without changing
+Run targets. Fully autonomous execution through a prolonged central outage is
+outside the MVP.
+
 ### Authentication and authorization
 
 The security boundary has three separate decisions:
@@ -666,7 +739,7 @@ rows to the local default to make a downgrade appear compatible.
 | 0 | Identity/schema, operation-intent semantics, cluster registry, static placement policy and provenance, API/SDK contract and migration tests. |
 | 1 | Explicit client configuration and semantic execution backend; prove default-cluster parity. |
 | 2 | Remote ad hoc creation, trusted per-cluster observation, runtime authentication/API connectivity, safe terminate/delete, shared storage and remote cache restrictions. |
-| 3 | Transparent UI submission, optional authorized override and resolved-target display, routed logs, unsupported-path guards, outage/cleanup observability and two-cluster E2E validation. These complete the alpha MVP. |
+| 3 | Supported HA topology, worker takeover, capacity/failure tests and outage/recovery contract; transparent UI submission, optional authorized override and resolved-target display, routed logs, unsupported-path guards, outage/cleanup observability and two-cluster E2E validation. These complete the alpha MVP. |
 | Later | Capability constraints and dynamic capacity-aware scheduling; target-aware retry, schedules, scoped cache, storage profiles/content API, remote viewers/plugins, and optional execution agents. |
 
 The MVP supports transparent static policy placement with an optional authorized
@@ -679,6 +752,8 @@ The MVP excludes remote recurring runs; remote retry/resume; dynamic capacity-aw
 scheduling, reservations or failover; cross-cluster task execution/cache reuse; arbitrary cluster-local
 storage; arbitrary namespace remapping; unsupported remote plugins/viewers; and
 self-service registration/forced removal. Reject these combinations explicitly.
+The MVP also excludes guaranteed execution autonomy during prolonged central
+outages; production HA and bounded-load mitigations are required from day one.
 
 ## Test plan
 
@@ -733,6 +808,25 @@ implementation. Current coverage measurements have not been collected.
 - Watch disconnect, relist, stale observations, remote TTL before persistence,
   and independent progress of healthy clusters.
 
+### Availability and capacity tests
+
+- Kill UI/API replicas and fail serving nodes; verify traffic recovery, consistent
+  authentication/configuration and no loss of durably accepted intent.
+- Kill dispatch/observer owners during writes and takeover; verify bounded recovery,
+  stale-owner fencing, late-create cleanup and no unintended extra Workflow.
+- Fail over the database while submitting, observing, terminating and deleting;
+  exercise ambiguous commit responses, bounded reconnection and idempotent recovery.
+  Restore a backup against surviving Workflows and verify safe reconciliation.
+- Interrupt runtime-to-central API access and separately make the central database
+  unavailable. Measure which task stages continue, stall or fail; verify documented
+  retry behavior and reconciliation after recovery without cross-cluster rerouting.
+- Sustain the declared workload envelope while injecting a noisy/unreachable
+  cluster, watch reconnect storms, bulk history queries and concurrent log streams.
+  Measure API latency/errors, queue age, observation lag, database writes/locks/
+  connections and worker CPU/memory; verify healthy-cluster and tenant isolation.
+- Publish tested capacity limits, availability/recovery objectives, operational
+  alerts and recovery procedures with the supported deployment configuration.
+
 ### E2E tests
 
 - One KFP installation plus two execution clusters: submit the same pipeline
@@ -757,7 +851,9 @@ implementation. Current coverage measurements have not been collected.
 
 **Alpha:** feature gated, static registrations, two-cluster tests passing for the
 MVP, supported-version prerequisites documented, migration/rollback restrictions
-tested, and security review of runtime identity and cleanup completed.
+tested, and security review of runtime identity and cleanup completed. A supported
+HA topology, initial measured workload envelope, passing availability/failure
+tests, and documented outage/recovery behavior are also required for the MVP.
 
 **Beta:** evidence from sustained multi-cluster operation; bounded per-cluster
 resource use and failure isolation; reviewed target-aware retry/schedule support
@@ -771,6 +867,8 @@ scalability targets agreed by maintainers. No release version is promised here.
 
 | Risk | Mitigation / review requirement |
 | --- | --- |
+| Central UI/API/database becomes a bottleneck or single point of failure | Require redundant serving, independently scalable workers with safe takeover, supported HA database/failover and tested restore, bounded connections/queues/streams, measured capacity limits and availability tests. See [control-plane requirements](#control-plane-availability-and-capacity). The logical database remains a shared dependency. |
+| Central outage stalls remote execution | Audit runtime API dependencies; test retries and central/network/database outages; document what continues, stalls or fails and how pending work recovers. Do not equate remote Argo availability or agents with execution autonomy. |
 | Wrong-cluster mutation or report | Immutable target, qualified clients/queues/principals, origin validation and collision tests. |
 | Central credential compromise | Least-privilege per-target credentials, external secret references, rotation/audit; agent alternative for stronger custody requirements. |
 | Ambiguous write or crash | Durable intent, deterministic resource identity, conditional adoption/mutation, retained tombstones, no cross-cluster failover. |
@@ -859,12 +957,17 @@ cannot be inferred from a generic RPC success acknowledgment.
 6. Supported Argo/Kubernetes/runtime version matrix and quantified per-cluster
    scale/latency budgets.
 7. Whether deployment requirements demand the agent design before the MVP.
+8. Supported HA database/serving topology, availability and recovery objectives,
+   workload envelope, worker partition boundaries, and runtime retry budgets.
+   These must be resolved and tested for the production MVP.
 
 ## Implementation history
 
 - Initial author draft prepared from the source investigation in this proposal.
 - Revised the MVP to include transparent static policy placement from day one;
   explicit cluster selection is an optional authorized override.
+- Added central control-plane capacity/availability risks and required HA,
+  isolation, recovery and load/failure-testing mitigations for the MVP.
 - No upstream issue/KEP number assigned, review approval recorded, or production
   implementation started.
 
