@@ -14,6 +14,7 @@ import { extname, isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NativeTransactions } from './ui-modernization-native-transactions';
 import { createMockApiApp } from '../mock-backend/mock-api-app';
+import { createPrecompressedStaticApp } from '../server/static-assets';
 
 assert.equal(process.env.CI, 'true', 'Native browser qualification runs only in CI');
 const build =
@@ -25,6 +26,7 @@ assert.ok(
 const port = Number(process.env.KFP_BROWSER_FLOOR_PORT || 4174);
 assert.ok(Number.isInteger(port) && port > 0 && port < 65536);
 const api = createMockApiApp();
+const staticAssets = createPrecompressedStaticApp(build, { cacheControl: 'no-store' });
 const transactions = new NativeTransactions();
 const mutations: { method: string; path: string }[] = [];
 const missingAssets: string[] = [];
@@ -115,6 +117,14 @@ const server = createServer(async (request, response) => {
     }
     if (/^\/(api|apis|apps|artifacts|hub|k8s|system)(?:\/|$)/.test(pathname)) {
       api(request, response);
+      return;
+    }
+    if (/^\/static\/[\w.-]+\.(?:js|css)$/.test(pathname)) {
+      staticAssets(request, response, (error?: unknown) => {
+        missingAssets.push(pathname);
+        response.writeHead(error ? 500 : 404);
+        response.end(error ? 'Static asset delivery failed' : 'Missing production asset');
+      });
       return;
     }
     const target = resolve(

@@ -105,7 +105,9 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Install native fixture dependencies
         if: matrix.browser == 'firefox'
-        run: npm ci --prefix mock-backend --ignore-scripts
+        run: |
+          npm ci --prefix mock-backend --ignore-scripts
+          npm ci --prefix server --ignore-scripts
       - uses: actions/download-artifact@v8
         with:
           name: qualification-production-bundle
@@ -231,6 +233,7 @@ jobs:
         run: npm install --global "$(node -p 'require("./package.json").packageManager')"
       - run: npm ci --ignore-scripts
       - run: npm ci --prefix mock-backend --ignore-scripts
+      - run: npm ci --prefix server --ignore-scripts
       - uses: actions/download-artifact@v8
         with:
           name: qualification-production-bundle

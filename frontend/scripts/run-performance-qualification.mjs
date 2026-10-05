@@ -31,6 +31,7 @@ import {
   sha256,
   verifyBuild,
   validateSample,
+  validateStaticTransfers,
   cleanupWithEvidence,
   hostedReadinessProtocol,
   isExpectedLegacyWorkerError,
@@ -65,6 +66,7 @@ const instrumentation = Object.fromEntries(
 const sources = {
   legacy: '02cbc725ac9ddcd950f4400d8355dd78bfcd6c57',
   checkpoint: 'e79f8d423e6b118e5df94815ee2f36f68570a9a9',
+  previous: '439304aa4ed3a20ae5a7c004b96936cb65c3aff0',
   candidate: process.env.GITHUB_SHA,
 };
 const expectedEditor = dump(
@@ -126,12 +128,21 @@ const report = {
     memoryBytes: totalmem(),
   },
   builds: {},
+  comparisonOrders: [
+    ['legacy', 'previous', 'candidate'],
+    ['candidate', 'previous', 'legacy'],
+    ['previous', 'candidate', 'legacy'],
+    ['legacy', 'candidate', 'previous'],
+    ['candidate', 'legacy', 'previous'],
+    ['previous', 'legacy', 'candidate'],
+  ],
   samples: [],
   comparisons: {},
   scaling: {},
   limitations: [
     'Laboratory fixture measurements, not deployed backend performance or field percentiles.',
     'Fresh contexts; browser process and runner file/OS caches remain warm.',
+    'Public static JS/CSS use the production gzip-sidecar handler for every build; immutable baselines without sidecars retain identity transfer. Actual encoding, length and no-store headers are checked against build inventories.',
     'Numeric network profile defines a new hosted protocol, not an exact repeat of historical Fast 4G.',
     'First editor open uses separate blocking engineering gates: 4 s median display and 5 s median worker readiness. This accepts a cold lazy-load tradeoff, not parity with the eager legacy editor. Both builds measure the complete read-only model, fonts and two frames; candidate worker initialization is separately required and measured.',
     'The immutable legacy build omits worker-yaml.js. Its actual HTTP404 is retained; there is no equivalent fully worker-ready legacy timing.',
@@ -264,6 +275,20 @@ async function sample(variant, origin, kind, trial) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  record.staticTransfers = [];
+  page.on('response', (response) => {
+    const path = new URL(response.url()).pathname;
+    if (!/^\/static\/[\w.-]+\.(?:js|css)$/.test(path)) return;
+    const headers = response.headers();
+    record.staticTransfers.push({
+      path,
+      status: response.status(),
+      encoding: headers['content-encoding'] || 'identity',
+      bytes: Number(headers['content-length']),
+      vary: headers.vary || '',
+      cacheControl: headers['cache-control'] || '',
+    });
+  });
   page.on('request', (request) => {
     if (!request.url().startsWith(origin + '/') && !request.url().startsWith('blob:'))
       errors.push(`Unexpected external request: ${request.url()}`);
@@ -419,6 +444,7 @@ async function sample(variant, origin, kind, trial) {
       resources: performance.getEntriesByType('resource').map((entry) => entry.toJSON()),
     }));
     validateSample(record);
+    validateStaticTransfers(record.staticTransfers, report.builds[variant].assets);
     record.cls = cls(record.observations.paint.shifts, kind === 'filter' ? record.filterStart : 0);
     if (variant === 'candidate' && kind === 'filter') {
       const shifts = record.observations.rowShifts.filter(
@@ -496,6 +522,7 @@ try {
   }
   const fixtureFiles = [
     'scripts/ui-modernization-native-server.ts',
+    'server/static-assets.ts',
     'scripts/ui-modernization-native-transactions.ts',
     'mock-backend/mock-api-app.ts',
     'mock-backend/mock-api-middleware.ts',
@@ -511,6 +538,7 @@ try {
   const origins = {
     legacy: await startServer('legacy', 4181),
     candidate: await startServer('candidate', 4182),
+    previous: await startServer('previous', 4183),
   };
   browser = await chromium.launch();
   report.browserVersion = browser.version();
@@ -519,7 +547,7 @@ try {
   ).version;
   for (let trial = 1; trial <= budgets.samples; trial++)
     for (const kind of ['runs', 'run-details', 'compare', 'filter', 'navigation', 'editor'])
-      for (const variant of trial % 2 ? ['legacy', 'candidate'] : ['candidate', 'legacy'])
+      for (const variant of report.comparisonOrders[(trial - 1) % report.comparisonOrders.length])
         await sample(variant, origins[variant], kind, trial);
   const closeFailures = await cleanupWithEvidence(
     [['matched-browser', () => browser.close()]],
@@ -563,8 +591,41 @@ try {
       extract('candidate', kind, read),
       budgets,
     );
+  for (const kind of ['runs', 'run-details', 'compare'])
+    report.comparisons[`previous-${kind}`] = compareTiming(
+      extract('previous', kind, (sample) => sample.observations.readiness.contentReadyMs),
+      extract('candidate', kind, (sample) => sample.observations.readiness.contentReadyMs),
+      budgets,
+    );
+  for (const [name, kind, read] of [
+    [
+      'filter',
+      'filter',
+      (sample) => sample.filter.measures.find((entry) => entry.name === 'filter-results').duration,
+    ],
+    ['run-open', 'navigation', (sample) => sample.runOpen.measure[0].duration],
+    ['task-open', 'navigation', (sample) => sample.taskOpen.measure[0].duration],
+    ['editor-display', 'editor', (sample) => sample.editor.duration],
+    ['editor-worker-ready', 'editor', (sample) => sample.editor.workerReadyMs],
+  ])
+    report.comparisons[`previous-${name}`] = compareTiming(
+      extract('previous', kind, read),
+      extract('candidate', kind, read),
+      budgets,
+    );
+  report.previousEditorWorkerReadyMs = extract(
+    'previous',
+    'editor',
+    (sample) => sample.editor.workerReadyMs,
+  );
+  report.comparisons.previousEntryGzip = {
+    previousBytes: report.builds.previous.entryGzipBytes,
+    candidateBytes: report.builds.candidate.entryGzipBytes,
+    passesProposedBudget:
+      report.builds.candidate.entryGzipBytes <= report.builds.previous.entryGzipBytes,
+  };
   report.editorSamples = Object.fromEntries(
-    ['legacy', 'candidate'].map((variant) => [
+    ['legacy', 'previous', 'candidate'].map((variant) => [
       variant,
       extract(variant, 'editor', (sample) => sample.editor.duration),
     ]),

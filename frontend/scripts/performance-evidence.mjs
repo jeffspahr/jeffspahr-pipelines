@@ -180,7 +180,7 @@ export function validateSample(record) {
       assert.equal(record.editor.workerReadyMs, undefined);
       assert.equal(record.editor.workerModelSha256, undefined);
     } else {
-      assert.equal(record.variant, 'candidate');
+      assert.ok(['previous', 'candidate'].includes(record.variant), 'Unknown editor variant');
       assert.equal(record.editor.workerStatus, 'ready');
       assert.equal(record.editor.workerResponseStatus, 200);
       assert.equal(record.editor.workerModelSha256, record.editor.expectedModelSha256);
@@ -299,4 +299,25 @@ export function hostedReadinessProtocol(original) {
   protocol.hostedReadiness =
     'Content readiness requires the unchanged route/API predicate, fonts and two confirming frames. Transient first readiness is retained separately; post-confirmation loss fails the trial even after recovery. Final capture has a 30-second deadline.';
   return protocol;
+}
+
+export function validateStaticTransfers(transfers, assets) {
+  assert.ok(transfers.length, 'Missing static transfer evidence');
+  const inventory = new Map(assets.map((asset) => [asset.path, asset]));
+  for (const transfer of transfers) {
+    const path = transfer.path.replace(/^\//, '');
+    const original = inventory.get(path);
+    assert.ok(original, `Unknown transferred asset: ${path}`);
+    const compressed = inventory.get(`${path}.gz`);
+    assert.equal(transfer.status, 200, 'Cold static requests must complete successfully');
+    assert.equal(transfer.encoding, compressed ? 'gzip' : 'identity');
+    assert.equal(transfer.bytes, (compressed || original).bytes);
+    assert.ok(
+      transfer.vary
+        .toLowerCase()
+        .split(/\s*,\s*/)
+        .includes('accept-encoding'),
+    );
+    assert.equal(transfer.cacheControl, 'no-store', 'Qualification must retain cold transfers');
+  }
 }

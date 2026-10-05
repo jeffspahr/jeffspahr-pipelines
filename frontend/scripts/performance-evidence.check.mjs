@@ -27,6 +27,7 @@ import {
   inventory,
   verifyBuild,
   validateSample,
+  validateStaticTransfers,
   cleanupWithEvidence,
   recordScalingTrial,
   hostedReadinessProtocol,
@@ -162,6 +163,12 @@ test('editor endpoints retain common model readiness and require candidate worke
     delete corrupted.editor[field];
     assert.throws(() => validateSample(corrupted));
   }
+  const previous = structuredClone(sample);
+  previous.variant = 'previous';
+  validateSample(previous);
+  previous.editor.workerResponseStatus = 404;
+  assert.throws(() => validateSample(previous));
+  assert.throws(() => validateSample({ ...sample, variant: 'unknown' }));
   const legacy = structuredClone(sample);
   legacy.variant = 'legacy';
   legacy.editor.workerStatus = 'unavailable-missing-baseline-asset';
@@ -450,4 +457,35 @@ test('editor gates enforce both median boundaries and reject incomplete or inval
       }),
     /Invalid editor timing budget/,
   );
+});
+
+test('static transfer proof requires actual compressed bytes and cold identity fallback', () => {
+  const assets = [
+    { path: 'static/editor.js', bytes: 1000 },
+    { path: 'static/editor.js.gz', bytes: 200 },
+    { path: 'static/legacy.js', bytes: 1200 },
+  ];
+  const response = {
+    path: '/static/editor.js',
+    status: 200,
+    encoding: 'gzip',
+    bytes: 200,
+    vary: 'Accept-Encoding',
+    cacheControl: 'no-store',
+  };
+  validateStaticTransfers([response], assets);
+  validateStaticTransfers(
+    [{ ...response, path: '/static/legacy.js', encoding: 'identity', bytes: 1200 }],
+    assets,
+  );
+  for (const change of [
+    { encoding: 'identity' },
+    { bytes: 1000 },
+    { status: 304 },
+    { vary: '' },
+    { cacheControl: 'public' },
+    { path: '/static/unknown.js' },
+  ])
+    assert.throws(() => validateStaticTransfers([{ ...response, ...change }], assets));
+  assert.throws(() => validateStaticTransfers([], assets));
 });

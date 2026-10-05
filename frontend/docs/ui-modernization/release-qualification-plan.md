@@ -34,7 +34,8 @@ follow-ups under the existing CI-only delivery plan; they do not count as qualif
 
 Measure current and pinned original legacy source
 `02cbc725ac9ddcd950f4400d8355dd78bfcd6c57` on the same disposable hosted runner.
-Use seven interleaved pairs, alternating order, fresh contexts, identical fixtures,
+Also rebuild the last qualified modern source `439304aa4ed3a20ae5a7c004b96936cb65c3aff0`.
+Use seven interleaved trials per build, rotating all six build orders, fresh contexts, identical fixtures,
 4x CPU slowdown, explicit numeric network conditions and retained raw traces.
 Finish builds before sampling. Preserve all samples and failed attempts.
 The earlier local protocol did not retain numeric Fast 4G settings, so this is a
@@ -63,11 +64,18 @@ Validate aggregation, threshold boundaries, missing data and evidence integrity
 with browser-free tests; actual results must come from hosted execution.
 
 The implementation lives in `.github/workflows/frontend-performance-qualification.yml`
-and `frontend/scripts/run-performance-qualification.mjs`. Three immutable build
+and `frontend/scripts/run-performance-qualification.mjs`. Four immutable build
 artifacts carry source and per-file SHA256 manifests. The matched runner uses a
 new explicit profile: 150 ms latency, 1.6 Mbit/s download, 0.75 Mbit/s upload,
-1280×720/DPR1 and 4x CPU slowdown. Six cases per pair include first editor open,
-for 84 retained matched trial records. Each matched trial exports its raw Chromium
+1280×720/DPR1 and 4x CPU slowdown. Six cases per build include first editor open,
+for 126 retained matched trial records across legacy, previous modern and candidate.
+The previous modern build also gates main-page and interaction timings, editor display
+and worker readiness under the same relative timing allowance; candidate entry gzip
+bytes must not exceed previous modern bytes. The fourth build is the scaling checkpoint.
+Public static JS/CSS are served through the production gzip-sidecar handler for all
+builds. Immutable older builds have no sidecars and retain identity transfer. Every
+trial checks actual response encoding, length, Vary and no-store headers against
+the build inventory. Compression stays build-time and does not preload the editor. Each matched trial exports its raw Chromium
 trace; layout observations include a declared 500 ms settling interval. Hosted
 content readiness requires the route/API predicate after fonts and two confirming
 frames. Earlier transient readiness is retained separately; loss after confirmation

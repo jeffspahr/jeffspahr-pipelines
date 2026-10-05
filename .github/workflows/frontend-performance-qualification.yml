@@ -35,6 +35,8 @@ jobs:
             ref: '02cbc725ac9ddcd950f4400d8355dd78bfcd6c57'
           - variant: checkpoint
             ref: 'e79f8d423e6b118e5df94815ee2f36f68570a9a9'
+          - variant: previous
+            ref: '439304aa4ed3a20ae5a7c004b96936cb65c3aff0'
           - variant: candidate
             ref: ''
     defaults:
@@ -85,7 +87,7 @@ jobs:
     name: Matched hosted performance
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: frontend
@@ -103,6 +105,7 @@ jobs:
         run: npm install --global "$(node -p 'require("./package.json").packageManager')"
       - run: npm ci --ignore-scripts
       - run: npm ci --prefix mock-backend --ignore-scripts
+      - run: npm ci --prefix server --ignore-scripts
       - name: Verify performance evidence helpers without browsers
         run: node --test scripts/performance-evidence.check.mjs
       - uses: actions/download-artifact@v8
@@ -113,6 +116,10 @@ jobs:
         with:
           name: performance-build-checkpoint
           path: performance-builds/checkpoint
+      - uses: actions/download-artifact@v8
+        with:
+          name: performance-build-previous
+          path: performance-builds/previous
       - uses: actions/download-artifact@v8
         with:
           name: performance-build-candidate
