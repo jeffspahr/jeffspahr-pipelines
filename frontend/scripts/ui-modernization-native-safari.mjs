@@ -54,6 +54,12 @@ export const safariKeyboardDoneGeometrySelector =
   '[number(@x)+number(@width)<=number(ancestor::XCUIElementTypeToolbar[1]/@x)+number(ancestor::XCUIElementTypeToolbar[1]/@width)]' +
   '[number(@y)+number(@height)<=number(ancestor::XCUIElementTypeToolbar[1]/@y)+number(ancestor::XCUIElementTypeToolbar[1]/@height)]';
 
+// Captured iPadOS 26 keyboard: generic WDA dismissal fails even though this
+// native button is visible. Match its exact identity outside the web content.
+export const safariKeyboardHideSelector =
+  '//XCUIElementTypeKeyboard[@visible="true" and not(ancestor::XCUIElementTypeWebView)]' +
+  '//XCUIElementTypeButton[@name="Hide keyboard" and @label="Hide keyboard" and @visible="true" and @enabled="true"]';
+
 export const safariActiveAddressSelector =
   '//XCUIElementTypeTextField[@label="Address" and starts-with(@name,"SearchFieldItemView?")]' +
   '[contains(concat(@name,"&"),"?isActive=true&") or contains(concat(@name,"&"),"&isActive=true&")]' +
@@ -98,7 +104,19 @@ export async function prepareNativeSafariTap(command, session, evidence, snapsho
         await command('POST', `${path}/element/${doneButtons[0][elementKey]}/click`, {});
         entry.actions.push('used Safari native form-toolbar Done');
       } else {
-        await mobile('hideKeyboard', { keys: ['Done', 'Hide keyboard'] });
+        const hideButtons = await command('POST', `${path}/elements`, {
+          using: 'xpath',
+          value: safariKeyboardHideSelector,
+        });
+        assert.ok(hideButtons.length <= 1, 'Safari keyboard has ambiguous Hide keyboard controls');
+        if (hideButtons.length) {
+          await snapshot(await command('GET', `${path}/source`), 'safari-keyboard-hide');
+          entry.keyboardHide = { method: 'native-element-click' };
+          await command('POST', `${path}/element/${hideButtons[0][elementKey]}/click`, {});
+          entry.actions.push('used Safari native Hide keyboard');
+        } else {
+          await mobile('hideKeyboard', { keys: ['Done', 'Hide keyboard'] });
+        }
       }
       assert.equal(
         await mobile('isKeyboardShown'),

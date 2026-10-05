@@ -24,6 +24,7 @@ import {
   nativeSafariLinkSelector,
   prepareNativeSafariTap,
   safariKeyboardDoneSelector,
+  safariKeyboardHideSelector,
   safariKeyboardDoneGeometrySelector,
   safariActiveAddressSelector,
   safariStartPageCloseSelector,
@@ -268,6 +269,7 @@ function safariPreparationFixture({
   tipNeverDismisses = false,
   closeCount = 1,
   keyboard = false,
+  keyboardHideCount = 0,
   toolbarDoneCount = 0,
   toolbarGeometryDoneCount = 0,
   toolbarDoneDismisses = true,
@@ -304,6 +306,8 @@ function safariPreparationFixture({
       addressCompleted = true;
       return null;
     }
+    if (path.endsWith('/elements') && body.value === safariKeyboardHideSelector)
+      return Array.from({ length: keyboardHideCount }, (_, i) => element(`hide-${i}`));
     if (path.endsWith('/elements') && body.value === safariKeyboardDoneGeometrySelector)
       return Array.from({ length: toolbarGeometryDoneCount }, (_, i) => element(`done-${i}`));
     if (path.endsWith('/elements') && body.value === safariKeyboardDoneSelector)
@@ -320,7 +324,7 @@ function safariPreparationFixture({
         : tip;
       return visible ? [element('tip')] : [];
     }
-    if (path.endsWith('/element/done-0/click')) {
+    if (path.endsWith('/element/done-0/click') || path.endsWith('/element/hide-0/click')) {
       if (toolbarDoneDismisses) keyboard = false;
       return null;
     }
@@ -1215,3 +1219,63 @@ for (const failureMode of ['ambiguous', 'distorted', 'outside', 'driver']) {
     );
   });
 }
+
+test('iPad native keyboard dismissal preserves ambiguity and disappearance assertions', async () => {
+  const fixture = safariPreparationFixture({ keyboard: true, keyboardHideCount: 1 });
+  await fixture.run();
+  assert.equal(fixture.snapshots[0].label, 'safari-keyboard-hide');
+  assert.equal(
+    fixture.calls.filter(({ path }) => path.endsWith('/element/hide-0/click')).length,
+    1,
+  );
+  assert.equal(
+    fixture.calls.some(({ body }) => body?.script === 'mobile: hideKeyboard'),
+    false,
+  );
+  assert.deepEqual(fixture.evidence[0].keyboardHide, { method: 'native-element-click' });
+  const ambiguous = safariPreparationFixture({ keyboard: true, keyboardHideCount: 2 });
+  await assert.rejects(ambiguous.run(), /ambiguous Hide keyboard controls/);
+  assert.equal(
+    ambiguous.calls.some(({ path }) => path.endsWith('/click')),
+    false,
+  );
+  const stuck = safariPreparationFixture({
+    keyboard: true,
+    keyboardHideCount: 1,
+    toolbarDoneDismisses: false,
+  });
+  await assert.rejects(stuck.run(), /keyboard remained after native dismissal/);
+  assert.deepEqual(stuck.calls.at(-1).body, { name: 'WEBVIEW_1' });
+});
+
+test('iPad Hide keyboard selector accepts captured native identity only', () => {
+  const button =
+    '<XCUIElementTypeButton name="Hide keyboard" label="Hide keyboard" enabled="true" visible="true" />';
+  const keyboard = `<XCUIElementTypeKeyboard visible="true">${button}</XCUIElementTypeKeyboard>`;
+  for (const [xml, expected] of [
+    [keyboard, 1],
+    [button, 0],
+    [`<XCUIElementTypeWebView>${keyboard}</XCUIElementTypeWebView>`, 0],
+    [keyboard.replace('enabled="true"', 'enabled="false"'), 0],
+    [keyboard.replace('label="Hide keyboard"', 'label="Unrelated"'), 0],
+    [keyboard.replaceAll('visible="true"', 'visible="false"'), 0],
+  ]) {
+    const dom = new JSDOM(`<AppiumAUT>${xml}</AppiumAUT>`, { contentType: 'text/xml' });
+    try {
+      const { document, XPathResult } = dom.window;
+      assert.equal(
+        document.evaluate(
+          safariKeyboardHideSelector,
+          document,
+          null,
+          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+          null,
+        ).snapshotLength,
+        expected,
+        xml,
+      );
+    } finally {
+      dom.window.close();
+    }
+  }
+});
