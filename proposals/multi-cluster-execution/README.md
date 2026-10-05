@@ -13,11 +13,13 @@
 ## Summary
 
 Allow one Kubeflow Pipelines (KFP) API, UI, and database to manage runs on
-multiple registered Kubernetes clusters. A user explicitly selects an execution
-cluster when submitting a run. The selected execution location becomes immutable
-Run identity and governs creation, observation, logs, termination, deletion, and
-eventually retry and recurring runs. Requests that omit a target preserve the
-single-cluster installation's configured default behavior.
+multiple registered Kubernetes clusters. Users submit runs normally; KFP resolves
+the execution cluster through administrator-defined placement policy. Authorized
+users may optionally override that policy with an explicit cluster selection.
+The resolved execution location becomes immutable Run identity and governs creation, observation, logs, termination, deletion, and
+eventually retry and recurring runs. Requests that omit a target use placement
+policy from day one;
+single-cluster installations retain their configured default behavior.
 
 The proposal introduces a target-aware execution backend, durable operation
 intent, authenticated execution provenance, and a separation between central
@@ -26,10 +28,10 @@ uses direct Kubernetes client bundles and a separate observation context per
 cluster. A per-cluster execution agent is an evaluated alternative behind the
 same semantic boundary, not an initial implementation requirement.
 
-The MVP retains one central catalog and metadata database, supports explicit
-selection for ad hoc runs, and requires shared reachable object storage. It does
-not introduce automatic placement, cross-cluster task scheduling, or failover
-that restarts a Run on another cluster.
+The MVP retains one central catalog and metadata database, includes transparent
+static policy placement for ad hoc runs, and requires shared reachable object
+storage. It does not introduce capacity-aware scheduling, cross-cluster task
+scheduling, or failover that restarts a Run on another cluster.
 
 ## Motivation
 
@@ -49,7 +51,8 @@ cluster. See the [source investigation](source-investigation.md).
 ### Goals
 
 - Retain one KFP API/UI and one central KFP database/catalog.
-- Let users explicitly select an authorized execution cluster at submission.
+- Resolve placement transparently using administrator-defined policy from day one.
+- Permit explicit cluster selection as an optional, separately authorized override.
 - Bind every execution mutation and observation to immutable target identity.
 - Preserve database-backed Get/List during an execution-cluster outage.
 - Survive ambiguous Kubernetes responses without losing cleanup identity or
@@ -61,7 +64,8 @@ cluster. See the [source investigation](source-investigation.md).
 
 ### Non-Goals
 
-- Automatic scheduling, capacity-based placement, or load balancing across clusters.
+- Dynamic capacity-aware scheduling, reservations, or load balancing across clusters.
+  Static policy-based placement is included in the MVP.
 - Moving an existing Run or its retry to a different cluster.
 - Splitting a single Run's tasks across clusters.
 - Provisioning Kubernetes clusters or synchronizing arbitrary Secrets/PVCs.
@@ -81,8 +85,10 @@ before execution, persists it, and never changes it in response to a failure.
 
 ### User stories
 
-1. A pipeline user submits a training run to `gpu-east`, then reads its state,
-   logs, and outputs through the same KFP UI used for runs on `cpu-west`.
+1. A pipeline user submits a training run without naming a cluster. An
+   administrator-defined experiment or tenant policy resolves it to `gpu-east`;
+   the user reads state, logs, and outputs through the normal KFP UI. An
+   authorized advanced user can optionally request a specific destination.
 2. An administrator grants a central tenant access to a particular execution
    namespace/service-account set in `gpu-east` without granting access to all
    similarly named namespaces in other clusters.
@@ -108,7 +114,7 @@ before execution, persists it, and never changes it in response to a failure.
                |                               |
                v                               v
     +-----------------------+      +--------------------------+
-    | One central KFP DB    |      | Execution backend        |
+    | One central KFP DB    |      | Placement / execution    |
     | Runs / targets        |      | registry + client bundles|
     | Tasks / artifacts     |      | per-cluster observers    |
     | durable operation     |      | operation reconciliation |
@@ -180,6 +186,44 @@ The default cluster used for new submissions is distinct from the fixed legacy
 cluster assigned to pre-migration rows. Changing the submission default must
 not reinterpret existing Run identity.
 
+### Transparent placement from day one
+
+Placement is a server-side step before submission intent is persisted. The normal
+UI and SDK submission flow requires no cluster knowledge or additional input.
+For the MVP, administrators configure deterministic mappings with this precedence:
+
+1. An explicit cluster override, if the caller has override permission and the
+   destination passes the same tenant/namespace/service-account eligibility checks.
+2. An experiment-specific mapping scoped to its owning central tenant.
+3. A central tenant/namespace mapping.
+4. The configured installation default, if permitted for that tenant.
+
+Each mapping names one registered destination. Reject conflicting mappings at
+configuration validation; do not choose by rule iteration order. Rules match
+authoritative experiment/tenant identity, not arbitrary user-supplied labels.
+Placement policy does not itself bypass destination authorization. Permission to
+submit through an approved policy does not automatically grant override permission.
+
+Validate the resolved target is Active and meets configured execution prerequisites.
+An unauthorized, draining, retired or unconfigured mapped target yields a clear
+submission error; do not silently try a lower-precedence mapping. A transient
+connectivity failure also must not select another cluster: reject before acceptance
+or retain target-bound submission intent after acceptance. There is no placement
+queue, live capacity polling, reservation or automatic failover in this MVP.
+
+Persist the resolved target and the placement provenance (policy revision and
+matched rule, installation default, or explicit override) with Run/submission
+intent before any Kubernetes create. API replicas must use a consistent published
+policy revision. Policy changes affect new Runs only. An idempotent replay of an
+accepted submission returns its original Run and placement even if policy changed;
+reconciliation, termination, deletion and later retry never rerun placement.
+
+Single-cluster installations need no new submission arguments or mapping rules:
+their existing cluster is registered as the permitted installation default. Later
+capability constraints (for example GPU, region or data locality) and dynamic
+capacity-aware scheduling may extend this boundary without making cluster IDs
+mandatory in callers or portable pipeline IR.
+
 ### Registration and cluster lifecycle
 
 Introduce a registry with stable IDs, lifecycle state, configuration revision,
@@ -211,7 +255,7 @@ operation with retained tombstones and audit history.
 
 | Entity | Proposed change |
 | --- | --- |
-| `run_details` | Add immutable cluster identity and resolved execution namespace, explicit Workflow UID, registration/storage configuration references, observation freshness, and durable operation state or a link to it. Keep central ownership distinct. |
+| `run_details` | Add placement provenance (policy revision/matched rule or override/default), immutable cluster identity and resolved execution namespace, explicit Workflow UID, registration/storage configuration references, observation freshness, and durable operation state or a link to it. Keep central ownership distinct. |
 | `recurring_run_states` | API-owned tick claims inherit the immutable Job target through `JobUUID`; preserve claims and completion atomicity when adding routing. No independent placement field is needed unless state can outlive its Job. |
 | `jobs` | Add target identity before enabling remote recurring runs. Existing jobs are bound to the legacy cluster during migration. |
 | Cluster registry | Persist stable identity, lifecycle, and non-secret configuration references/revision. |
@@ -237,29 +281,32 @@ profile and tenant, where required.
 ### Public API and SDK
 
 Add an optional `execution_target` to Run submission and return its resolved
-value on Get/List. Its `cluster_id` selects a registered destination. The
+value and non-secret placement provenance on Get/List. Omission invokes placement policy; `cluster_id`, when supplied,
+is an optional override selecting a registered destination. The
 execution namespace is resolved server-side; the initial API can expose it as
 output while rejecting unsupported overrides. Add target filtering and
 authorized destination discovery. Exact protobuf tags are assigned during API
 review using unused numbers; existing field numbers and semantics remain intact.
 
-An illustrative SDK call is:
+The normal SDK call remains unchanged:
 
 ```python
 client.create_run_from_pipeline_package(
     "training.yaml",
     experiment_id=experiment_id,
-    cluster_id="gpu-east",  # proposed optional argument
 )
 ```
 
-The SDK maps that convenience argument to the API execution target. Cluster
-selection belongs to submission, so compiled pipeline IR stays portable.
+An authorized user may optionally add `cluster_id="gpu-east"`; the SDK maps that
+convenience argument to the API execution target. Neither the SDK nor UI resolves
+policy locally. Placement belongs to submission, so compiled pipeline IR stays portable.
 Extend `run_pipeline` and both create-run helpers, generated HTTP clients,
 OpenAPI/gateway bindings, converters, and UI types together.
 
 Add a submission idempotency key with caller/tenant scope. Reusing a key with a
-different target or materially different request fails validation. Without a
+different requested override or materially different request fails validation.
+An omitted target is part of the original request; a policy change must not turn
+its replay into a new placement or payload conflict. Without a
 key, retrying an entire client request may create another logical Run; deterministic
 Workflow naming only prevents duplicate Workflows for the same Run ID.
 
@@ -311,7 +358,7 @@ failure handling becomes stricter.
 
 | Operation | Proposed behavior |
 | --- | --- |
-| Create | Authorize target and service accounts; resolve config; transactionally persist Run plus submission intent; create a deterministically named Workflow; reconcile UID/result into the row. |
+| Create | Authorize submission; resolve static placement policy or authorized override; validate target and service accounts; resolve config; transactionally persist Run, resolved target, placement provenance and submission intent; create a deterministically named Workflow; reconcile UID/result into the row. |
 | Observe | Select target from trusted observer context; load Run; require target/name/UID/generation agreement before state updates or cleanup. |
 | Get/List | Read central DB, return resolved target and last observation time; do not require execution-cluster reachability. |
 | Archive/unarchive | Update logical storage state; preserve target and operation identity. Archival does not imply cancellation or execution deletion. |
@@ -406,7 +453,9 @@ The security boundary has three separate decisions:
    experiment, pipeline, and artifact access using the central tenant policy.
 2. **Placement authority:** authorize use of the registered cluster, execution
    namespace, and effective service-account set. Central namespace permission
-   alone does not grant placement on every cluster.
+   alone does not grant placement on every cluster. Policy-selected placement
+   requires destination authorization; explicit overrides require an additional
+   permission and cannot bypass destination eligibility.
 3. **Runtime identity:** authenticate the executing workload in its actual
    cluster and bind its permitted API methods/resources to its Run.
 
@@ -528,9 +577,10 @@ trust contract; it is not a prerequisite for Workflow routing.
 
 ### Frontend considerations
 
-Add an authorized execution-target selector at submission and show the resolved
-target, namespace, observation freshness, and pending operation state in Run
-views. Omitted selection uses the configured default. Existing run-based links
+Keep normal submission free of a required cluster selector. Offer an optional
+advanced override only to authorized users. Show the resolved target, placement
+provenance, namespace, observation freshness, and pending operation state in Run
+views. Omitted selection invokes server-side placement policy. Existing run-based links
 continue to resolve location server-side.
 
 The UI server currently accesses Kubernetes independently for logs, pod
@@ -590,7 +640,8 @@ prevent another's cleanup. [S6](source-investigation.md#s6-database-retention-an
    local clients. A rolling upgrade uses the feature gate off until the entire
    relevant control plane is compatible.
 3. Deploy optional protobuf fields/converters/generated clients. Old SDK calls
-   omit selection and resolve to the default. Verify actual generated-client
+   omit selection and use policy, which resolves to the existing default for
+   single-cluster installations without additional rules. Verify actual generated-client
    handling of added response fields, rather than assuming it.
 4. Validate default-cluster create/get/list/archive/retry/terminate/delete and
    recurring-run behavior. Migrate existing target identity independently of
@@ -612,19 +663,20 @@ rows to the local default to make a downgrade appear compatible.
 
 | Stage | Deliverable |
 | --- | --- |
-| 0 | Identity/schema, operation-intent semantics, cluster registry, API/SDK contract and migration tests. |
+| 0 | Identity/schema, operation-intent semantics, cluster registry, static placement policy and provenance, API/SDK contract and migration tests. |
 | 1 | Explicit client configuration and semantic execution backend; prove default-cluster parity. |
 | 2 | Remote ad hoc creation, trusted per-cluster observation, runtime authentication/API connectivity, safe terminate/delete, shared storage and remote cache restrictions. |
-| 3 | UI selector/target display, routed logs, unsupported-path guards, outage/cleanup observability and two-cluster E2E validation. These complete the alpha MVP. |
-| Later | Target-aware retry, schedules, scoped cache, storage profiles/content API, remote viewers/plugins, and optional execution agents. |
+| 3 | Transparent UI submission, optional authorized override and resolved-target display, routed logs, unsupported-path guards, outage/cleanup observability and two-cluster E2E validation. These complete the alpha MVP. |
+| Later | Capability constraints and dynamic capacity-aware scheduling; target-aware retry, schedules, scoped cache, storage profiles/content API, remote viewers/plugins, and optional execution agents. |
 
-The MVP supports explicit selection, correct-cluster creation/observation and
+The MVP supports transparent static policy placement with an optional authorized
+override, correct-cluster creation/observation and
 Get/List, termination, and deletion; it preserves default single-cluster use.
 All tasks of a Run execute in its selected cluster. Default-cluster schedules and
 retry remain supported under existing behavior.
 
-The MVP excludes remote recurring runs; remote retry/resume; automatic placement
-or failover; cross-cluster task execution/cache reuse; arbitrary cluster-local
+The MVP excludes remote recurring runs; remote retry/resume; dynamic capacity-aware
+scheduling, reservations or failover; cross-cluster task execution/cache reuse; arbitrary cluster-local
 storage; arbitrary namespace remapping; unsupported remote plugins/viewers; and
 self-service registration/forced removal. Reject these combinations explicitly.
 
@@ -645,7 +697,9 @@ implementation. Current coverage measurements have not been collected.
 
 ### Unit tests
 
-- Target defaulting, immutability, registration replacement rejection, tenant
+- Placement precedence, conflicting-rule rejection, policy revision consistency,
+  override permission, ineligible-target rejection without fallback, immutable
+  resolved target/provenance, registration replacement rejection, tenant
   mapping, Run/Job target consistency, and constructor configuration propagation.
 - API converters, explicit SQL scans/writes, filter/pagination handling, and
   operation CAS/generation/tombstone retention.
@@ -655,7 +709,8 @@ implementation. Current coverage measurements have not been collected.
   refusal of same-name service accounts from the wrong cluster.
 - Target-aware logs/ownership; archive provenance; disabled remote cache on both
   compilation and API lookup paths; future custom-key scope.
-- UI capability guards and SDK omission/default/local-execution behavior.
+- UI capability guards, submission without a cluster selector, and SDK
+  omission/policy/override/local-execution behavior.
 
 ### Integration tests
 
@@ -663,6 +718,10 @@ implementation. Current coverage measurements have not been collected.
   rows, large-list queries, and feature-gated rolling upgrade.
 - Crash after intent persistence, Kubernetes create accepted/response lost,
   DB update failure, duplicate submission key and mismatched payload rejection.
+- Change policy between submission and idempotent replay; return the original
+  placement. Persist policy provenance atomically with Run/intent; reject new placement
+  from replicas with stale policy revisions, while continuing reconciliation of
+  previously accepted Runs using their stored target.
 - Cancellation/deletion racing create/retry; worker lease loss with in-flight
   requests; late Workflow creation/report after deletion; tombstone persistence.
 - Kubernetes deletion acknowledged but finalizer/owned pod cleanup pending;
@@ -677,15 +736,20 @@ implementation. Current coverage measurements have not been collected.
 ### E2E tests
 
 - One KFP installation plus two execution clusters: submit the same pipeline
-  explicitly to each; verify resource location, central Run/Task/artifact history,
-  logs, terminal status, and target-isolated terminate/delete.
+  without cluster arguments under two tenant/experiment mappings; verify resource
+  location, central Run/Task/artifact history,
+  logs, terminal status, and target-isolated terminate/delete. Exercise an
+  authorized explicit override and reject the same override for an ordinary user.
 - Use identical namespace/pod names in both clusters to prove correct routing;
   an unauthorized user must not read or mutate the other target's resources.
 - Partition one cluster: reads remain available, state becomes stale, operation
   intent persists, no fallback execution occurs, and reconnect completes cleanup.
 - Run the supported UI paths without direct UI Kubernetes access; ensure unsupported
   remote paths are guarded and default-cluster user flows still work.
-- Change default target and prove existing Runs and schedules retain their target.
+- Change mappings/default and prove only new ad hoc Runs receive new placement;
+  existing Runs, idempotent replays and legacy schedules retain their target.
+- Submit from an unchanged SDK and the normal UI without any cluster selection;
+  verify single-cluster default behavior and clear errors for invalid mapped targets.
 - Drain a registration and verify no new dispatch, continued cleanup, and blocked
   retirement while unresolved operations remain.
 
@@ -726,7 +790,7 @@ The central control plane becomes responsible for multiple remote failure domain
 and credentials. Even the constrained MVP requires authentication, persistence,
 reconciliation, runtime configuration and UI work beyond a client factory change.
 Operations must preserve enough state to recover safely, adding schema and
-operational complexity. Shared storage and explicit placement limit the first
+operational complexity. Shared storage and static placement policy limit the first
 release's flexibility. Multi-cluster capability also expands the supported
 deployment/test matrix.
 
@@ -799,6 +863,8 @@ cannot be inferred from a generic RPC success acknowledgment.
 ## Implementation history
 
 - Initial author draft prepared from the source investigation in this proposal.
+- Revised the MVP to include transparent static policy placement from day one;
+  explicit cluster selection is an optional authorized override.
 - No upstream issue/KEP number assigned, review approval recorded, or production
   implementation started.
 

@@ -84,7 +84,8 @@ central ownership to namespace handling.
 
 **Required change.** Add optional execution target fields to v2 requests/responses
 and recurring-run representations; regenerate Go, OpenAPI and Python clients.
-Keep omitted target compatible, return resolved identity, reject target mutation,
+Resolve omitted targets with administrator-defined static policy (the existing
+default for single-cluster installs), return resolved identity/provenance, reject target mutation,
 and distinguish tenant authorization from placement authorization. Older clients
 may omit fields; old backend binaries are not safe writers after remote runs
 exist. If v1beta1 remains enabled, its conversion path must pin legacy submissions
@@ -198,7 +199,8 @@ protections are described in S12.
 schedule CRUD, owner lookup, report and startup reconciliation. Do not move
 existing schedules when the default ad hoc target changes. Keep owner references
 within one cluster. MVP remote scheduling is rejected; legacy schedules continue
-on their pinned target. No automatic placement is proposed.
+on their pinned target. New ad hoc Runs use the proposed static placement policy;
+remote schedule placement and dynamic capacity-aware scheduling remain deferred.
 
 ## S8 Cache and metadata
 
@@ -317,8 +319,9 @@ uses a separate central catalog client.
 **Required change.** Move execution-resource UI access behind authorized KFP
 resource-ID APIs; never infer cluster from the frontend pod. Preserve events and
 logs where supported, guard unsupported remote viewers, and replace local UI
-bootstrap/discovery with explicit configuration separately. Add target selection
-and display to UI/SDK without baking a cluster into portable pipeline IR.
+bootstrap/discovery with explicit configuration separately. Keep submission
+transparent; add optional authorized target overrides and resolved-placement
+display to UI/SDK without baking a cluster into portable pipeline IR.
 Catalog discovery and local development clients are not execution routing.
 
 Related issues have narrower scope: [#10740](https://github.com/kubeflow/pipelines/issues/10740)
@@ -368,9 +371,9 @@ Generated files and tests must accompany implementation; this draft edits neithe
 
 | Area | Proposed change | Source anchors |
 | --- | --- | --- |
-| A. Data model / persistence | Run and Job immutable targets; registry identity, operations/tombstones; legacy mapping and indexes; claims inherit Job target; artifacts record storage provenance | [S2](#s2-persistence), [S12](#s12-updated-fork-base): Run/Job models, RunStore, JobStore, RecurringRunState, migrations |
-| B. Public API / protobuf | Optional resolved target, target discovery, target-aware recurring messages; compatibility conversions; authenticated observer protocol if needed | [S3](#s3-public-run-api), [S5](#s5-observation-reporting-and-cleanup): run.proto, recurring_run.proto, report.proto, converters |
-| C. Run lifecycle | Durable submit/cancel/delete; target-bound Get/List/logs; identity-safe retries; no deletion of unresolved cleanup identity | [S4](#s4-run-lifecycle-and-failure-ordering): CreateRun, TerminateRun, DeleteRun, RetryRun, ReadLog |
+| A. Data model / persistence | Run and Job immutable targets; Run placement provenance; registry identity, operations/tombstones; legacy mapping and indexes; claims inherit Job target; artifacts record storage provenance | [S2](#s2-persistence), [S12](#s12-updated-fork-base): Run/Job models, RunStore, JobStore, RecurringRunState, migrations |
+| B. Public API / protobuf | Policy resolution for omitted targets, optional authorized overrides, resolved target/provenance, target discovery, target-aware recurring messages; compatibility conversions; authenticated observer protocol if needed | [S3](#s3-public-run-api), [S5](#s5-observation-reporting-and-cleanup): run.proto, recurring_run.proto, report.proto, converters |
+| C. Run lifecycle | Static policy resolution before durable submit; durable cancel/delete; target-bound Get/List/logs; identity-safe retries; no deletion of unresolved cleanup identity | [S4](#s4-run-lifecycle-and-failure-ordering): CreateRun, TerminateRun, DeleteRun, RetryRun, ReadLog |
 | D. Kubernetes abstraction | Explicit-config target bundles and semantic execution backend, no namespace-only routing; retain central/local clients intentionally | [S1](#s1-client-construction-and-routing): ExecutionClient, ClientManager, getWorkflowClient, core/SWF constructors |
 | E. Observation | Per-cluster watches, target-qualified queues, trusted report origin, UID/version/generation validation, bounded reconnects | [S5](#s5-observation-reporting-and-cleanup): persistence agent, WorkflowSaver, report handlers and cleanup guards |
 | F. Scheduled runs | Pin Job target, target-bound ticks/claims, route both submission paths, same-cluster ownership; defer remote schedules in MVP | [S7](#s7-recurring-runs), [S12](#s12-updated-fork-base): CreateJob, ReconcileSwfCrs, controller, recurring state |
@@ -378,8 +381,8 @@ Generated files and tests must accompany implementation; this draft edits neithe
 | H. Metadata | Central metadata API with target-bound runtime identity; Task derives target, legacy MLMD investigated separately | [S8](#s8-cache-and-metadata), [S9](#s9-authentication-and-service-accounts): runtime ClientManager, Task/Artifact stores, Run authorization |
 | I. Artifacts / storage / logs | Explicit shared-storage profile, remote endpoint configuration, backend logs/events/content authorization, local PVC semantics | [S4](#s4-run-lifecycle-and-failure-ordering), [S10](#s10-runtime-configuration-storage-and-plugins), [S11](#s11-frontend-and-independent-kubernetes-access) |
 | J. Security | Separate tenant and placement checks, per-target TokenReview, cluster-qualified runtime principals, protected credential refs and RBAC | [S9](#s9-authentication-and-service-accounts): authenticator, IsAuthorized, projected token; [S10](#s10-runtime-configuration-storage-and-plugins): plugin/secret readers |
-| K. Deployment | Static target registry for MVP, remote Argo/RBAC/config installation, explicit central endpoints, per-target health/budgets, retention protections | [S1](#s1-client-construction-and-routing), [S6](#s6-database-retention-and-health), [S10](#s10-runtime-configuration-storage-and-plugins): constructors, GC lease, launcher config |
-| L. UI / SDK | Optional selection, target/freshness display, regenerated clients, execution UI through backend, explicit unsupported remote capability guards | [S3](#s3-public-run-api), [S11](#s11-frontend-and-independent-kubernetes-access): protobuf, Python client, frontend helpers/handlers |
+| K. Deployment | Static target registry and versioned tenant/experiment placement mappings for MVP, remote Argo/RBAC/config installation, explicit central endpoints, per-target health/budgets, retention protections | [S1](#s1-client-construction-and-routing), [S6](#s6-database-retention-and-health), [S10](#s10-runtime-configuration-storage-and-plugins): constructors, GC lease, launcher config |
+| L. UI / SDK | Transparent submission, optional authorized override, resolved target/provenance/freshness display, regenerated clients, execution UI through backend, explicit unsupported remote capability guards | [S3](#s3-public-run-api), [S11](#s11-frontend-and-independent-kubernetes-access): protobuf, Python client, frontend helpers/handlers |
 
 ## Ten prototype starting points
 
