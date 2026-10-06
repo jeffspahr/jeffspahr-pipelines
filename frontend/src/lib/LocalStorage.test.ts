@@ -72,3 +72,19 @@ describe('LocalStorage', () => {
     expect(LocalStorage.getTablePageSize('pipelines')).toBe(10);
   });
 });
+
+it('keeps navigation usable when storage reads or writes are blocked', () => {
+  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('blocked');
+  });
+  const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('quota');
+  });
+  try {
+    expect(LocalStorage.isNavbarCollapsed()).toBe(false);
+    expect(() => LocalStorage.saveNavbarCollapsed(true)).not.toThrow();
+  } finally {
+    read.mockRestore();
+    write.mockRestore();
+  }
+});

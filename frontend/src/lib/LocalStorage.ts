@@ -25,11 +25,19 @@ export class LocalStorage {
   }
 
   public static isNavbarCollapsed(): boolean {
-    return localStorage.getItem(LocalStorageKey.navbarCollapsed) === 'true';
+    try {
+      return localStorage.getItem(LocalStorageKey.navbarCollapsed) === 'true';
+    } catch {
+      return false;
+    }
   }
 
   public static saveNavbarCollapsed(value: boolean): void {
-    localStorage.setItem(LocalStorageKey.navbarCollapsed, value.toString());
+    try {
+      localStorage.setItem(LocalStorageKey.navbarCollapsed, value.toString());
+    } catch {
+      // Navigation remains usable when browser policy or quota blocks storage.
+    }
   }
 
   public static getTablePageSize(pageId?: string): number {
