@@ -45,7 +45,7 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 				_, err := store.CreateRun(&model.Run{UUID: fmt.Sprintf("%d-%03d", size, i), Namespace: ns, RecurringRunId: "fixture-schedule", StorageState: model.StorageStateAvailable, RunDetails: model.RunDetails{CreatedAtInSec: int64(i + 1), State: model.RuntimeStateSucceeded, WorkflowRuntimeManifest: payload, PipelineRuntimeManifest: payload}})
 				require.NoError(t, err)
 			}
-			f, err := filter.New(&api.Filter{Predicates: []*api.Predicate{{Key: "recurring_run_id", Op: api.Predicate_EQUALS, Value: &api.Predicate_StringValue{StringValue: "fixture-schedule"}}}})
+			f, err := filter.New(&api.Filter{Predicates: []*api.Predicate{{Key: "recurring_run_id", Operation: api.Predicate_EQUALS, Value: &api.Predicate_StringValue{StringValue: "fixture-schedule"}}}})
 			require.NoError(t, err)
 			opts, err := list.NewOptions(&model.Run{}, 100, "", f)
 			require.NoError(t, err)
@@ -67,12 +67,12 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 				code = e.Number
 			}
 			t.Logf("raw rows=%d error=%t mysql_code=%d", count, queryErr != nil, code)
-			runs, total, token, err := store.ListRuns(ctx, opts)
-			t.Logf("ListRuns rows=%d total=%d next=%t error=%t", len(runs), total, token != "", err != nil)
+			runs, total, token, listErr := store.ListRuns(ctx, opts)
+			t.Logf("ListRuns rows=%d total=%d next=%t error=%t", len(runs), total, token != "", listErr != nil)
 			got, err := store.GetRun(fmt.Sprintf("%d-000", size))
 			require.NoError(t, err)
 			require.Equal(t, len(payload), len(got.WorkflowRuntimeManifest))
-			require.NoError(t, err)
+			require.NoError(t, listErr)
 			require.Equal(t, 50, total)
 			require.Len(t, runs, 50)
 			require.Empty(t, token)
