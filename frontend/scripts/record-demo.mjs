@@ -45,7 +45,7 @@ try{
   if(name==='pipeline-details'){
    await title('Pipeline specification · read-only YAML editor');
    await Promise.all(frames.map((f,i)=>f.getByRole(i===0?'button':'tab',{name:'Pipeline Spec',exact:true}).click()));
-   await Promise.all(frames.map(f=>f.locator('[data-testid="spec-ir"] .ace_editor').waitFor()));await sleep(2500);await shot('pipeline-editor');await sleep(4500);
+   await Promise.all(frames.map(f=>f.locator('[data-testid="spec-ir"] .ace_editor').waitFor()));await Promise.all(frames.map(f=>f.waitForFunction(()=>document.querySelector('[data-testid="spec-ir"] .ace_editor')?.env?.editor?.getValue()?.length>100)));await sleep(2500);await shot('pipeline-editor');await sleep(4500);
   }
   if(name==='runs'){
    await title('Runs · filter by name');
@@ -53,9 +53,13 @@ try{
    await sleep(2500);await shot('runs-filter');await sleep(4000);
    await Promise.all(frames.map(f=>f.locator('input[placeholder="Filter runs by name"], input#tableFilterBox').first().fill('')));await sleep(1000);
   }
+  if(['new-run-configured','new-recurring-run','artifact-details','recurring-run-details','getting-started'].includes(name)){
+   await title(name.replaceAll('-',' ')+' · more details');
+   await Promise.all(frames.map(f=>f.evaluate(()=>{for(const e of [document.scrollingElement,...document.querySelectorAll('main,section,div')]){if(e && e.scrollHeight>e.clientHeight+150 && e.clientHeight>180 && ['auto','scroll'].includes(getComputedStyle(e).overflowY))e.scrollTo({top:e.scrollHeight,behavior:'smooth'});}})));await sleep(2000);await shot(name+'-details');await sleep(4000);
+  }
   if(name==='new-experiment'){
    await title('Create experiment · name and description');
-   await Promise.all(frames.map(f=>f.locator('#experimentName').fill('Customer churn experiment')));await sleep(1200);await shot('experiment-form');await sleep(3500);
+   await Promise.all(frames.map(f=>f.locator('#experimentName').fill('Customer churn experiment')));await Promise.all(frames.map(f=>f.locator('#experimentDescription').fill('Compare training pipelines with the same reproducible inputs.')));await sleep(1200);await shot('experiment-form');await sleep(3500);
   }
  }
  await title('End of walkthrough · 25 pages and key interactions');await sleep(4000);
