@@ -5,38 +5,7 @@ on:
 permissions:
   contents: read
 jobs:
-  build:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - variant: legacy
-            ref: 02cbc725ac9ddcd950f4400d8355dd78bfcd6c57
-          - variant: modern
-            ref: 005e94c7cfaefe0821e850943466a82cf9a6129a
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ matrix.ref }}
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: frontend/.nvmrc
-      - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
-      - run: npm ci
-      - run: npm run build
-      - uses: actions/upload-artifact@v7
-        with:
-          name: demo-build-${{ matrix.variant }}
-          path: frontend/build
-          if-no-files-found: error
-          retention-days: 7
   record:
-    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -55,10 +24,14 @@ jobs:
       - run: npm ci --prefix server --ignore-scripts
       - uses: actions/download-artifact@v8
         with:
+          github-token: ${{ github.token }}
+          run-id: 37658900988
           name: demo-build-legacy
           path: demo-builds/legacy
       - uses: actions/download-artifact@v8
         with:
+          github-token: ${{ github.token }}
+          run-id: 37658900988
           name: demo-build-modern
           path: demo-builds/modern
       - run: npx playwright install --with-deps chromium
