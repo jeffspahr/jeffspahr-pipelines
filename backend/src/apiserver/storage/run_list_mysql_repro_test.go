@@ -40,12 +40,15 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 	for _, size := range []int{1024, 100 * 1024, 512 * 1024} {
 		t.Run(fmt.Sprintf("manifest_bytes_%d", size), func(t *testing.T) {
 			ns := fmt.Sprintf("ns-%d", size)
+			jobID := "schedule-" + ns
+			_, err := NewJobStore(db, util.NewFakeTimeForEpoch(), nil, d).CreateJob(&model.Job{UUID: jobID, DisplayName: jobID, Namespace: ns, Enabled: true, MaxConcurrency: 1})
+			require.NoError(t, err)
 			payload := model.LargeText(`{"padding":"` + strings.Repeat("x", size) + `"}`)
 			for i := 0; i < 50; i++ {
-				_, err := store.CreateRun(&model.Run{UUID: fmt.Sprintf("%d-%03d", size, i), Namespace: ns, RecurringRunId: "fixture-schedule", StorageState: model.StorageStateAvailable, RunDetails: model.RunDetails{CreatedAtInSec: int64(i + 1), State: model.RuntimeStateSucceeded, WorkflowRuntimeManifest: payload, PipelineRuntimeManifest: payload}})
+				_, err := store.CreateRun(&model.Run{UUID: fmt.Sprintf("%d-%03d", size, i), Namespace: ns, RecurringRunId: jobID, StorageState: model.StorageStateAvailable, RunDetails: model.RunDetails{CreatedAtInSec: int64(i + 1), State: model.RuntimeStateSucceeded, WorkflowRuntimeManifest: payload, PipelineRuntimeManifest: payload}})
 				require.NoError(t, err)
 			}
-			f, err := filter.New(&api.Filter{Predicates: []*api.Predicate{{Key: "recurring_run_id", Operation: api.Predicate_EQUALS, Value: &api.Predicate_StringValue{StringValue: "fixture-schedule"}}}})
+			f, err := filter.New(&api.Filter{Predicates: []*api.Predicate{{Key: "recurring_run_id", Operation: api.Predicate_EQUALS, Value: &api.Predicate_StringValue{StringValue: jobID}}}})
 			require.NoError(t, err)
 			opts, err := list.NewOptions(&model.Run{}, 100, "", f)
 			require.NoError(t, err)
