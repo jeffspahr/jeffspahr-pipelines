@@ -32,6 +32,8 @@ import (
 func TestMySQLRunListLargeManifests(t *testing.T) {
 	dbs, d := recurringIntegrationDatabases(t, "mysql")
 	db := dbs[0]
+	_, err := db.Exec("SET SESSION group_concat_max_len = 4194304")
+	require.NoError(t, err)
 	var version string
 	var sortBuffer int
 	require.NoError(t, db.QueryRow("SELECT VERSION(), @@sort_buffer_size").Scan(&version, &sortBuffer))
@@ -47,6 +49,14 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 			for i := 0; i < 50; i++ {
 				_, err := store.CreateRun(&model.Run{UUID: fmt.Sprintf("%d-%03d", size, i), Namespace: ns, RecurringRunId: jobID, StorageState: model.StorageStateAvailable, RunDetails: model.RunDetails{CreatedAtInSec: int64(i + 1), State: model.RuntimeStateSucceeded, WorkflowRuntimeManifest: payload, PipelineRuntimeManifest: payload}})
 				require.NoError(t, err)
+				runID := fmt.Sprintf("%d-%03d", size, i)
+				for taskIndex := 0; taskIndex < 3; taskIndex++ {
+					taskID := util.NewDeterministicUUID(fmt.Sprintf("%s/task/%d", runID, taskIndex))
+					taskStore := NewTaskStore(db, util.NewFakeTimeForEpoch(), util.NewFakeUUIDGeneratorOrFatal(taskID, nil), d)
+					_, err := taskStore.CreateTask(&model.Task{RunID: runID, Namespace: ns, Name: fmt.Sprintf("task-%d", taskIndex), State: model.RuntimeStateSucceeded, MLMDInputs: model.LargeText(strings.Repeat("x", 2048))})
+					require.NoError(t, err)
+				}
+				require.NoError(t, store.CreateMetric(&model.RunMetric{RunUUID: runID, NodeID: "task-0", Name: "accuracy", NumberValue: 1}))
 			}
 			f, err := filter.New(&api.Filter{Predicates: []*api.Predicate{{Key: "recurring_run_id", Operation: api.Predicate_EQUALS, Value: &api.Predicate_StringValue{StringValue: jobID}}}})
 			require.NoError(t, err)
@@ -77,7 +87,7 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 			require.Equal(t, len(payload), len(got.WorkflowRuntimeManifest))
 			require.NoError(t, listErr)
 			require.Equal(t, 50, total)
-			require.Len(t, runs, 50)
+			require.Equal(t, 50, len(runs))
 			require.Empty(t, token)
 
 		})
