@@ -1,0 +1,78 @@
+name: UI Side-by-Side Demo
+on:
+  push:
+    branches: [codex/ui-side-by-side-demo-20261007]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: legacy
+            ref: 02cbc725ac9ddcd950f4400d8355dd78bfcd6c57
+          - variant: modern
+            ref: 005e94c7cfaefe0821e850943466a82cf9a6129a
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+      - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-build-${{ matrix.variant }}
+          path: frontend/build
+          if-no-files-found: error
+          retention-days: 7
+  record:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+      - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
+      - run: npm ci --ignore-scripts
+      - run: npm ci --prefix mock-backend --ignore-scripts
+      - run: npm ci --prefix server --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          name: demo-build-legacy
+          path: demo-builds/legacy
+      - uses: actions/download-artifact@v8
+        with:
+          name: demo-build-modern
+          path: demo-builds/modern
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Record synchronized walkthrough
+        run: node scripts/record-demo.mjs
+        env:
+          KFP_DEMO_LEGACY_BUILD: ${{ github.workspace }}/demo-builds/legacy
+          KFP_DEMO_MODERN_BUILD: ${{ github.workspace }}/demo-builds/modern
+          KFP_DEMO_OUTPUT: ${{ github.workspace }}/demo-output
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-side-by-side-demo
+          path: demo-output
+          if-no-files-found: error
+          retention-days: 30
