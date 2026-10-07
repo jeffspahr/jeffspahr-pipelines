@@ -89,6 +89,43 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 			require.Equal(t, 50, total)
 			require.Equal(t, 50, len(runs))
 			require.Empty(t, token)
+			require.NoError(t, queryErr)
+			for i, run := range runs {
+				require.Equal(t, fmt.Sprintf("%d-%03d", size, i), run.UUID)
+				require.Equal(t, 3, len(run.TaskDetails))
+				require.Equal(t, 1, len(run.Metrics))
+				require.Equal(t, "accuracy", run.Metrics[0].Name)
+				require.Equal(t, float64(1), run.Metrics[0].NumberValue)
+				require.Equal(t, 2, len(run.ResourceReferences))
+				require.Equal(t, jobID, run.RecurringRunId)
+				require.Equal(t, ns, run.Namespace)
+				for _, task := range run.TaskDetails {
+					require.Equal(t, size, len(task.MLMDInputs))
+					require.Equal(t, run.UUID, task.RunID)
+				}
+			}
+			require.Equal(t, 3, len(got.TaskDetails))
+			require.Equal(t, 1, len(got.Metrics))
+			// Follow every page to catch omissions or repeats after aggregation.
+			opts.PageSize = 17
+			var ids []string
+			for page := 0; page < 4; page++ {
+				batch, total, next, err := store.ListRuns(ctx, opts)
+				require.NoError(t, err)
+				require.Equal(t, 50, total)
+				for _, run := range batch {
+					ids = append(ids, run.UUID)
+				}
+				if next == "" {
+					break
+				}
+				opts, err = list.NewOptionsFromToken(next, 17)
+				require.NoError(t, err)
+			}
+			require.Equal(t, 50, len(ids))
+			for i, id := range ids {
+				require.Equal(t, fmt.Sprintf("%d-%03d", size, i), id)
+			}
 
 		})
 	}
