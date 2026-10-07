@@ -1,0 +1,92 @@
+[
+  {
+    "name": "pipelines",
+    "duration": 7,
+    "text": "Legacy is on the left; modern is on the right. Both use the same sample data.",
+    "audio": "audio/pipelines.wav"
+  },
+  {
+    "name": "footer",
+    "duration": 9,
+    "text": "The sidebar footer is now one compact row, with an appearance menu, named utility links, and a collapse control.",
+    "audio": "audio/footer.wav"
+  },
+  {
+    "name": "pipeline-details",
+    "duration": 7,
+    "text": "Opening a pipeline brings us into the familiar graph, with more consistent controls and spacing.",
+    "audio": "audio/pipeline-details.wav"
+  },
+  {
+    "name": "pipeline-spec",
+    "duration": 6,
+    "text": "The full YAML specification remains available alongside the visual representation.",
+    "audio": "audio/pipeline-spec.wav"
+  },
+  {
+    "name": "runs",
+    "duration": 7,
+    "text": "In Runs, status, identity, and related resources are easier to scan.",
+    "audio": "audio/runs.wav"
+  },
+  {
+    "name": "filter",
+    "duration": 6,
+    "text": "Filtering narrows the list while keeping the surrounding controls in place.",
+    "audio": "audio/filter.wav"
+  },
+  {
+    "name": "timeline",
+    "duration": 17,
+    "text": "The new Timeline tab shows when components ran and how long they took. Select a task to inspect its state history, including retries and cache hits, then jump back to the graph.",
+    "audio": "audio/timeline.wav"
+  },
+  {
+    "name": "task",
+    "duration": 5,
+    "text": "From here, we can inspect individual tasks and their details.",
+    "audio": "audio/task.wav"
+  },
+  {
+    "name": "lineage",
+    "duration": 6,
+    "text": "The lineage view shows those relationships around the selected artifact.",
+    "audio": "audio/lineage.wav"
+  },
+  {
+    "name": "new-run",
+    "duration": 11,
+    "text": "New run forms group related settings into clear sections, keeping the selected pipeline and experiment visible alongside the configuration.",
+    "audio": "audio/new-run.wav"
+  },
+  {
+    "name": "recurring",
+    "duration": 7,
+    "text": "Recurring runs use the same form structure, with scheduling controls grouped together.",
+    "audio": "audio/recurring.wav"
+  },
+  {
+    "name": "transfer",
+    "duration": 13,
+    "text": "Export and import now use the shared controls too, with clear validation and a reminder that artifact files and logs stay in their original storage.",
+    "audio": "audio/transfer.wav"
+  },
+  {
+    "name": "dark-timeline",
+    "duration": 7,
+    "text": "Dark mode offers an alternative appearance while keeping the same layout.",
+    "audio": "audio/dark-timeline.wav"
+  },
+  {
+    "name": "search",
+    "duration": 6,
+    "text": "Quick navigation puts destinations and resource search in one place.",
+    "audio": "audio/search.wav"
+  },
+  {
+    "name": "closing",
+    "duration": 24,
+    "text": "Under the hood, Base UI and Tailwind replace legacy Material UI components and overlapping styling systems. TanStack Query manages server data. Shared controls and page patterns give maintainers a consistent foundation, while keeping familiar pipeline workflows intact.",
+    "audio": "audio/closing.wav"
+  }
+]

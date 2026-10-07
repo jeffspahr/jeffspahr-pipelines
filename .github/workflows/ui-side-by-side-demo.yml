@@ -4,17 +4,27 @@ on:
     branches: [codex/ui-side-by-side-demo-20261007]
 permissions:
   contents: read
+env:
+  LEGACY_SHA: b018d7edddca42d3082fa52acd044e3175863719
+  MODERN_SHA: a9561f1a0b6559b6f06e0caac6b16870af771247
 jobs:
-  build-modern:
+  build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - side: legacy
+            ref: b018d7edddca42d3082fa52acd044e3175863719
+          - side: modern
+            ref: a9561f1a0b6559b6f06e0caac6b16870af771247
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 56e1fe3e69e8271c65917869546e51c9e18bc416
+          ref: ${{ matrix.ref }}
       - uses: actions/setup-node@v7
         with:
           node-version-file: frontend/.nvmrc
@@ -23,45 +33,56 @@ jobs:
       - run: npm run build
       - uses: actions/upload-artifact@v7
         with:
-          name: demo-build-modern
+          name: demo-build-${{ matrix.side }}
           path: frontend/build
           if-no-files-found: error
           retention-days: 7
   record:
-    needs: build-modern
+    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
       run:
-        working-directory: frontend
+        working-directory: app/frontend
     env:
       CI: 'true'
     steps:
       - uses: actions/checkout@v7
+        with:
+          path: harness
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.MODERN_SHA }}
+          path: app
+      - name: Install recording scripts and deterministic Timeline fixtures
+        run: |
+          cp ../../harness/frontend/scripts/record-demo.mjs scripts/
+          cp ../../harness/frontend/scripts/demo-scenes.json scripts/
+          git apply ../../harness/frontend/scripts/demo-fixtures.patch
       - uses: actions/setup-node@v7
         with:
-          node-version-file: frontend/.nvmrc
+          node-version-file: app/frontend/.nvmrc
       - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
       - run: npm ci --ignore-scripts
       - run: npm ci --prefix mock-backend --ignore-scripts
       - run: npm ci --prefix server --ignore-scripts
       - uses: actions/download-artifact@v8
         with:
-          github-token: ${{ github.token }}
-          run-id: 37658900988
           name: demo-build-legacy
           path: demo-builds/legacy
       - uses: actions/download-artifact@v8
         with:
           name: demo-build-modern
-          path: demo-builds/modern
+          path: app/frontend/build
       - run: npx playwright install --with-deps chromium
+      - name: Verify production Timeline in light and dark
+        run: node --test --test-name-pattern='Timeline keeps' scripts/production-bundle.smoke.mjs
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Record synchronized walkthrough
         run: node scripts/record-demo.mjs
         env:
           KFP_DEMO_LEGACY_BUILD: ${{ github.workspace }}/demo-builds/legacy
-          KFP_DEMO_MODERN_BUILD: ${{ github.workspace }}/demo-builds/modern
+          KFP_DEMO_MODERN_BUILD: ${{ github.workspace }}/app/frontend/build
           KFP_DEMO_OUTPUT: ${{ github.workspace }}/demo-output
       - uses: actions/upload-artifact@v7
         if: always()
