@@ -57,6 +57,7 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 					require.NoError(t, err)
 				}
 				require.NoError(t, store.CreateMetric(&model.RunMetric{RunUUID: runID, NodeID: "task-0", Name: "accuracy", NumberValue: 1}))
+				require.NoError(t, store.CreateMetric(&model.RunMetric{RunUUID: runID, NodeID: "task-1", Name: "loss", NumberValue: 0.25}))
 			}
 			f, err := filter.New(&api.Filter{Predicates: []*api.Predicate{{Key: "recurring_run_id", Operation: api.Predicate_EQUALS, Value: &api.Predicate_StringValue{StringValue: jobID}}}})
 			require.NoError(t, err)
@@ -85,6 +86,7 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 			got, err := store.GetRun(fmt.Sprintf("%d-000", size))
 			require.NoError(t, err)
 			require.Equal(t, len(payload), len(got.WorkflowRuntimeManifest))
+			require.Equal(t, len(payload), len(got.PipelineRuntimeManifest))
 			require.NoError(t, listErr)
 			require.Equal(t, 50, total)
 			require.Equal(t, 50, len(runs))
@@ -93,9 +95,12 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 			for i, run := range runs {
 				require.Equal(t, fmt.Sprintf("%d-%03d", size, i), run.UUID)
 				require.Equal(t, 3, len(run.TaskDetails))
-				require.Equal(t, 1, len(run.Metrics))
-				require.Equal(t, "accuracy", run.Metrics[0].Name)
-				require.Equal(t, float64(1), run.Metrics[0].NumberValue)
+				require.Equal(t, 2, len(run.Metrics))
+				metrics := map[string]float64{}
+				for _, metric := range run.Metrics {
+					metrics[metric.Name] = metric.NumberValue
+				}
+				require.Equal(t, map[string]float64{"accuracy": 1, "loss": 0.25}, metrics)
 				require.Equal(t, 2, len(run.ResourceReferences))
 				require.Equal(t, jobID, run.RecurringRunId)
 				require.Equal(t, ns, run.Namespace)
@@ -105,7 +110,7 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 				}
 			}
 			require.Equal(t, 3, len(got.TaskDetails))
-			require.Equal(t, 1, len(got.Metrics))
+			require.Equal(t, 2, len(got.Metrics))
 			// Follow every page to catch omissions or repeats after aggregation.
 			opts.PageSize = 17
 			var ids []string
@@ -129,4 +134,21 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 
 		})
 	}
+	t.Run("missing aggregates", func(t *testing.T) {
+		_, err := store.CreateRun(&model.Run{UUID: "empty-run", Namespace: "empty-ns", StorageState: model.StorageStateAvailable, RunDetails: model.RunDetails{State: model.RuntimeStateSucceeded}})
+		require.NoError(t, err)
+		_, err = db.Exec("DELETE FROM resource_references WHERE ResourceUUID = ?", "empty-run")
+		require.NoError(t, err)
+		opts, err := list.NewOptions(&model.Run{}, 100, "", nil)
+		require.NoError(t, err)
+		runs, total, token, err := store.ListRuns(&model.FilterContext{ReferenceKey: &model.ReferenceKey{Type: model.NamespaceResourceType, ID: "empty-ns"}}, opts)
+		require.NoError(t, err)
+		require.Equal(t, 1, total)
+		require.Len(t, runs, 1)
+		require.Empty(t, token)
+		require.Empty(t, runs[0].ResourceReferences)
+		require.Empty(t, runs[0].TaskDetails)
+		require.Empty(t, runs[0].Metrics)
+	})
+
 }
