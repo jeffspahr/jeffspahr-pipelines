@@ -7,14 +7,14 @@ import { chromium } from 'playwright';
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Recording runs in hosted CI only');
 const out=resolve(process.env.KFP_DEMO_OUTPUT);
 await mkdir(out,{recursive:true});
-const sources={legacy:'02cbc725ac9ddcd950f4400d8355dd78bfcd6c57',modern:'005e94c7cfaefe0821e850943466a82cf9a6129a'};
+const sources={legacy:'02cbc725ac9ddcd950f4400d8355dd78bfcd6c57',modern:'56e1fe3e69e8271c65917869546e51c9e18bc416'};
 const children=[];
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 for (const [i,side] of ['legacy','modern'].entries()) {
  const child=spawn(process.execPath,['--import','tsx','scripts/ui-modernization-native-server.ts'],{env:{...process.env,CI:'true',KFP_BROWSER_BUILD_DIR:process.env[`KFP_DEMO_${side.toUpperCase()}_BUILD`],KFP_BROWSER_FLOOR_PORT:String(4174+i)},stdio:'inherit'}); children.push(child);
  for(let n=0;;n++){try{if((await fetch(`http://127.0.0.1:${4174+i}/__qualification`)).ok)break;}catch{} if(n>90)throw Error(`Server ${side} failed`); await sleep(1000);}
 }
-const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html; charset=utf-8');res.end(`<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;background:#101b2b;color:#fff;font:24px Arial}header{height:90px;padding:14px 28px}h1{font-size:28px;margin:0 0 7px}#chapter{color:#adc7e4;font-size:23px}.labels{height:45px;display:flex;background:#1c2c41}.labels div{width:50%;padding:8px 24px;font-weight:bold}.labels small{font-size:17px;font-weight:normal;color:#bbc9d8}main{display:flex}iframe{width:1280px;height:720px;border:0;background:white}footer{height:45px;padding:11px 28px;font-size:18px;color:#b9cadc}</style></head><body><header><h1>Kubeflow Pipelines · UI modernization</h1><div id="chapter">Loading the walkthrough</div></header><div class="labels"><div>LEGACY <small>02cbc725 · before modernization</small></div><div>MODERN <small>005e94c7 · PR #14584</small></div></div><main><iframe name="legacy" src="http://127.0.0.1:4174/#/pipelines"></iframe><iframe name="modern" src="http://127.0.0.1:4175/#/pipelines"></iframe></main><footer>Same fixture data · synchronized navigation · light theme · actual browser recording · not a speed benchmark</footer></body></html>`)});
+const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html; charset=utf-8');res.end(`<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;background:#101b2b;color:#fff;font:24px Arial}header{height:90px;padding:14px 28px}h1{font-size:28px;margin:0 0 7px}#chapter{color:#adc7e4;font-size:23px}.labels{height:45px;display:flex;background:#1c2c41}.labels div{width:50%;padding:8px 24px;font-weight:bold}.labels small{font-size:17px;font-weight:normal;color:#bbc9d8}main{display:flex}iframe{width:1280px;height:720px;border:0;background:white}footer{height:45px;padding:11px 28px;font-size:18px;color:#b9cadc}</style></head><body><header><h1>Kubeflow Pipelines · UI modernization</h1><div id="chapter">Loading the walkthrough</div></header><div class="labels"><div>LEGACY <small>02cbc725 · before modernization</small></div><div>MODERN <small>56e1fe3e · PR #14584</small></div></div><main><iframe name="legacy" src="http://127.0.0.1:4174/#/pipelines"></iframe><iframe name="modern" src="http://127.0.0.1:4175/#/pipelines"></iframe></main><footer>Same fixture data · synchronized navigation · light theme · actual browser recording · not a speed benchmark</footer></body></html>`)});
 await new Promise(r=>server.listen(4176,'127.0.0.1',r));
 let browser, page;const chapters=[];const errors=[];
 try{
@@ -42,6 +42,13 @@ try{
    for(const field of route.fillFields||[])await frame.getByRole('textbox',{name:field.label,exact:true}).fill(field.value);
   }));
   await sleep(1800);await shot(name);await sleep(4200);
+  if(name==='pipelines'){
+   await title('Compact sidebar footer · appearance menu');
+   const theme=frames[1].getByRole('button',{name:/^Theme: /});await theme.focus();await page.keyboard.press('Enter');
+   await frames[1].getByRole('menu',{name:'Appearance'}).waitFor();await sleep(1500);await shot('compact-footer-theme-menu');await sleep(4000);
+   await page.keyboard.press('Escape');await frames[1].getByRole('menu').waitFor({state:'hidden'});assert.equal(await theme.evaluate(el=>document.activeElement===el),true);
+   await title('Compact sidebar footer · named utility links');await frames[1].getByRole('link',{name:'Documentation',exact:true}).hover();await frames[1].getByRole('tooltip').waitFor();await shot('compact-footer-tooltip');await sleep(3500);await page.mouse.move(1500,200);
+  }
   if(name==='pipeline-details'){
    await title('Pipeline specification · read-only YAML editor');
    await Promise.all(frames.map((f,i)=>f.getByRole(i===0?'button':'tab',{name:'Pipeline Spec',exact:true}).click()));
@@ -65,8 +72,8 @@ try{
  await title('Modern shell · dark theme (legacy remains unchanged)');
  await Promise.all(frames.map((f,i)=>f.goto(`http://127.0.0.1:${4174+i}/?demo=shell#/runs`)));
  await Promise.all(frames.map(f=>f.locator('[data-run-id="e0115ac1-0479-4194-a22d-01e65e09a32b"]').waitFor()));
- await frames[1].getByRole('combobox',{name:'Theme',exact:true}).selectOption('dark');await sleep(1800);await shot('modern-dark');await sleep(4500);
- await title('Modern shell · quick navigation');await frames[1].getByRole('combobox',{name:'Theme',exact:true}).selectOption('light');
+ await frames[1].getByRole('button',{name:/^Theme: /}).click();await frames[1].getByRole('menuitemradio',{name:'Dark',exact:true}).click();await sleep(1800);await shot('modern-dark');await sleep(4500);
+ await title('Modern shell · quick navigation');await frames[1].getByRole('button',{name:/^Theme: /}).click();await frames[1].getByRole('menuitemradio',{name:'Light',exact:true}).click();
  await frames[1].getByRole('button',{name:'Search',exact:true}).click();await sleep(1500);await shot('modern-search');await sleep(4500);await page.keyboard.press('Escape');
  await title('Modern shell · compact navigation');await frames[1].getByRole('button',{name:'Collapse navigation',exact:true}).click();await sleep(1500);await shot('modern-compact');await sleep(4500);
  await title('End of walkthrough · 25 pages and key interactions');await sleep(4000);

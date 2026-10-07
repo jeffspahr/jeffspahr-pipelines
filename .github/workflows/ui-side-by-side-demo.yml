@@ -5,7 +5,30 @@ on:
 permissions:
   contents: read
 jobs:
+  build-modern:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: 56e1fe3e69e8271c65917869546e51c9e18bc416
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+      - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-build-modern
+          path: frontend/build
+          if-no-files-found: error
+          retention-days: 7
   record:
+    needs: build-modern
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -30,8 +53,6 @@ jobs:
           path: demo-builds/legacy
       - uses: actions/download-artifact@v8
         with:
-          github-token: ${{ github.token }}
-          run-id: 37658900988
           name: demo-build-modern
           path: demo-builds/modern
       - run: npx playwright install --with-deps chromium
