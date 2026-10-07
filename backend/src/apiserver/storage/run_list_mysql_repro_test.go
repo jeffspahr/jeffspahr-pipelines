@@ -39,13 +39,13 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 	require.NoError(t, db.QueryRow("SELECT VERSION(), @@sort_buffer_size").Scan(&version, &sortBuffer))
 	t.Logf("MySQL %s sort_buffer_size=%d", version, sortBuffer)
 	store := NewRunStore(db, util.NewFakeTimeForEpoch(), d)
-	for _, size := range []int{1024, 100 * 1024, 512 * 1024} {
-		t.Run(fmt.Sprintf("manifest_bytes_%d", size), func(t *testing.T) {
-			ns := fmt.Sprintf("ns-%d", size)
-			jobID := "schedule-" + ns
+	for _, size := range []int{4 * 1024, 16 * 1024, 64 * 1024, 256 * 1024} {
+		t.Run(fmt.Sprintf("task_payload_bytes_%d", size), func(t *testing.T) {
+			ns := "fixture"
+			jobID := fmt.Sprintf("schedule-%d", size)
 			_, err := NewJobStore(db, util.NewFakeTimeForEpoch(), nil, d).CreateJob(&model.Job{UUID: jobID, DisplayName: jobID, Namespace: ns, Enabled: true, MaxConcurrency: 1})
 			require.NoError(t, err)
-			payload := model.LargeText(`{"padding":"` + strings.Repeat("x", size) + `"}`)
+			payload := model.LargeText(`{"padding":"` + strings.Repeat("x", 100*1024) + `"}`)
 			for i := 0; i < 50; i++ {
 				_, err := store.CreateRun(&model.Run{UUID: fmt.Sprintf("%d-%03d", size, i), Namespace: ns, RecurringRunId: jobID, StorageState: model.StorageStateAvailable, RunDetails: model.RunDetails{CreatedAtInSec: int64(i + 1), State: model.RuntimeStateSucceeded, WorkflowRuntimeManifest: payload, PipelineRuntimeManifest: payload}})
 				require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestMySQLRunListLargeManifests(t *testing.T) {
 				for taskIndex := 0; taskIndex < 3; taskIndex++ {
 					taskID := util.NewDeterministicUUID(fmt.Sprintf("%s/task/%d", runID, taskIndex))
 					taskStore := NewTaskStore(db, util.NewFakeTimeForEpoch(), util.NewFakeUUIDGeneratorOrFatal(taskID, nil), d)
-					_, err := taskStore.CreateTask(&model.Task{RunID: runID, Namespace: ns, Name: fmt.Sprintf("task-%d", taskIndex), State: model.RuntimeStateSucceeded, MLMDInputs: model.LargeText(strings.Repeat("x", 2048))})
+					_, err := taskStore.CreateTask(&model.Task{RunID: runID, Namespace: ns, Name: fmt.Sprintf("task-%d", taskIndex), State: model.RuntimeStateSucceeded, MLMDInputs: model.LargeText(strings.Repeat("x", size))})
 					require.NoError(t, err)
 				}
 				require.NoError(t, store.CreateMetric(&model.RunMetric{RunUUID: runID, NodeID: "task-0", Name: "accuracy", NumberValue: 1}))
