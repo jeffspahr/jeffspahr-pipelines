@@ -51,9 +51,10 @@ try{
   await page.screenshot({path:resolve(out,scene.name+'.png')});
   if(scene.name==='filter'){await Promise.all(frames.map(f=>f.locator('input[placeholder="Filter runs by name"], input#tableFilterBox').first().pressSequentially('xgboost',{delay:130})));}
   if(scene.name==='timeline'){
-   await sleep(3500);await Promise.all(frames.map(f=>f.locator('.rt-task-label > button').nth(1).click()));await sleep(4000);
+   await sleep(3500);await Promise.all(frames.map(f=>f.locator('.rt-task-label > button').nth(1).click()));await sleep(500);await Promise.all(frames.map(f=>f.getByRole('complementary',{name:'Selected task'}).evaluate(el=>el.scrollTo({top:el.scrollHeight,behavior:'smooth'}))));await sleep(3500);
    await page.screenshot({path:resolve(out,'timeline-task.png')});
-   const buttons=frames[1].locator('.rt-task-label > button');if(await buttons.count()>2){await Promise.all(frames.map(f=>f.locator('.rt-task-label > button').nth(2).click()));await sleep(2500);await page.screenshot({path:resolve(out,'timeline-cached.png')});}
+   const buttons=frames[1].locator('.rt-task-label > button');if(await buttons.count()>2){await Promise.all(frames.map(f=>f.locator('.rt-task-label > button').nth(2).click()));await sleep(500);await Promise.all(frames.map(f=>f.getByRole('complementary',{name:'Selected task'}).evaluate(el=>el.scrollTo({top:el.scrollHeight,behavior:'smooth'}))));await sleep(2000);await page.screenshot({path:resolve(out,'timeline-cached.png')});}
+   await sleep(1500);await Promise.all(frames.map(f=>f.getByRole('button',{name:'Open task in graph',exact:true}).click()));await Promise.all(frames.map(f=>f.locator('[data-testid="DagCanvas"] .react-flow__node').first().waitFor()));
   }
   await sleep(Math.max(0,(start+scene.duration+1-(performance.now()-clock)/1000)*1000));
   if(scene.name==='footer')await page.keyboard.press('Escape');
