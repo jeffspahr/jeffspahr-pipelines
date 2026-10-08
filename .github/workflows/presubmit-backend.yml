@@ -1,6 +1,7 @@
 name: KFP Backend Tests
 
 on:
+  workflow_call:
   merge_group:
     types: [checks_requested]
     branches: [release-2.18]

@@ -55,6 +55,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  combined-artifact-storage:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/artifact-storage-acceptance.yml
+  combined-backend:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/presubmit-backend.yml
   build:
     permissions:
       actions: read
