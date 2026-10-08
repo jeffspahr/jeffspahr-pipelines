@@ -1,6 +1,7 @@
 name: KFP Backend Tests
 
 on:
+  workflow_dispatch:
   workflow_call:
   merge_group:
     types: [checks_requested]
@@ -57,6 +58,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
+      with:
+        ref: 858f0cd46d04cd277e74734fdbccb80c902257a2
+
+    - name: Record tested candidate
+      run: |
+        test "$(git rev-parse HEAD)" = 858f0cd46d04cd277e74734fdbccb80c902257a2
+        git rev-parse HEAD
 
     - name: Set up Go
       uses: ./.github/actions/setup-go
@@ -88,7 +96,7 @@ jobs:
         KFP_TRANSFER_REQUIRE_INTEGRATION: '1'
         KFP_RECURRING_MYSQL_TEST_DSN: root:kfp_test@tcp(127.0.0.1:${{ job.services.mysql.ports['3306'] }})/?parseTime=true
         KFP_RECURRING_POSTGRES_TEST_DSN: postgres://kfp_test:kfp_test@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/kfp_native_test?sslmode=disable
-        GIT_BRANCH: ${{ github.event_name == 'merge_group' && github.sha || github.head_ref || github.ref_name }}
+        GIT_BRANCH: 858f0cd46d04cd277e74734fdbccb80c902257a2
         GIT_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
       run: |
         ./test/presubmit-backend-test.sh
