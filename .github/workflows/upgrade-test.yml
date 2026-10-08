@@ -59,7 +59,7 @@ jobs:
           # The deploy wrapper may change only the artifact source, never deployment behavior.
           original = subprocess.check_output(['git', 'show', source + ':.github/actions/deploy/action.yml']).decode()
           expected = original.replace('run: ./.github/resources/scripts/wait-for-image-artifacts.sh', 'run: GITHUB_RUN_ID=37835988576 ./.github/resources/scripts/wait-for-image-artifacts.sh')
-          expected = expected.replace('        pattern: "!*.dockerbuild"', '        pattern: "!*.dockerbuild"\n        run-id: \'37835988576\'\n        github-token: ${{ github.token }}')
+          expected = expected.replace('        pattern: "!*.dockerbuild"', '        pattern: "!*.dockerbuild"\n        run-id: \'37835988576\'\n        github-token: ' + '$' + '{{ github.token }}')
           assert Path('.github/actions/deploy/action.yml').read_text() == expected
           report = dict(scope='adoption_diagnostic_image_provenance', outcome='passed',
                         image_source_run=run['id'], image_source_sha=source,
