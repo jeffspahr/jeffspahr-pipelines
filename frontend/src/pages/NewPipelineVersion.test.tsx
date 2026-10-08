@@ -15,14 +15,32 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render as renderWithoutTheme, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
+import { ThemeProvider } from 'src/components/modernization/ThemeProvider';
 import { NewPipelineVersion } from './NewPipelineVersion';
 import { flushPromisesInAct, invokeAndFlush } from 'src/TestUtils';
 import { PageProps } from './Page';
 import { Apis } from 'src/lib/Apis';
 import { RoutePage, QUERY_PARAMS } from 'src/components/Router';
+
+function render(element: React.ReactElement) {
+  return renderWithoutTheme(<ThemeProvider defaultTheme='light'>{element}</ThemeProvider>);
+}
+beforeEach(() => {
+  localStorage.clear();
+  vi.stubGlobal('matchMedia', (media: string) => ({
+    matches: false,
+    media,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  localStorage.clear();
+});
 
 // Exposes protected drop handlers for testing (JSDOM lacks DataTransfer/FileList support).
 class TestNewPipelineVersion extends NewPipelineVersion {
@@ -398,6 +416,112 @@ describe('NewPipelineVersion', () => {
         name: 'test pipeline name',
         display_name: 'test pipeline name',
       });
+    });
+
+    it('submits a valid form with Enter and blocks duplicate submits and cancel while pending', async () => {
+      let resolveCreate!: (value: typeof MOCK_PIPELINE) => void;
+      createPipelineSpy.mockReturnValue(
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+      );
+      await renderNewPipelineVersion();
+      fireEvent.change(screen.getByLabelText(/Pipeline Name/), {
+        target: { value: 'keyboard pipeline' },
+      });
+      const packageUrl = screen.getByLabelText(/Package Url/);
+      fireEvent.change(packageUrl, { target: { value: 'https://example.com/pipeline.yaml' } });
+      await userEvent.click(screen.getByLabelText(/Pipeline Name/));
+      await userEvent.keyboard('{Enter}');
+      await waitFor(() => expect(createPipelineSpy).toHaveBeenCalledTimes(1));
+      expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Create' })).toHaveAttribute('aria-busy', 'true');
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+      fireEvent.submit(packageUrl.closest('form')!);
+      fireEvent.submit(packageUrl.closest('form')!);
+      expect(createPipelineSpy).toHaveBeenCalledTimes(1);
+      expect(navigateSpy).not.toHaveBeenCalled();
+      await invokeAndFlush(() => resolveCreate(MOCK_PIPELINE));
+      await waitFor(() => expect(createPipelineVersionSpy).toHaveBeenCalledOnce());
+      expect(navigateSpy).toHaveBeenCalledOnce();
+    });
+
+    it('does not submit incomplete forms or interpret Escape as page cancellation', async () => {
+      await renderNewPipelineVersion();
+      await userEvent.click(screen.getByLabelText(/Pipeline Name/));
+      await userEvent.keyboard('draft{Enter}{Escape}');
+      expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+      expect(screen.getByLabelText(/Pipeline Name/)).toHaveValue('draft');
+      expect(createPipelineSpy).not.toHaveBeenCalled();
+      expect(navigateSpy).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(navigateSpy).toHaveBeenCalledWith(RoutePage.PIPELINES);
+      expect(createPipelineSpy).not.toHaveBeenCalled();
+    });
+
+    it('keeps Enter in multiline fields as a newline rather than submitting', async () => {
+      await renderNewPipelineVersion();
+      fireEvent.change(screen.getByLabelText(/Pipeline Name/), { target: { value: 'pipeline' } });
+      fireEvent.change(screen.getByLabelText(/Package Url/), {
+        target: { value: 'https://example.com/pipeline.yaml' },
+      });
+      const source = screen.getByLabelText('Code Source');
+      await userEvent.type(source, 'first{Enter}second');
+      expect(source).toHaveValue('first\nsecond');
+      expect(createPipelineSpy).not.toHaveBeenCalled();
+    });
+
+    it('retains the draft and allows retry after creation fails', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      createPipelineSpy.mockRejectedValueOnce(new Error('Creation unavailable'));
+      await renderNewPipelineVersion();
+      fireEvent.change(screen.getByLabelText(/Pipeline Name/), {
+        target: { value: 'retry pipeline' },
+      });
+      fireEvent.change(screen.getByLabelText(/Package Url/), {
+        target: { value: 'https://example.com/pipeline.yaml' },
+      });
+      await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled());
+      expect(screen.getByLabelText(/Pipeline Name/)).toHaveValue('retry pipeline');
+      expect(updateDialogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Pipeline version creation failed' }),
+      );
+      expect(navigateSpy).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+      await waitFor(() => expect(navigateSpy).toHaveBeenCalledOnce());
+      expect(createPipelineSpy).toHaveBeenCalledTimes(2);
+      log.mockRestore();
+    });
+
+    it('uses the newly created pipeline ID for its URL-imported version', async () => {
+      const createdId = 'new/pipeline%id';
+      createPipelineSpy.mockResolvedValue({ pipeline_id: createdId });
+      createPipelineVersionSpy.mockResolvedValue({
+        ...MOCK_PIPELINE_VERSION,
+        pipeline_id: createdId,
+      });
+      await renderNewPipelineVersion('', { buildInfo: { apiServerMultiUser: false } });
+      fireEvent.change(screen.getByLabelText(/Pipeline Name/), {
+        target: { value: 'new pipeline' },
+      });
+      fireEvent.change(screen.getByLabelText(/Package Url/), {
+        target: { value: 'https://example.test/pipeline.yaml' },
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Create', exact: true }));
+      await waitFor(() => expect(createPipelineVersionSpy).toHaveBeenCalledTimes(1));
+      expect(createPipelineVersionSpy).toHaveBeenCalledWith(
+        createdId,
+        expect.objectContaining({
+          pipeline_id: createdId,
+          package_url: { pipeline_url: 'https://example.test/pipeline.yaml' },
+        }),
+      );
+      await waitFor(() => expect(navigateSpy).toHaveBeenCalledTimes(1));
+      expect(new URL(navigateSpy.mock.calls[0][0], 'http://kfp.test').pathname).toBe(
+        `/pipelines/details/${encodeURIComponent(createdId)}/version/original-run-pipeline-version-id`,
+      );
     });
 
     it('creates private pipeline from url in multi user mode', async () => {

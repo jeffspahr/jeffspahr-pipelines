@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { forwardRef, useImperativeHandle } from 'react';
 import { BrowserRouter } from 'react-router';
@@ -30,6 +30,7 @@ import { Apis } from 'src/lib/Apis';
 import { ButtonKeys } from 'src/lib/Buttons';
 import { queryKeys } from 'src/hooks/queryKeys';
 import { PageProps } from 'src/pages/Page';
+import CompareTable from 'src/components/CompareTable';
 import { CommonTestWrapper } from 'src/TestWrapper';
 import { testBestPractices } from 'src/TestUtils';
 import {
@@ -257,7 +258,36 @@ describe('CompareV2', () => {
       xLabels: ['First run', 'Second run'],
       yLabels: ['Train / accuracy'],
       rows: [['0.91', '0.95']],
+      missingCells: [[false, false]],
     });
+  });
+
+  it('renders empty scalar metrics distinctly from absent metrics', () => {
+    const table = buildScalarMetricsTableProps([
+      {
+        run: runs[0],
+        tasks: [
+          {
+            name: 'evaluate',
+            outputs: {
+              artifacts: [
+                {
+                  artifact_key: 'score',
+                  artifacts: [
+                    { name: 'score', type: ArtifactArtifactType.Metric, metadata: { score: '' } },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      },
+      { run: runs[1], tasks: [] },
+    ]);
+    expect(table?.missingCells).toEqual([[false, true]]);
+    render(<CompareTable {...table!} />);
+    expect(screen.getByLabelText('Empty string')).toBeVisible();
+    expect(screen.getByLabelText('Not provided')).toBeVisible();
   });
 
   it('expands multi-key scalar metadata and retains a dash fallback', () => {
@@ -295,6 +325,7 @@ describe('CompareV2', () => {
       xLabels: ['First run'],
       yLabels: ['evaluate / accuracy', 'evaluate / ignored', 'evaluate / loss'],
       rows: [['0.88'], ['1'], ['-']],
+      missingCells: [[false], [false], [false]],
     });
   });
 
@@ -343,6 +374,10 @@ describe('CompareV2', () => {
         ['0.9', '0.95'],
         ['0.1', '0.05'],
       ],
+      missingCells: [
+        [false, false],
+        [false, false],
+      ],
     });
   });
 
@@ -374,6 +409,7 @@ describe('CompareV2', () => {
       xLabels: ['First run'],
       yLabels: ['loop.train [iteration 0] / accuracy', 'loop.train [iteration 1] / accuracy'],
       rows: [['0.9'], ['0.91']],
+      missingCells: [[false], [false]],
     });
   });
 
@@ -405,6 +441,10 @@ describe('CompareV2', () => {
       rows: [
         ['0.8', '0.9'],
         ['0.81', '0.91'],
+      ],
+      missingCells: [
+        [false, false],
+        [false, false],
       ],
     });
   });
@@ -440,6 +480,10 @@ describe('CompareV2', () => {
         ['0.9', ''],
         ['', '0.91'],
       ],
+      missingCells: [
+        [false, true],
+        [true, false],
+      ],
     });
   });
 
@@ -466,6 +510,7 @@ describe('CompareV2', () => {
       xLabels: ['First run'],
       yLabels: ['evaluate / accuracy', 'evaluate / accuracy (2)'],
       rows: [['0.8'], ['0.9']],
+      missingCells: [[false], [false]],
     });
   });
 
@@ -518,6 +563,7 @@ describe('CompareV2', () => {
         xLabels: ['First run'],
         yLabels: ['write-metrics / accuracy'],
         rows: [['0.9']],
+        missingCells: [[false]],
       });
     }
     // Missing ancestry must retain the only available output; a later producer keeps its own key.
@@ -645,6 +691,33 @@ describe('CompareV2', () => {
     expect(Apis.runServiceApiV2.getRun).toHaveBeenCalledTimes(2);
     expect(Apis.runServiceApiV2.tasks).toHaveBeenCalledTimes(2);
     expect(updateBannerSpy).toHaveBeenLastCalledWith({});
+  });
+
+  it('preserves URL column order, encoded run links, and missing versus empty parameters', async () => {
+    const specialRunId = 'run/one%value';
+    const specialRun: V2beta1Run = {
+      run_id: specialRunId,
+      display_name: 'Special run',
+      runtime_config: { parameters: { optional: '', zero: 0 } },
+    };
+    vi.mocked(Apis.runServiceApiV2.getRun).mockImplementation(async (id) =>
+      id === specialRunId ? specialRun : runs[1],
+    );
+    render(
+      <CommonTestWrapper>
+        <CompareV2 {...generateProps(['run-2', encodeURIComponent(specialRunId)])} />
+      </CommonTestWrapper>,
+    );
+    const table = await screen.findByRole('table', { name: 'parameters comparison' });
+    const links = within(table).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual(['Second run', 'Special run']);
+    expect(links[1]).toHaveAttribute('href', `/runs/details/${encodeURIComponent(specialRunId)}`);
+    const optionalRow = within(table)
+      .getByRole('rowheader', { name: 'optional (values differ)' })
+      .closest('tr')!;
+    expect(within(optionalRow).getByLabelText('Not provided')).toBeVisible();
+    expect(within(optionalRow).getByLabelText('Empty string')).toBeVisible();
+    expect(within(table).getByText('0')).toBeVisible();
   });
 
   it('loads comparison data for a paused run', async () => {

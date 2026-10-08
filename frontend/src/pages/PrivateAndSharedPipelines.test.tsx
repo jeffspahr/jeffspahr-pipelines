@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { ThemeProvider } from 'src/components/modernization/ThemeProvider';
+import { render, screen, waitFor } from '@testing-library/react';
 import { PageProps } from './Page';
 import { Apis } from 'src/lib/Apis';
 import { V2beta1Pipeline, V2beta1ListPipelinesResponse } from 'src/apisv2beta1/pipeline';
@@ -48,7 +49,11 @@ function generatePageProps(): PageProps {
 }
 
 const oldPipeline = newMockPipeline();
-const newPipeline = newMockPipeline();
+const newPipeline = {
+  ...newMockPipeline(),
+  pipeline_id: 'new-pipeline-id',
+  display_name: 'new pipeline name',
+};
 
 function newMockPipeline(): V2beta1Pipeline {
   return {
@@ -62,6 +67,16 @@ function newMockPipeline(): V2beta1Pipeline {
 
 // This test is related to pipeline list where we intergrate with v2 API
 // Thus, change to mock v2 API behavior and return values.
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (media: string) => ({
+    media,
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+});
+afterEach(() => vi.unstubAllGlobals());
+
 describe('PrivateAndSharedPipelines', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -80,30 +95,88 @@ describe('PrivateAndSharedPipelines', () => {
   });
 
   it('it renders correctly in multi user mode', async () => {
-    const tree = render(
+    render(
       <MemoryRouter initialEntries={['/does-not-matter']}>
         <BuildInfoContext.Provider value={{ apiServerMultiUser: true }}>
           <NamespaceContext.Provider value={'ns'}>
-            <PrivateAndSharedPipelines {...generateProps()} />
+            <ThemeProvider>
+              <PrivateAndSharedPipelines {...generateProps()} />
+            </ThemeProvider>
           </NamespaceContext.Provider>
         </BuildInfoContext.Provider>
       </MemoryRouter>,
     );
     await flushPromisesInAct();
-    expect(tree).toMatchSnapshot();
+    expect(screen.getByRole('tablist', { name: 'Pipeline visibility' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Private' })).toHaveAttribute('aria-selected', 'true');
+    expect(Apis.pipelineServiceApiV2.listPipelines).toHaveBeenLastCalledWith(
+      'ns',
+      '',
+      10,
+      'created_at desc',
+      '',
+    );
   });
 
   it('it renders correctly in single user mode', async () => {
-    const tree = render(
+    render(
       <MemoryRouter initialEntries={['/does-not-matter']}>
         <BuildInfoContext.Provider value={{ apiServerMultiUser: false }}>
           <NamespaceContext.Provider value={undefined}>
-            <PrivateAndSharedPipelines {...generateProps()} />
+            <ThemeProvider>
+              <PrivateAndSharedPipelines {...generateProps()} />
+            </ThemeProvider>
           </NamespaceContext.Provider>
         </BuildInfoContext.Provider>
       </MemoryRouter>,
     );
     await flushPromisesInAct();
-    expect(tree).toMatchSnapshot();
+    expect(screen.queryByRole('tablist', { name: 'Pipeline visibility' })).toBeNull();
+    expect(screen.getByRole('list', { name: 'Pipelines' })).toBeVisible();
+    expect(Apis.pipelineServiceApiV2.listPipelines).toHaveBeenLastCalledWith(
+      undefined,
+      '',
+      10,
+      'created_at desc',
+      '',
+    );
+  });
+  it('reloads private pipelines when the namespace changes and ignores the old namespace response', async () => {
+    let finishOld: (value: V2beta1ListPipelinesResponse) => void = () => {};
+    vi.mocked(Apis.pipelineServiceApiV2.listPipelines).mockImplementation((namespace) =>
+      namespace === 'old'
+        ? new Promise((resolve) => {
+            finishOld = resolve;
+          })
+        : Promise.resolve({ pipelines: [newPipeline] }),
+    );
+    const props = generateProps();
+    const view = (namespace: string) => (
+      <MemoryRouter>
+        <BuildInfoContext.Provider value={{ apiServerMultiUser: true }}>
+          <NamespaceContext.Provider value={namespace}>
+            <ThemeProvider>
+              <PrivateAndSharedPipelines {...props} />
+            </ThemeProvider>
+          </NamespaceContext.Provider>
+        </BuildInfoContext.Provider>
+      </MemoryRouter>
+    );
+    const rendered = render(view('old'));
+    await waitFor(() =>
+      expect(Apis.pipelineServiceApiV2.listPipelines).toHaveBeenCalledWith(
+        'old',
+        '',
+        10,
+        'created_at desc',
+        '',
+      ),
+    );
+    rendered.rerender(view('new'));
+    await screen.findByRole('link', { name: 'new pipeline name' });
+    finishOld({ pipelines: [oldPipeline] });
+    await flushPromisesInAct();
+    expect(screen.queryByRole('link', { name: 'mock pipeline name' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'new pipeline name' })).toBeVisible();
   });
 });
