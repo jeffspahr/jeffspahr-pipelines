@@ -8,37 +8,7 @@ env:
   LEGACY_SHA: b018d7edddca42d3082fa52acd044e3175863719
   MODERN_SHA: a9561f1a0b6559b6f06e0caac6b16870af771247
 jobs:
-  build:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        include:
-          - side: legacy
-            ref: b018d7edddca42d3082fa52acd044e3175863719
-          - side: modern
-            ref: a9561f1a0b6559b6f06e0caac6b16870af771247
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ matrix.ref }}
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: frontend/.nvmrc
-      - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
-      - run: npm ci
-      - run: npm run build
-      - uses: actions/upload-artifact@v7
-        with:
-          name: demo-build-${{ matrix.side }}
-          path: frontend/build
-          if-no-files-found: error
-          retention-days: 7
   record:
-    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -68,12 +38,18 @@ jobs:
       - run: npm ci --prefix server --ignore-scripts
       - uses: actions/download-artifact@v8
         with:
+          github-token: ${{ github.token }}
+          run-id: 37705276091
           name: demo-build-legacy
           path: demo-builds/legacy
       - uses: actions/download-artifact@v8
         with:
+          github-token: ${{ github.token }}
+          run-id: 37705276091
           name: demo-build-modern
           path: app/frontend/build
+      - name: Serve the legacy editor worker from its locked Ace package
+        run: cp node_modules/ace-builds/src-noconflict/worker-yaml.js "$GITHUB_WORKSPACE/demo-builds/legacy/worker-yaml.js"
       - run: npx playwright install --with-deps chromium
       - name: Verify production Timeline in light and dark
         run: node --test --test-name-pattern='Timeline keeps' scripts/production-bundle.smoke.mjs

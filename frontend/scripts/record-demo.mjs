@@ -58,6 +58,7 @@ try{
   await sleep(Math.max(0,(start+scene.duration+1-(performance.now()-clock)/1000)*1000));
   if(scene.name==='footer')await page.keyboard.press('Escape');
  }
+ assert.deepEqual(errors, [], 'Recorded pages must not have uncaught browser errors');
  await writeFile(resolve(out,'clips.json'),JSON.stringify({sources,clips,errors,viewportPerSide:{width:1280,height:720}},null,2));
  const video=page.video();await context.close();const raw=await video.path();execFileSync('ffmpeg',['-y','-i',raw,'-c:v','libx264','-preset','fast','-crf','22','-pix_fmt','yuv420p','-movflags','+faststart',resolve(out,'recording.mp4')],{stdio:'inherit'});
 }catch(e){await page?.screenshot({path:resolve(out,'failure.png')}).catch(()=>{});await writeFile(resolve(out,'failure.txt'),e.stack);await writeFile(resolve(out,'failure-dom.json'),JSON.stringify(await Promise.all((page?.frames()||[]).map(async f=>({url:f.url(),text:await f.locator('body').innerText().catch(()=> '')}))),null,2));throw e}
