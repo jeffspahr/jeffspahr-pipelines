@@ -1,310 +1,19 @@
+# Diagnostic wrapper only; do not merge this image-reuse configuration into release.
 name: KFP upgrade tests
 
-env:
-  TESTS_DIR: "./backend/test/v2/api"
-  TESTS_LABEL: "ApiServerTests"
-  NUMBER_OF_PARALLEL_NODES: 15
-  CLUSTER_NAME: "kfp"
-  NAMESPACE: "kubeflow"
-  PYTHON_VERSION: "3.9"
-
 on:
-  merge_group:
-    types: [checks_requested]
-    branches: [release-2.18]
-  push:
-    branches: [release-2.18]
-
   workflow_dispatch:
-    inputs:
-      run_readiness_adoption:
-        description: 'Run isolated populated legacy-schedule adoption acceptance'
-        type: boolean
-        required: false
-        default: false
-      run_custom_roles:
-        description: 'Run isolated custom-role API/UI authorization acceptance'
-        type: boolean
-        required: false
-        default: false
-      run_readiness_schedules:
-        description: 'Run isolated scheduling acceptance after candidate policy review'
-        type: boolean
-        required: false
-        default: false
-
-  pull_request:
-    paths:
-      - '.github/workflows/upgrade-test.yml'
-      - '.github/workflows/image-builds.yml'
-      - '.github/actions/create-cluster/**'
-      - '.github/actions/deploy/**'
-      - '.github/actions/test-and-report/**'
-      - '.github/resources/**'
-      - 'tools/upgrade-readiness/**'
-      - 'backend/api/v2beta1/**'
-      - 'backend/src/**'
-      - 'backend/metadata_writer/**'
-      - 'backend/test/v2/api/**'
-      - 'manifests/kustomize/**'
-      - 'test_data/sdk_compiled_pipelines/**'
-      - '!**/*.md'
-      - '!**/OWNERS'
-
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: adoption-diagnostic-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  combined-artifact-storage:
-    if: github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/artifact-storage-acceptance.yml
-  combined-backend:
-    if: github.event_name == 'workflow_dispatch'
-    uses: ./.github/workflows/presubmit-backend.yml
-  build:
-    permissions:
-      actions: read
-      contents: read
-    uses: ./.github/workflows/image-builds.yml
-
-  upgrade-test:
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-    strategy:
-      matrix:
-        k8s_version: [ "v1.36.1" ]
-    name: KFP upgrade tests - K8s ${{ matrix.k8s_version }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: 3.9
-
-      - name: Select source release
-        shell: bash
-        id: get-tag
-        run: echo "lastRelease=2.17.2" >> "$GITHUB_OUTPUT"
-
-      - name: Create cluster
-        uses: ./.github/actions/create-cluster
-        id: create-cluster
-        with:
-          k8s_version: ${{ matrix.k8s_version }}
-
-      - name: Deploy Last Release
-        shell: bash
-        id: deploy-release
-        run: |
-          kubectl apply -k https://github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=${{ steps.get-tag.outputs.lastRelease }}
-          kubectl apply -k https://github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic?ref=${{ steps.get-tag.outputs.lastRelease }}
-          source "./.github/resources/scripts/helper-functions.sh"
-          EXIT_CODE=0
-          wait_for_pods || EXIT_CODE=$?
-          if [[ $EXIT_CODE -ne 0 ]]; then
-            echo "Deploy unsuccessful. Not all pods running."
-            exit 1
-          fi
-
-      - name: Forward API port
-        id: forward-api-port
-        if: ${{ steps.deploy-release.outcome == 'success' }}
-        shell: bash
-        run: ./.github/resources/scripts/forward-port.sh "kubeflow" "ml-pipeline" 8888 8888
-
-      - name: Prepare for Upgrade
-        id: prepare-upgrade
-        if: ${{ steps.forward-api-port.outcome == 'success' }}
-        working-directory: ${{ env.TESTS_DIR }}
-        run: |
-          go run github.com/onsi/ginkgo/v2/ginkgo -r -v --cover -p --keep-going --github-output=true --nodes=${{ env.NUMBER_OF_PARALLEL_NODES }} -v --label-filter="UpgradePreparation"
-
-      - name: Capture 2.17.2 filtered pages and retain old API replica
-        shell: bash
-        run: |
-          python3 tools/upgrade-readiness/live_pagination.py source --state "$RUNNER_TEMP/pagination-source.json" --source-image "$(kubectl -n kubeflow get deployment ml-pipeline -o jsonpath='{.spec.template.spec.containers[0].image}')"
-          # Keep the old API on the same database, isolated from the normal
-          # service selector, to route each mixed-version page deliberately.
-          kubectl -n kubeflow get deployment ml-pipeline -o json | python3 -c '
-          import json, sys
-          deployment = json.load(sys.stdin)
-          deployment["metadata"] = {"name": "pagination-source", "namespace": "kubeflow"}
-          deployment.pop("status", None)
-          deployment["spec"]["replicas"] = 1
-          deployment["spec"]["selector"] = {"matchLabels": {"app": "pagination-source"}}
-          deployment["spec"]["template"]["metadata"]["labels"]["app"] = "pagination-source"
-          json.dump(deployment, sys.stdout)
-          ' | kubectl apply -f -
-          kubectl -n kubeflow rollout status deployment/pagination-source --timeout=180s
-
-      - name: Stop port forwarding
-        run: |
-          pkill -f "port-forward"
-        continue-on-error: true
-
-      - name: Deploy from Branch
-        uses: ./.github/actions/deploy
-        if: ${{ success() && steps.prepare-upgrade.outcome == 'success' }}
-        id: deploy
-        with:
-          image_path: images_${{ github.run_id }}
-          image_tag: latest
-          image_registry: kind-registry:5000
-          forward_port: 'true'
-
-      - name: Verify upgraded and mixed-version filtered pagination
-        shell: bash
-        run: |
-          kubectl -n kubeflow port-forward --address=127.0.0.1 deployment/pagination-source 8889:8888 > "$RUNNER_TEMP/pagination-forward.log" 2>&1 &
-          OLD_API_FORWARD_PID=$!
-          trap 'kill "$OLD_API_FORWARD_PID" 2>/dev/null || true; wait "$OLD_API_FORWARD_PID" 2>/dev/null || true' EXIT
-          for ((attempt=0; attempt<30; attempt++)); do
-            kill -0 "$OLD_API_FORWARD_PID"
-            if grep -Fq 'Forwarding from 127.0.0.1:8889' "$RUNNER_TEMP/pagination-forward.log" &&
-              curl --max-time 2 --fail --silent http://127.0.0.1:8889/apis/v2beta1/healthz > /dev/null &&
-              kill -0 "$OLD_API_FORWARD_PID"; then
-              break
-            fi
-            sleep 1
-          done
-          grep -Fq 'Forwarding from 127.0.0.1:8889' "$RUNNER_TEMP/pagination-forward.log"
-          curl --max-time 2 --fail --silent http://127.0.0.1:8889/apis/v2beta1/healthz > /dev/null
-          kill -0 "$OLD_API_FORWARD_PID"
-          python3 tools/upgrade-readiness/live_pagination.py target --state "$RUNNER_TEMP/pagination-source.json" --report "$RUNNER_TEMP/pagination-report.json"
-
-      - name: Upload pagination acceptance evidence
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: pagination-acceptance-${{ github.run_id }}
-          path: ${{ runner.temp }}/pagination-report.json
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Verify Upgrade
-        uses: ./.github/actions/test-and-report
-        if: ${{ steps.deploy.outcome == 'success' }}
-        with:
-          test_directory: ${{ env.TESTS_DIR }}
-          test_label: "UpgradeVerification"
-          num_parallel_nodes: ${{ env.NUMBER_OF_PARALLEL_NODES }}
-          default_namespace: ${{ env.NAMESPACE }}
-          python_version: ${{ env.PYTHON_VERSION }}
-          report_name: "Upgrade Verification"
-
-
-  readiness-schedules:
-    # Explicitly activate only after reviewing the candidate scheduling policy.
-    if: ${{ vars.KFP_218_READINESS_SCHEDULES == 'enabled' || (github.event_name == 'workflow_dispatch' && inputs.run_readiness_schedules) }}
-    runs-on: ubuntu-latest
-    # Include policy transitions, retry backoff and the retained V1 API lane.
-    timeout-minutes: 90
-    permissions:
-      actions: read
-      contents: read
-    env:
-      CLUSTER_NAME: kfp-readiness
-    steps:
-      - name: Checkout candidate
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: ./.github/actions/setup-python-pip-cache
-        with:
-          python-version: '3.11'
-          cache-scope: readiness-schedules
-          cache-dependency-hash: ${{ hashFiles('tools/upgrade-readiness/requirements.txt') }}
-
-      - name: Install fixture manifest reader
-        run: python3 -m pip install -r tools/upgrade-readiness/requirements.txt
-
-      - name: Require integrated scheduling policy
-        run: bash .github/resources/scripts/readiness-schedules.sh preflight
-
-      - name: Create isolated readiness cluster
-        uses: ./.github/actions/create-cluster
-        with:
-          k8s_version: 'v1.36.1'
-          cluster_name: kfp-readiness
-
-      - name: Populate 2.17.2 and capture target predictions
-        run: bash .github/resources/scripts/readiness-schedules.sh source
-
-      - name: Deploy same-run candidate images
-        uses: ./.github/actions/deploy
-        with:
-          cluster_name: kfp-readiness
-          image_path: images_${{ github.run_id }}
-          image_tag: latest
-          image_registry: kind-registry:5000
-          forward_port: 'false'
-
-      - name: Compare live scheduling modes, revocation and V1 outcomes
-        run: bash .github/resources/scripts/readiness-schedules.sh target
-
-      - name: Upload isolated-fixture readiness evidence
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: readiness-schedules-${{ github.run_id }}
-          path: ${{ runner.temp }}/readiness-schedules/reports/*.json
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Remove isolated readiness cluster
-        if: ${{ always() }}
-        run: kind delete cluster --name kfp-readiness
-
-  custom-role-acceptance:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_custom_roles }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    permissions:
-      actions: read
-      contents: read
-    env:
-      CLUSTER_NAME: kfp-custom-roles
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/create-cluster
-        with:
-          k8s_version: 'v1.36.1'
-          cluster_name: kfp-custom-roles
-      - uses: ./.github/actions/deploy
-        with:
-          cluster_name: kfp-custom-roles
-          image_path: images_${{ github.run_id }}
-          image_tag: latest
-          image_registry: kind-registry:5000
-          forward_port: 'false'
-      - name: Exercise custom roles against candidate API and UI
-        run: bash .github/resources/scripts/custom-role-acceptance.sh
-      - uses: actions/upload-artifact@v7
-        if: ${{ always() }}
-        with:
-          name: custom-role-acceptance-${{ github.run_id }}
-          path: ${{ runner.temp }}/custom-roles/report.json
-          if-no-files-found: ignore
-      - name: Remove isolated cluster
-        if: ${{ always() }}
-        run: kind delete cluster --name kfp-custom-roles
-
   readiness-adoption:
     # Explicitly activate only after reviewing the candidate scheduling policy.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_readiness_adoption }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -315,6 +24,51 @@ jobs:
     steps:
       - name: Checkout candidate
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify reused image provenance and runtime equivalence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: '37846429718'
+          SOURCE_SHA: '858f0cd46d04cd277e74734fdbccb80c902257a2'
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN}" > "$RUNNER_TEMP/adoption-image-source.json"
+          python3 - <<'PYPROVENANCE'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          source = os.environ['SOURCE_SHA']
+          run = json.loads((Path(os.environ['RUNNER_TEMP']) / 'adoption-image-source.json').read_text())
+          assert run['id'] == int(os.environ['SOURCE_RUN'])
+          assert run['head_sha'] == source
+          assert run['repository']['full_name'] == os.environ['GITHUB_REPOSITORY']
+          assert run['path'] == '.github/workflows/upgrade-test.yml'
+          assert run['event'] == 'workflow_dispatch'
+          subprocess.run(['git', 'merge-base', '--is-ancestor', source, 'HEAD'], check=True)
+          changed = subprocess.check_output(['git', 'diff', '--name-only', '-z', source, 'HEAD']).decode().split('\0')
+          allowed = {
+              '.github/workflows/upgrade-test.yml',
+              '.github/actions/deploy/action.yml',
+              '.github/resources/scripts/readiness-adoption.sh',
+              '.github/resources/scripts/readiness-schedules.sh',
+          }
+          unexpected = [p for p in changed if p and p not in allowed and not p.startswith(('tools/upgrade-readiness/', 'docs/'))]
+          assert not unexpected, 'Production changes prohibit image reuse: ' + repr(unexpected)
+          # The deploy wrapper may change only the artifact source, never deployment behavior.
+          original = subprocess.check_output(['git', 'show', source + ':.github/actions/deploy/action.yml']).decode()
+          expected = original.replace('run: ./.github/resources/scripts/wait-for-image-artifacts.sh', 'run: GITHUB_RUN_ID=37846429718 ./.github/resources/scripts/wait-for-image-artifacts.sh')
+          expected = expected.replace('        pattern: "!*.dockerbuild"', '        pattern: "!*.dockerbuild"\n        run-id: \'37846429718\'\n        github-token: ' + '$' + '{{ github.token }}')
+          assert Path('.github/actions/deploy/action.yml').read_text() == expected
+          report = dict(scope='adoption_diagnostic_image_provenance', outcome='passed',
+                        image_source_run=run['id'], image_source_sha=source,
+                        validation_sha=subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip(),
+                        production_tree_unchanged=True, changed_files=[p for p in changed if p])
+          directory = Path(os.environ['RUNNER_TEMP']) / 'readiness-schedules/reports'
+          directory.mkdir(parents=True, exist_ok=True)
+          (directory / 'adoption-image-provenance.json').write_text(json.dumps(report, sort_keys=True) + '\n')
+          PYPROVENANCE
 
       - name: Set up Python
         uses: ./.github/actions/setup-python-pip-cache
@@ -341,7 +95,7 @@ jobs:
       - name: Prepare populated offline adoption cutover
         run: bash .github/resources/scripts/readiness-adoption.sh source
 
-      - name: Deploy same-run candidate images with writers stopped
+      - name: Deploy verified source-run images with writers stopped
         uses: ./.github/actions/deploy
         with:
           cluster_name: kfp-readiness
