@@ -89,6 +89,11 @@ jobs:
         run: |
           npm exec vitest run integration-tests/artifact-storage-live.test.ts -- \
             --reporter=default --reporter=json --outputFile=/tmp/artifact-storage-results.json
+      - name: Verify authenticated artifact continuity on the same candidate
+        working-directory: frontend/server
+        run: |
+          npm exec vitest run integration-tests/artifact-continuity.test.ts -- \
+            --reporter=default --reporter=json --outputFile=/tmp/artifact-continuity-results.json
       - name: Retain exact-revision evidence
         if: always()
         run: |
@@ -99,6 +104,7 @@ jobs:
           name: artifact-storage-acceptance-${{ github.run_id }}
           path: |
             /tmp/artifact-storage-results.json
+            /tmp/artifact-continuity-results.json
             /tmp/artifact-storage-revision.txt
       - name: Delete disposable storage
         if: always()
