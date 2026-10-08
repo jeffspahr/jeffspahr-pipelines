@@ -380,7 +380,49 @@ def offline_job(deployment, name):
 def adoption_log_categories(text):
     lowered = text.lower()
     patterns = {
+        'incomplete_progress': ('invalid or incomplete scheduling progress',),
+        'future_trigger_time':
+            ('last triggered time is invalid or in the future',),
+        'duplicate_run': ('duplicate run ',),
+        'duplicate_run_index': ('multiple runs claim index',),
+        'skipped_run_index': ('skips scheduling indices',),
+        'invalid_run_timestamps': ('has invalid execution timestamps',),
+        'trigger_time_conflict': ('conflicts with the last triggered time',),
+        'earlier_progress_conflict':
+            ('conflicts with earlier scheduling progress',),
+        'workflow_identity_conflict': ('has conflicting schedule identity',),
+        'workflow_index_invalid': ('has an invalid or skipped index',),
+        'duplicate_workflow_index': ('multiple workflows claim index',),
+        'workflow_time_invalid': ('has an invalid scheduled time',),
+        'workflow_run_mismatch': ('conflicts with its persisted run',),
+        'due_recovery_failed': ('cannot recover the due time of run',),
+        'unacknowledged_time_not_advanced': ('does not advance scheduled time',
+                                            ),
+        'persisted_time_mismatch': ('persisted execution time differs',),
+        'persisted_index_invalid': ('persisted execution index is invalid',),
+        'panic': ('panic:',),
+        'runtime_fault': ('runtime error:', 'fatal error:'),
+        'flag_parse': ('flag provided but not defined', 'invalid value',
+                       'flag needs an argument'),
         'adoption_failed': ('legacy recurring-run adoption failed',),
+        'execution_index':
+            ('has no valid controller index', 'has an invalid or skipped index',
+             'multiple runs claim index', 'multiple workflows claim index',
+             'persisted execution index is invalid'),
+        'execution_time': ('has invalid execution timestamps',
+                           'last triggered time is invalid',
+                           'conflicts with the last triggered time',
+                           'persisted execution time differs',
+                           'stored schedule had no tick due',
+                           'schedule creation time is missing'),
+        'execution_mismatch': ('has inconsistent execution identity',
+                               'conflicts with its persisted run'),
+        'concurrency_accounting': ('would escape concurrency accounting',),
+        'backing_cr_unavailable': ('backing cr is unavailable',),
+        'adoption_mode': ('adoption requires multiuser=true',),
+        'adoption_inventory_changed':
+            ('rebuild and review the adoption inventory',
+             'rebuild the adoption inventory'),
         'unpersisted_workflow': ('has no persisted run',),
         'progress': ('scheduling progress', 'scheduling indices', 'due time',
                      'scheduled time'),
@@ -436,6 +478,35 @@ def adoption_startup_milestones(text):
         name for name, fragment in patterns.items() if fragment in text)
 
 
+def adoption_stack_frames(text):
+    """Return only source-verified repository locations and function names."""
+    root = Path(__file__).resolve().parents[2]
+    frames = []
+    previous = ''
+    for line in text.splitlines():
+        match = re.fullmatch(
+            r'\s+(?:[^\s]*?/)?(backend/[A-Za-z0-9_/-]+\.go):([0-9]+)(?: \+0x[0-9a-f]+)?',
+            line)
+        if match and len(frames) < 20:
+            path = root / match[1]
+            # A path-shaped payload is not evidence of a repository frame.
+            if path.is_file() and path.resolve().is_relative_to(root):
+                source = path.read_text()
+                number = int(match[2])
+                if 0 < number <= len(source.splitlines()):
+                    frame = dict(file=match[1], line=number)
+                    symbol = re.search(
+                        r'\.([A-Za-z_][A-Za-z_0-9]*)(?:\.[0-9]+)?\(', previous)
+                    if symbol and re.search(
+                            r'func\s+(?:\([^\n]*?\)\s+)?' +
+                            re.escape(symbol[1]) + r'\s*\(', source):
+                        frame['symbol'] = symbol[1]
+                    if frame not in frames:
+                        frames.append(frame)
+        previous = line
+    return frames
+
+
 def adoption_job_diagnostics(name):
     result = dict(containers=[], pods=[], receipt_logged=False)
     try:
@@ -480,8 +551,9 @@ def adoption_job_diagnostics(name):
                         logs = kube('-n', 'kubeflow', 'logs',
                                     pod['metadata']['name'],
                                     '--container=' + container['name'],
-                                    '--tail=100', '--limit-bytes=32768')
+                                    '--limit-bytes=1048576')
                         entry['log_categories'] = adoption_log_categories(logs)
+                        entry['stack_frames'] = adoption_stack_frames(logs)
                         entry[
                             'startup_milestones'] = adoption_startup_milestones(
                                 logs)
