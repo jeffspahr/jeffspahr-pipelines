@@ -61,13 +61,7 @@ trap cleanup EXIT
 
 configure_api() {
   local mode=$1
-  kube -n kubeflow set env deployment/ml-pipeline \
-    MULTIUSER=true TOKEN_REVIEW_AUDIENCE=pipelines.kubeflow.org \
-    KUBEFLOW_USERID_HEADER=kubeflow-userid KUBEFLOW_USERID_PREFIX= \
-    DEFAULTPIPELINERUNNERSERVICEACCOUNT=pipeline-runner \
-    ALLOWEDSERVICEACCOUNTS=readiness-granted,readiness-denied \
-    COMPILED_PIPELINE_SPEC_PATCH='{}' \
-    KFP_SECURITY_SERVICE_ACCOUNT_MODE="$mode" KFP_SECURITY_WORKFLOW_IDENTITY_MODE=enforce
+  set_api_env "$mode"
   kube -n kubeflow rollout status deployment/ml-pipeline --timeout=300s
   # Rollout readiness excludes terminating replicas. Existing controller gRPC
   # connections can still reach an old audit process during its grace period.
@@ -103,6 +97,16 @@ configure_api() {
   done
   echo '::error::API policy cutover could not exclude stale, terminating, or unready Pods.'
   return 1
+}
+set_api_env() {
+  local mode=$1
+  kube -n kubeflow set env deployment/ml-pipeline \
+    MULTIUSER=true TOKEN_REVIEW_AUDIENCE=pipelines.kubeflow.org \
+    KUBEFLOW_USERID_HEADER=kubeflow-userid KUBEFLOW_USERID_PREFIX= \
+    DEFAULTPIPELINERUNNERSERVICEACCOUNT=pipeline-runner \
+    ALLOWEDSERVICEACCOUNTS=readiness-granted,readiness-denied \
+    COMPILED_PIPELINE_SPEC_PATCH='{}' \
+    KFP_SECURITY_SERVICE_ACCOUNT_MODE="$mode" KFP_SECURITY_WORKFLOW_IDENTITY_MODE=enforce
 }
 configure_controllers() {
   kube -n kubeflow set env deployment/ml-pipeline-scheduledworkflow MULTIUSER=true NAMESPACE="$namespace"
