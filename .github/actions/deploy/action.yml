@@ -62,13 +62,15 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
-      run: ./.github/resources/scripts/wait-for-image-artifacts.sh
+      run: GITHUB_RUN_ID=37835988576 ./.github/resources/scripts/wait-for-image-artifacts.sh
 
     - name: Download Docker Images
       uses: ./.github/actions/download-artifact-with-retry
       with:
         path: "images_${{ github.run_id }}"
         pattern: "!*.dockerbuild"
+        run-id: '37835988576'
+        github-token: ${{ github.token }}
 
     - name: Load Control Plane Images Into Kind
       shell: bash
