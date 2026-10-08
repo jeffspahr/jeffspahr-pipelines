@@ -37,7 +37,7 @@ if [[ "$phase" == preflight ]]; then
   fi
   exit 0
 fi
-[[ "$phase" == source || "$phase" == target ]]
+[[ "$phase" == source || "$phase" == target || "$phase" == library ]]
 [[ $(kubectl config current-context) == "$context" ]]
 preflight
 kube() { kubectl --context "$context" --request-timeout=30s "$@"; }
@@ -282,6 +282,9 @@ observe() {
     return 1
   fi
 }
+
+# Shared primitives for the separate adoption fixture; no source/target actions.
+[[ "$phase" != library ]] || return 0
 
 if [[ "$phase" == source ]]; then
   kube apply -k 'https://github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=2.17.2'
