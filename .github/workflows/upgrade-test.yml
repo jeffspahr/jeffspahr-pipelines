@@ -1,4 +1,4 @@
-# Diagnostic wrapper only; do not merge this image-reuse configuration into release.
+# Source-only diagnostic wrapper; do not merge into release.
 name: KFP upgrade tests
 
 on:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: adoption-diagnostic-${{ github.ref }}
+  group: adoption-source-shapes-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,49 +26,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Verify reused image provenance and runtime equivalence
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN: '37835988576'
-          SOURCE_SHA: '49f3b51e09eae0d80f0197aa653eef447f279cd3'
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN}" > "$RUNNER_TEMP/adoption-image-source.json"
-          python3 - <<'PYPROVENANCE'
-          import json
-          import os
-          from pathlib import Path
-          import subprocess
-          source = os.environ['SOURCE_SHA']
-          run = json.loads((Path(os.environ['RUNNER_TEMP']) / 'adoption-image-source.json').read_text())
-          assert run['id'] == int(os.environ['SOURCE_RUN'])
-          assert run['head_sha'] == source
-          assert run['repository']['full_name'] == os.environ['GITHUB_REPOSITORY']
-          assert run['path'] == '.github/workflows/upgrade-test.yml'
-          assert run['event'] == 'workflow_dispatch'
-          subprocess.run(['git', 'merge-base', '--is-ancestor', source, 'HEAD'], check=True)
-          changed = subprocess.check_output(['git', 'diff', '--name-only', '-z', source, 'HEAD']).decode().split('\0')
-          allowed = {
-              '.github/workflows/upgrade-test.yml',
-              '.github/actions/deploy/action.yml',
-              '.github/resources/scripts/readiness-adoption.sh',
-              '.github/resources/scripts/readiness-schedules.sh',
-          }
-          unexpected = [p for p in changed if p and p not in allowed and not p.startswith(('tools/upgrade-readiness/', 'docs/'))]
-          assert not unexpected, 'Production changes prohibit image reuse: ' + repr(unexpected)
-          # The deploy wrapper may change only the artifact source, never deployment behavior.
-          original = subprocess.check_output(['git', 'show', source + ':.github/actions/deploy/action.yml']).decode()
-          expected = original.replace('run: ./.github/resources/scripts/wait-for-image-artifacts.sh', 'run: GITHUB_RUN_ID=37835988576 ./.github/resources/scripts/wait-for-image-artifacts.sh')
-          expected = expected.replace('        pattern: "!*.dockerbuild"', '        pattern: "!*.dockerbuild"\n        run-id: \'37835988576\'\n        github-token: ' + '$' + '{{ github.token }}')
-          assert Path('.github/actions/deploy/action.yml').read_text() == expected
-          report = dict(scope='adoption_diagnostic_image_provenance', outcome='passed',
-                        image_source_run=run['id'], image_source_sha=source,
-                        validation_sha=subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip(),
-                        production_tree_unchanged=True, changed_files=[p for p in changed if p])
-          directory = Path(os.environ['RUNNER_TEMP']) / 'readiness-schedules/reports'
-          directory.mkdir(parents=True, exist_ok=True)
-          (directory / 'adoption-image-provenance.json').write_text(json.dumps(report, sort_keys=True) + '\n')
-          PYPROVENANCE
 
       - name: Set up Python
         uses: ./.github/actions/setup-python-pip-cache
@@ -94,18 +51,6 @@ jobs:
 
       - name: Prepare populated offline adoption cutover
         run: bash .github/resources/scripts/readiness-adoption.sh source
-
-      - name: Deploy verified source-run images with writers stopped
-        uses: ./.github/actions/deploy
-        with:
-          cluster_name: kfp-readiness
-          image_path: images_${{ github.run_id }}
-          image_tag: latest
-          image_registry: kind-registry:5000
-          forward_port: 'false'
-
-      - name: Adopt legacy schedules and verify live continuation
-        run: bash .github/resources/scripts/readiness-adoption.sh target
 
       - name: Upload isolated-fixture readiness evidence
         if: ${{ always() }}

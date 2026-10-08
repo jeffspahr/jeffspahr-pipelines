@@ -11,14 +11,14 @@ import unittest
 
 class DiagnosticWorkflowTests(unittest.TestCase):
 
-    def test_provenance_script_does_not_interpolate_github_expressions(self):
+    def test_source_only_wrapper_cannot_load_or_run_candidate(self):
         root = Path(__file__).resolve().parents[2]
         text = (root / '.github/workflows/upgrade-test.yml').read_text()
-        step = text.split(
-            '      - name: Verify reused image provenance and runtime equivalence',
-            1)[1].split('\n      - name:', 1)[0]
-        script = step.split('        run: |\n', 1)[1]
-        self.assertNotIn('${{', script)
+        self.assertIn('readiness-adoption.sh source', text)
+        self.assertIn('readiness-schedules.sh source', text)
+        self.assertNotIn('readiness-adoption.sh target', text)
+        self.assertNotIn('uses: ./.github/actions/deploy', text)
+        self.assertNotIn('SOURCE_RUN', text)
 
 
 if __name__ == '__main__':
