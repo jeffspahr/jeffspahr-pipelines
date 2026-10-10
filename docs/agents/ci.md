@@ -87,3 +87,13 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
   by deterministic resource tests. Only sanitized phase summaries under
   `reports/` are uploaded; SQL snapshots, manifests, credentials and raw adoption
   logs remain in the disposable runner.
+
+- Manual `run_readiness_reporting=true` adds a separate disposable 2.17.2 upgrade
+  lane. It retains suspended V1 immediate and recurring runs, captures read-only
+  ownership findings, and verifies that the actual persistence worker catches up
+  after API-server Workflow GET permission is restored. The fault does not remove
+  the worker's informer access. A test-only reporting interceptor exercises the
+  deletion-after-capture race; it does not establish recovery when no terminal
+  snapshot was captured. The lane must restore injected permissions on failure,
+  upload only explicit sanitized report files, and delete its isolated cluster.
+  Raw manifests, token files and restoration inputs are not acceptance artifacts.
