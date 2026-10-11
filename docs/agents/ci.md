@@ -93,3 +93,7 @@ The Python visualization service is retired. Image builds, CI artifact inventori
 - A Kind checksum mismatch after cache restore means no tests or deployment ran; retry the job.
 - SeaweedFS `PutObject` timeouts are artifact-store instability; retry rather than weakening assertions or increasing pipeline timeouts.
 - For proxy failures, inspect the `tinyproxy` namespace pods, events, services, endpoints, and endpoint slices.
+
+## Lightweight visual capture recovery
+
+`frontend/scripts/visual-compare-run.sh` resolves capture output paths absolutely, performs one toolchain preflight, and shares a fixed clock across both revisions (`FIXED_TIME=` explicitly uses real time). CLI relative paths resolve from the caller's working directory; npm commands run from `frontend`. Capture failure does not skip the other revision or report generation: inspect each side's `capture-results.json` and the generated comparison report. Failed captures always fail the command; pixel differences fail only with `--fail-on-diff`. Preserve failure manifests and completed rows for diagnosis. Route and manifest filenames must be unique ignoring case to prevent overwrites on macOS and Windows. These explicitly invoked tools do not add a recurring screenshot gate.
