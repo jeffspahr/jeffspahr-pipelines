@@ -330,7 +330,7 @@ func verifyPipelineRun(uploadedPipeline string, pipelineName string, experimentN
 	}
 
 	expectedRun := getExpectedPipelineRun(uploadedPipeline, pipelineName, experimentName, runName)
-	allRuns, _, _, err := runClient.List(runListParams)
+	allRuns, totalSize, nextPageToken, err := runClient.List(runListParams)
 	Expect(err).To(BeNil(), "Failed to list runs")
 	runPassed := false
 	for _, run := range allRuns {
@@ -339,6 +339,22 @@ func verifyPipelineRun(uploadedPipeline string, pipelineName string, experimentN
 			Expect(run.Description).To(Equal(expectedRun.Description), "Run description is not same")
 			runPassed = true
 		}
+	}
+	if !runPassed {
+		logger.Log("Upgrade run lookup expected name=%q experiment=%q legacy_version=%q version_ref=%+v; returned=%d total=%d has_next_page=%t", expectedRun.DisplayName, expectedRun.ExperimentID, expectedRun.PipelineVersionID, expectedRun.PipelineVersionReference, len(allRuns), totalSize, nextPageToken != "")
+		logRunRows := func(scope string, runs []*run_model.V2beta1Run) {
+			for i, run := range runs {
+				if i >= 10 {
+					break
+				}
+				logger.Log("Upgrade run lookup %s row id=%q name=%q experiment=%q namespace=%q legacy_version=%q version_ref=%+v error=%+v", scope, run.RunID, run.DisplayName, run.ExperimentID, run.Namespace, run.PipelineVersionID, run.PipelineVersionReference, run.Error)
+			}
+		}
+		logRunRows("unscoped", allRuns)
+		runListParams.ExperimentID = &expectedRun.ExperimentID
+		scopedRuns, scopedTotal, scopedNext, scopedErr := runClient.List(runListParams)
+		logger.Log("Upgrade run lookup experiment-scoped returned=%d total=%d has_next_page=%t error=%v", len(scopedRuns), scopedTotal, scopedNext != "", scopedErr)
+		logRunRows("experiment-scoped", scopedRuns)
 	}
 	Expect(runPassed).To(BeTrue(), "Failed to find the pipeline run")
 }
