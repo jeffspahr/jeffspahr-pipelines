@@ -114,7 +114,7 @@
     {
       "path": ".github/workflows/ci-checks.yml",
       "name": "CI Check",
-      "header_sha256": "55518d8ecf1b26ffc5858b7442a5a7000f6b4f3ed0da9686a7cddd062d2d1f56",
+      "header_sha256": "80bc9bf21cdb3a23d2f4e2863e2b858c89b5c2c1b6bf76c5aa505cc00ad3b462",
       "pull_request": null
     },
     {
@@ -734,6 +734,21 @@
       "name": "Mark stale issues and pull requests",
       "header_sha256": "8ed5e6b29dad78ca14bebe3f08006c01c1732ce9554497332229d6a33b4b1a5f",
       "pull_request": null
+    },
+    {
+      "path": ".github/workflows/ui-smoke-full-stack.yml",
+      "name": "UI smoke full-stack qualification",
+      "header_sha256": "b2858628324a9b18a26ea9ca463b0083727c39948b1c91303186421d31836e09",
+      "pull_request": {
+        "branches": [
+          "master"
+        ],
+        "paths": [
+          "frontend/scripts/ui-smoke-test/**",
+          ".github/workflows/ui-smoke-full-stack.yml",
+          "!**/*.md"
+        ]
+      }
     },
     {
       "path": ".github/workflows/upgrade-test.yml",
