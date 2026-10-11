@@ -19,6 +19,13 @@ before retiring the old installation. Keep selected completed runs and their
 metadata unchanged while exporting: SQL, Kubernetes resources, and (on 2.18)
 MLMD do not share one transaction.
 
+On 2.18, a completed run can retain a `RUNNING` root DAG bookkeeping record in
+MLMD. Export derives that root record's archive state from the matching completed
+SQL run (succeeded, failed, or canceled), without modifying source MLMD. This
+requires an unambiguous root identity and run-context association. Actual unfinished
+tasks or nested DAGs still prevent export; skipped or ambiguous root states are
+not inferred.
+
 Archives can contain parameters, runtime manifests and storage references. Share
 and retain them as you would the original namespace data. An archive contains no
 artifact file bytes and no pod log files.
