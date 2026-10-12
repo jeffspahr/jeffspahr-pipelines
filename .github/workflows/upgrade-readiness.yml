@@ -10,6 +10,7 @@ on:
       - .github/workflows/upgrade-readiness.yml
       - .github/resources/scripts/readiness-schedules.sh
       - .github/resources/scripts/readiness-reporting.sh
+      - .github/resources/scripts/readiness-adoption.sh
   push:
     branches: [release-2.18]
     paths:
@@ -17,6 +18,7 @@ on:
       - .github/workflows/upgrade-readiness.yml
       - .github/resources/scripts/readiness-schedules.sh
       - .github/resources/scripts/readiness-reporting.sh
+      - .github/resources/scripts/readiness-adoption.sh
 
 permissions:
   contents: read
