@@ -92,7 +92,11 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
   one enabled schedule with a persisted suspended Workflow, and two disabled
   schedules. It applies candidate images through the managed rolling deployment
   while writers remain running, then compares automatic adoption receipts,
-  progress and stored definitions. The fixture restarts the upgraded API and
+  progress and stored definitions. Workflow evidence is read in pages of 100
+  with a consistent list resource version and the existing per-response size
+  limit; snapshots retain compact identity/progress fields rather than manifests.
+  Missing or inconsistent pages cannot establish successful adoption.
+  The fixture restarts the upgraded API and
   scheduled controller while the active run holds its concurrency slot, requires
   fresh ready Pod identities with no old or terminating Pods, reopens its local
   forwarding connection, and verifies preserved state and successful continuation.
