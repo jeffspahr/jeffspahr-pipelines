@@ -123,3 +123,8 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
   `pipelines.kubeflow.org/pagination-fixture=true`, including after failure or
   cancellation. Source baselines and independent complete inventories distinguish
   old defects from changed comparison order; fresh candidate omissions always fail.
+
+- Docker mirror configuration uses `/usr/bin/python3` on Ubuntu runners for its
+  privileged standard-library-only helper. Do not select a setup-python runtime
+  from `PATH` or preserve loader environment variables through `sudo`: tool-cache
+  interpreters can require `LD_LIBRARY_PATH`, which elevation removes.
