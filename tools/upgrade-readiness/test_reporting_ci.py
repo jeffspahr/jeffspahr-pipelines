@@ -189,18 +189,54 @@ printf private >"$reporting_state/evidence"
             preflight = re.search(r"<<'PY_PREFLIGHT'\n([\s\S]*?)\nPY_PREFLIGHT",
                                   SCRIPT.read_text()).group(1)
             commands = []
+
+            def authorize(command, **kwargs):
+                commands.append((command, kwargs))
+                return subprocess.CompletedProcess(
+                    command, 0, stdout='{"status":{"allowed":true}}')
+
             with mock.patch('sys.argv', ['test', tmp, 'kind-kfp-readiness']), \
-                 mock.patch('subprocess.run', side_effect=lambda command, **kwargs: commands.append((command, kwargs))):
+                 mock.patch('subprocess.run', side_effect=authorize):
                 exec(compile(preflight, '<preflight>', 'exec'), {})
             self.assertEqual(len(commands), 2)
             for index, (command, kwargs) in enumerate(commands):
-                self.assertIn(
-                    'runs.pipelines.kubeflow.org/workflow-' + str(index),
-                    command)
-                self.assertIn(
-                    '--as=system:serviceaccount:kubeflow:actual-worker',
-                    command)
-                self.assertEqual(kwargs, dict(check=True, timeout=20))
+                self.assertEqual(command, [
+                    'kubectl', '--context', 'kind-kfp-readiness',
+                    '--request-timeout=15s', 'create', '-f', '-', '-o', 'json'
+                ])
+                self.assertEqual(
+                    json.loads(kwargs.pop('input')),
+                    dict(
+                        apiVersion='authorization.k8s.io/v1',
+                        kind='SubjectAccessReview',
+                        spec=dict(
+                            user='system:serviceaccount:kubeflow:actual-worker',
+                            resourceAttributes=dict(
+                                namespace='kfp-readiness-test',
+                                group='pipelines.kubeflow.org',
+                                version='v1beta1',
+                                resource='runs',
+                                name='workflow-' + str(index),
+                                verb='get'))))
+                self.assertEqual(
+                    kwargs,
+                    dict(
+                        check=True, timeout=20, text=True, capture_output=True))
+            for response in (
+                    '{"status":{"allowed":false}}',
+                    '{"status":{"allowed":true,"denied":true}}',
+                    '{"status":{"allowed":true,"evaluationError":"private detail"}}',
+                    '{"status":{"allowed":"true"}}', '{}', 'invalid',
+                    'x' * 65537):
+                with self.subTest(response=response[:80]), \
+                     mock.patch('sys.argv', ['test', tmp, 'kind-kfp-readiness']), \
+                     mock.patch('subprocess.run', return_value=subprocess.CompletedProcess([], 0, stdout=response)), \
+                     self.assertRaisesRegex(ValueError, '^reporting_observer_authorization_'):
+                    exec(compile(preflight, '<preflight>', 'exec'), {})
+            with mock.patch('sys.argv', ['test', tmp, 'kind-kfp-readiness']), \
+                 mock.patch('subprocess.run', side_effect=subprocess.CalledProcessError(1, [], stderr='private detail')), \
+                 self.assertRaisesRegex(ValueError, '^reporting_observer_authorization_request_failed$'):
+                exec(compile(preflight, '<preflight>', 'exec'), {})
             cleanup = SCRIPT.read_text().split('reporting_cleanup() {',
                                                1)[1].split(
                                                    'trap reporting_cleanup',

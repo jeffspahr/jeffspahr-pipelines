@@ -125,12 +125,30 @@ import sys
 state = Path(sys.argv[1])
 worker = json.loads((state / 'agent-before.json').read_text())['spec']['template']['spec']['serviceAccountName']
 records = json.loads((state / 'reporting-source.json').read_text())['deletion_runs']
+# KFP resources are virtual: kubectl auth can-i discovery drops their group.
+# Match the API server's user-only SubjectAccessReview exactly.
 for record in records:
-    subprocess.run(['kubectl', '--context', sys.argv[2], '--request-timeout=15s',
-                    '-n', 'kfp-readiness-test', 'auth', 'can-i', 'get',
-                    'runs.pipelines.kubeflow.org/' + record['workflow_name'],
-                    '--as=system:serviceaccount:kubeflow:' + worker],
-                   check=True, timeout=20)
+    request = dict(apiVersion='authorization.k8s.io/v1', kind='SubjectAccessReview',
+                   spec=dict(user='system:serviceaccount:kubeflow:' + worker,
+                             resourceAttributes=dict(namespace='kfp-readiness-test',
+                                 group='pipelines.kubeflow.org', version='v1beta1',
+                                 resource='runs', name=record['workflow_name'], verb='get')))
+    try:
+        result = subprocess.run(['kubectl', '--context', sys.argv[2], '--request-timeout=15s',
+                                 'create', '-f', '-', '-o', 'json'], input=json.dumps(request),
+                                text=True, capture_output=True, check=True, timeout=20)
+    except (subprocess.SubprocessError, OSError):
+        raise ValueError('reporting_observer_authorization_request_failed') from None
+    if len(result.stdout) > 65536:
+        raise ValueError('reporting_observer_authorization_response_limit')
+    try:
+        status = json.loads(result.stdout)['status']
+        allowed = status.get('allowed') is True and not status.get('denied') and not status.get('evaluationError')
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise ValueError('reporting_observer_authorization_response_invalid') from None
+    if not allowed:
+        raise ValueError('reporting_observer_authorization_denied')
+
 PY_PREFLIGHT
 if ! kube -n kubeflow rollout status deployment/kfp-reporting-proxy --timeout=180s; then
   check proxy-diagnostics
