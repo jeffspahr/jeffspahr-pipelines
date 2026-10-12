@@ -91,7 +91,10 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
   lane. It retains suspended V1 immediate and recurring runs, captures read-only
   ownership findings, and verifies that the actual persistence worker catches up
   after API-server Workflow GET permission is restored. The fault does not remove
-  the worker's informer access. A test-only reporting interceptor exercises the
+  the worker's informer access. Its scoped observer preflight submits explicit
+  SubjectAccessReview attributes for the selected virtual KFP run resources;
+  `kubectl auth can-i` discovery fallback does not preserve their API group.
+  A test-only reporting interceptor exercises the
   deletion-after-capture race; it does not establish recovery when no terminal
   snapshot was captured. The lane must restore injected permissions on failure,
   upload only explicit sanitized report files, and delete its isolated cluster.
