@@ -130,7 +130,7 @@ func (s *JobStore) ListJobs(
 	if err := rows.Err(); err != nil {
 		return errorF(err)
 	}
-	jobs, err := s.scanRows(rows)
+	jobs, updatedAts, err := s.scanRowsWithUpdatedAt(rows)
 	if err != nil {
 		tx.Rollback()
 		return errorF(err)
@@ -162,7 +162,7 @@ func (s *JobStore) ListJobs(
 		return jobs, totalSize, "", nil
 	}
 
-	npt, err := opts.NextPageToken(jobs[opts.PageSize])
+	npt, err := opts.NextPageToken(&jobListRow{Job: jobs[opts.PageSize], updatedAt: updatedAts[opts.PageSize]})
 	return jobs[:opts.PageSize], totalSize, npt, err
 }
 
@@ -252,8 +252,27 @@ func (s *JobStore) addResourceReferences(filteredSelectBuilder sq.SelectBuilder)
 		FromSelect(filteredSelectBuilder, q("jobs"))
 }
 
-func (s *JobStore) scanRows(r *sql.Rows) ([]*model.Job, error) {
+// jobListRow preserves the nullable database timestamp used for pagination.
+type jobListRow struct {
+	*model.Job
+	updatedAt sql.NullInt64
+}
+
+func (j *jobListRow) GetFieldValue(name string) interface{} {
+	if name == "UpdatedAtInSec" {
+		return j.updatedAt
+	}
+	return j.Job.GetFieldValue(name)
+}
+
+func (s *JobStore) scanRows(rows *sql.Rows) ([]*model.Job, error) {
+	jobs, _, err := s.scanRowsWithUpdatedAt(rows)
+	return jobs, err
+}
+
+func (s *JobStore) scanRowsWithUpdatedAt(r *sql.Rows) ([]*model.Job, []sql.NullInt64, error) {
 	var jobs []*model.Job
+	var updatedAts []sql.NullInt64
 	for r.Next() {
 		var uuid, displayName, name, namespace, pipelineId, pipelineName, conditions, serviceAccount,
 			description, parameters, pipelineSpecManifest, workflowSpecManifest string
@@ -272,7 +291,7 @@ func (s *JobStore) scanRows(r *sql.Rows) ([]*model.Job, error) {
 			&conditions, &runtimeParameters, &pipelineRoot, &experimentID,
 			&pipelineVersionID, &pluginsInput, &resourceReferencesInString)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		resourceReferences, _ := parseResourceReferences(resourceReferencesInString)
 		expID := experimentID.String
@@ -335,8 +354,9 @@ func (s *JobStore) scanRows(r *sql.Rows) ([]*model.Job, error) {
 		}
 		job = job.ToV2()
 		jobs = append(jobs, job)
+		updatedAts = append(updatedAts, updatedAtInSec)
 	}
-	return jobs, nil
+	return jobs, updatedAts, nil
 }
 
 func (s *JobStore) DeleteJob(id string) error {

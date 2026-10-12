@@ -57,7 +57,7 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
 
 - Release merge-group runtime-image consumers retain exact queue SHA, branch, upstream repository, and successful producer-workflow validation. After three unsuccessful lookups or a failed download, they use the shared archive builder on the queued checkout. Queue and regular producers fingerprint the same generation inputs, including that builder; queue jobs remain read-only and do not publish images or prune caches.
 
-- The release-2.18 upgrade workflow always upgrades from 2.17.2, including merge-group runs, and fails before target deployment if source preparation fails. The independent readiness schedule lane is off by default. After candidate policy review, activate it with repository variable `KFP_218_READINESS_SCHEDULES=enabled` or the manual `run_readiness_schedules=true` dispatch input, then record live acceptance in #14421. Its preflight rejects missing prerequisites. The isolated fixture verifies source reporting permissions, correlates 2.17.2 runs with their Workflows, requires legacy schedule rejection before reviewed recreation, and checks successful enforce/audit runs plus scoped audit emission. It then verifies return to enforcement, named controller-grant revocation and restoration, and V1 jobs submitted through the retained V1 API. Each phase uses fresh identity-correlated evidence and a working default-account control; prior runs do not satisfy a later phase. The opt-in lane has a 90-minute ceiling to accommodate controller retry backoff and the additional bounded observation windows. It does not introduce master MLMD-to-native migration.
+- The release-2.18 upgrade workflow always upgrades from 2.17.2, including merge-group runs, and fails before target deployment if source preparation fails. The independent readiness schedule lane is off by default. After candidate policy review, activate it with repository variable `KFP_218_READINESS_SCHEDULES=enabled` or the manual `run_readiness_schedules=true` dispatch input, then record live acceptance in #14421. Its preflight rejects missing prerequisites. The isolated fixture verifies source reporting permissions, correlates 2.17.2 runs with their Workflows, verifies automatic adoption of the original legacy schedule IDs before policy observation, and checks successful enforce/audit runs plus scoped audit emission. It then verifies return to enforcement, named controller-grant revocation and restoration, and V1 jobs submitted through the retained V1 API. Each phase uses fresh identity-correlated evidence and a working default-account control; prior runs do not satisfy a later phase. The opt-in lane has a 90-minute ceiling to accommodate controller retry backoff and the additional bounded observation windows. It does not introduce master MLMD-to-native migration.
 - `upgrade-readiness.yml` runs standalone preview tests and conformance against the explicitly pinned proposed scheduling policy; neither substitutes for a populated candidate upgrade run. Python 3.11 and 3.13 tests use synthetic inventories, subprocesses and loopback HTTP servers, never cluster credentials. Slow-header/chunk-framing probes enforce the response deadline, and fake-clock observations cover the final collection interval.
 - CI Scripts Tests installs PyYAML 6.0.3 for Dependabot configuration validation. Argo dependency updates use `third_party/argo/Makefile` and the coordinated updater; update both runtime slots only after checking compatibility, module major version, and manifest downloads.
 
@@ -115,3 +115,18 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
   handler authorization and Kubernetes SAR, not ingress authentication, Argo
   execution, archived logs, browser navigation, or TensorFlow execution. The job
   deletes its entire disposable cluster even on failure.
+
+- The pagination upgrade fixture retains its source API through mixed-version
+  verification and evidence upload, then removes that deployment before general
+  upgrade verification. Cleanup runs after failures and cancellation, tolerates
+  an absent fixture, and waits for foreground deletion of its Pods. General
+  upgrade verification uses an explicit non-cancellation condition so pagination,
+  evidence-upload, or cleanup failure cannot silently skip it; those failures
+  still fail the job.
+
+- Pagination acceptance additionally creates suspended synthetic V1 runs to test
+  mixed-case V1/V2 run lists and nullable metric cursors. A separate always-run
+  cleanup deletes only Workflows labeled
+  `pipelines.kubeflow.org/pagination-fixture=true`, including after failure or
+  cancellation. Source baselines and independent complete inventories distinguish
+  old defects from changed comparison order; fresh candidate omissions always fail.
