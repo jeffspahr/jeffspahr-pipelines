@@ -91,7 +91,10 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
   lane. It retains suspended V1 immediate and recurring runs, captures read-only
   ownership findings, and verifies that the actual persistence worker catches up
   after API-server Workflow GET permission is restored. The fault does not remove
-  the worker's informer access. A test-only reporting interceptor exercises the
+  the worker's informer access. Its scoped observer preflight submits explicit
+  SubjectAccessReview attributes for the selected virtual KFP run resources;
+  `kubectl auth can-i` discovery fallback does not preserve their API group.
+  A test-only reporting interceptor exercises the
   deletion-after-capture race; it does not establish recovery when no terminal
   snapshot was captured. The lane must restore injected permissions on failure,
   upload only explicit sanitized report files, and delete its isolated cluster.
@@ -143,3 +146,8 @@ GitHub Actions workflows are in `.github/workflows/`; reusable composite actions
   `pipelines.kubeflow.org/pagination-fixture=true`, including after failure or
   cancellation. Source baselines and independent complete inventories distinguish
   old defects from changed comparison order; fresh candidate omissions always fail.
+
+- Docker mirror configuration uses `/usr/bin/python3` on Ubuntu runners for its
+  privileged standard-library-only helper. Do not select a setup-python runtime
+  from `PATH` or preserve loader environment variables through `sudo`: tool-cache
+  interpreters can require `LD_LIBRARY_PATH`, which elevation removes.
