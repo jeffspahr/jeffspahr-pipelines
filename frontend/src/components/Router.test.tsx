@@ -608,8 +608,7 @@ describe('Router', () => {
       { initialEntries: [RoutePage.RUNS] },
     );
     render(<RouterProvider router={router} />);
-    await userEvent.click(screen.getByRole('button', { name: /^Theme: / }));
-    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Dark' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'Dark mode' }));
     fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
     expect(screen.getByText('Modern runs content').closest('.kfp-modern-page')).not.toBeNull();
     await act(() => router.navigate('/runs/details/run-1?task=task-1'));

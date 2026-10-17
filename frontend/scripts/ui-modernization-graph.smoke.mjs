@@ -542,8 +542,7 @@ test('200-task graph preserves full paginated data, geometry and zoom/pan/select
     }
     sameGeometry(original, await geometry(page, 201));
     await page.getByRole('button', { name: 'Fit view', exact: true }).click();
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     await page.waitForFunction(() => {
       const shell = document.querySelector('.kfp-shell');
       const brand = document.querySelector('.kfp-shell-brand-title');

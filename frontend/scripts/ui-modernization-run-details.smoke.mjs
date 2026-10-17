@@ -869,8 +869,7 @@ test('Run Details View logs opens the real failed runtime task from the run summ
       .getByText('executor attempt one', { exact: true })
       .waitFor();
     assert.equal(fixture.retryCount, 0);
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     assert.equal(
       await page
         .getByRole('dialog')

@@ -437,10 +437,7 @@ async function screenshot(page, name) {
   await page.screenshot({ path: join(directory, `${name}.png`) });
 }
 async function theme(page, value) {
-  await page.getByRole('button', { name: /^Theme: / }).click();
-  await page
-    .getByRole('menuitemradio', { name: value[0].toUpperCase() + value.slice(1), exact: true })
-    .click();
+  await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(value === 'dark');
   await page.locator(`.kfp-theme[data-theme="${value}"]`).waitFor();
   // The theme attribute changes before inherited descendant colors settle.
   await page.waitForFunction((theme) => {
@@ -954,8 +951,8 @@ test('Secondary routes preserve tutorial links, feature draft save/reset/persist
     await feature.waitFor();
     assert.equal(await feature.isChecked(), true, 'saved preferences survive a full reload');
     assert.equal(
-      await page.getByRole('button', { name: /^Theme: / }).getAttribute('aria-label'),
-      'Theme: Dark',
+      await page.getByRole('switch', { name: 'Dark mode', exact: true }).isChecked(),
+      true,
     );
     await feature.focus();
     await page.keyboard.press('Space');

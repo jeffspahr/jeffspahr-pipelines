@@ -63,6 +63,7 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
           <div>
             <div
               class="kfp-runs-table-view"
+              data-density="comfortable"
             >
               <div
                 class="kfp-collection-toolbar"
@@ -106,6 +107,9 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
                     value=""
                   />
                 </div>
+                <div
+                  class="kfp-collection-view-controls"
+                />
               </div>
               <div
                 class="kfp-runs-table-card"
@@ -357,6 +361,7 @@ exports[`ExperimentsAndArchive > renders experiments page 1`] = `
         >
           <div
             class="kfp-runs-table-view"
+            data-density="comfortable"
           >
             <div
               class="kfp-collection-toolbar"
@@ -400,6 +405,9 @@ exports[`ExperimentsAndArchive > renders experiments page 1`] = `
                   value=""
                 />
               </div>
+              <div
+                class="kfp-collection-view-controls"
+              />
             </div>
             <div
               class="kfp-runs-table-card"

@@ -159,8 +159,7 @@ describe('ApplicationShell', () => {
   it('updates namespace and metadata without resetting page or shell preferences', async () => {
     const view = render(<ShellFixture />);
     await userEvent.type(screen.getByRole('textbox', { name: 'Draft name' }), 'keep this draft');
-    await userEvent.click(screen.getByRole('button', { name: /^Theme: / }));
-    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Dark' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'Dark mode' }));
     await userEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
     view.rerender(
       <ShellFixture namespace='team-two' buildInfo={{ frontendTagName: 'next-version' }} />,

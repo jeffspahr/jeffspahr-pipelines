@@ -392,8 +392,7 @@ async function screenshot(page, name) {
 }
 
 async function darkTheme(page) {
-  await page.getByRole('button', { name: /^Theme: / }).click();
-  await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+  await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
   await page.waitForFunction(() => {
     const shell = document.querySelector('.kfp-shell');
     const brand = document.querySelector('.kfp-shell-brand-title');

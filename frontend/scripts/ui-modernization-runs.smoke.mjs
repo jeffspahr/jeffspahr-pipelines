@@ -592,8 +592,7 @@ test('Runs recovers after an API error and keeps dialogs themed, keyboard access
     await dialog.waitFor({ state: 'hidden' });
     await focused(page, page.getByRole('button', { name: 'Archive', exact: true }));
     assert.deepEqual(fixture.mutations, []);
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     await screenshot(page, 'runs-dark');
     await page.getByRole('button', { name: 'Archive', exact: true }).click();
     await dialog.waitFor();
@@ -612,8 +611,8 @@ test('Runs recovers after an API error and keeps dialogs themed, keyboard access
     await page.reload();
     await ready(page);
     assert.equal(
-      await page.getByRole('button', { name: /^Theme: / }).getAttribute('aria-label'),
-      'Theme: Dark',
+      await page.getByRole('switch', { name: 'Dark mode', exact: true }).isChecked(),
+      true,
     );
     await page.setViewportSize({ width: 375, height: 812 });
     assert.equal(
@@ -696,8 +695,7 @@ test('Command palette searches the active namespace and preserves keyboard navig
     await page.keyboard.press('Escape');
     await dialog.waitFor({ state: 'hidden' });
     await focused(page, trigger);
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     await trigger.click();
     await focused(page, input);
     await input.fill('Training');
@@ -749,7 +747,7 @@ test('Runs keeps columns, pagination and sidebar controls stable across held loa
           footer: rect(document.querySelector('.kfp-runs-table-footer')),
           filter: rect(document.querySelector('input[type="search"]')),
           sidebar: rect(document.querySelector('.kfp-shell-footer')),
-          theme: rect(document.querySelector('button[aria-label^="Theme: "]')),
+          theme: rect(document.querySelector('[role="switch"][aria-label="Dark mode"]')),
           columns: [...document.querySelectorAll('table[aria-label="Runs"] th')].map(rect),
         };
       });

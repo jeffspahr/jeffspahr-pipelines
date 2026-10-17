@@ -578,8 +578,7 @@ test('Comparison ROC pagination preserves off-page selection, provenance, search
     await search.fill('');
     await page.getByRole('button', { name: 'Expand ROC chart', exact: true }).click();
     await page.getByRole('button', { name: 'Compact ROC chart', exact: true }).waitFor();
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     await screenshot(page, 'comparison-roc-dark');
   });
 });
@@ -596,8 +595,7 @@ test('Comparison selected viewers preserve provenance and fullscreen keyboard fo
     await page
       .getByRole('combobox', { name: 'Second comparison artifact', exact: true })
       .selectOption({ label: betaLabel });
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     const expand = page.getByRole('button', { name: `Expand ${alphaLabel}`, exact: true });
     await matrixContent(page.locator('.kfp-plot-card').filter({ has: expand }));
     await expand.click();

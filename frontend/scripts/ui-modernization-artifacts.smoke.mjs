@@ -520,8 +520,7 @@ test('Artifact details preserves encoded identity, bounded preview consent, prov
     await page.getByRole('button', { name: 'Retry preview', exact: true }).click();
     await page.getByText('sample,value\nrow,42', { exact: true }).waitFor();
     assert.equal(fixture.requests.filter((item) => item.path === '/artifacts/get').length, 2);
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     await screenshot(page, 'artifact-details-dark');
   });
 });
@@ -610,8 +609,7 @@ test('Artifact lineage bounds neighborhoods, preserves directed identity and his
     await page
       .getByText('Some relationships could not be loaded.', { exact: false })
       .waitFor({ state: 'hidden' });
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     await page.waitForFunction(() => {
       const canvas = document.querySelector('.kfp-lineage-canvas');
       const artifact = document.querySelector('.kfp-lineage-artifact');
@@ -732,8 +730,7 @@ test('Rich artifact viewers preserve table paging/sort, Markdown content, and is
       'inline metadata content needs no extra source fetch',
     );
     const lightText = await table.evaluate((element) => getComputedStyle(element).color);
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     await page.waitForFunction((lightColor) => {
       const table = document.querySelector('.kfp-theme.dark table[aria-label="Table output"]');
       const theme = table?.closest('.kfp-theme');
@@ -828,8 +825,7 @@ test('TensorBoard preserves PVC/image/pod-template contracts, proxy readiness, c
     await popup.getByRole('heading', { name: 'TensorBoard fixture' }).waitFor();
     assert.equal(new URL(popup.url()).pathname, '/apps/tensorboard/proxy/fixture-token/');
     await popup.close();
-    await page.getByRole('button', { name: /^Theme: / }).click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    await page.getByRole('switch', { name: 'Dark mode', exact: true }).setChecked(true);
     const stop = page.getByRole('button', { name: 'Stop Tensorboard', exact: true });
     await stop.focus();
     await stop.press('Enter');
