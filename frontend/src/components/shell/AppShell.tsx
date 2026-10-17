@@ -228,16 +228,26 @@ export function AppShell({
 
           <footer className='kfp-shell-footer'>
             <Tooltip.Provider>
-              <div className='kfp-shell-appearance'>
+              <div className='kfp-shell-footer-tools'>
                 {!collapsed ? (
                   <div className='kfp-shell-dark-mode'>
-                    <Sun size={16} strokeWidth={1.6} aria-hidden='true' />
                     <Switch
                       aria-label='Dark mode'
                       checked={resolvedTheme === 'dark'}
                       onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
                     />
-                    <Moon size={16} strokeWidth={1.6} aria-hidden='true' />
+                    <Sun
+                      className='kfp-shell-theme-sun'
+                      size={14}
+                      strokeWidth={1.6}
+                      aria-hidden='true'
+                    />
+                    <Moon
+                      className='kfp-shell-theme-moon'
+                      size={14}
+                      strokeWidth={1.6}
+                      aria-hidden='true'
+                    />
                   </div>
                 ) : (
                   <Menu.Root>
@@ -294,8 +304,6 @@ export function AppShell({
                     </Menu.Portal>
                   </Menu.Root>
                 )}
-              </div>
-              <div className='kfp-shell-footer-tools'>
                 {footerLinks.map(({ label, href, icon: Icon }) => (
                   <FooterTooltip key={label} label={label}>
                     <a
