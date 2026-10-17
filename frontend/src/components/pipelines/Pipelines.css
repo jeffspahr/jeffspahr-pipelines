@@ -69,7 +69,7 @@
 .kfp-pipeline-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
-  gap: 14px;
+  gap: 8px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -96,7 +96,7 @@
   grid-column: 1 / -1;
 }
 .kfp-pipeline-card-main {
-  padding: 16px 18px;
+  padding: 10px 12px;
 }
 .kfp-pipeline-card header {
   display: flex;
@@ -124,7 +124,7 @@
 .kfp-pipeline-description {
   color: var(--muted-foreground);
   font-size: 12px;
-  margin: 6px 0 16px;
+  margin: 6px 0 8px;
   overflow-wrap: anywhere;
 }
 .kfp-pipeline-card footer {
@@ -136,7 +136,7 @@
   font-size: 12px;
 }
 .kfp-pipeline-versions {
-  padding: 0 18px 16px;
+  padding: 0 12px 10px;
   min-width: 0;
 }
 .kfp-pipeline-error {
@@ -270,14 +270,22 @@
 }
 
 .kfp-pipeline-cards-view[data-density='compact'] .kfp-pipeline-grid {
-  gap: 8px;
+  gap: 6px;
 }
 .kfp-pipeline-cards-view[data-density='compact'] .kfp-pipeline-card-main {
-  padding: 10px 12px;
+  padding: 6px 10px;
 }
 .kfp-pipeline-cards-view[data-density='compact'] .kfp-pipeline-description {
-  margin-bottom: 8px;
+  margin: 4px 0;
 }
 .kfp-pipeline-cards-view[data-density='compact'] .kfp-pipeline-versions {
-  padding: 0 12px 10px;
+  padding: 0 10px 6px;
+}
+
+.kfp-pipeline-cards-view[data-density='compact'] .kfp-pipeline-card footer button {
+  height: 24px;
+  padding: 0 6px;
+}
+.kfp-pipeline-cards-view[data-density='compact'] .kfp-pipeline-selection {
+  margin-bottom: 8px;
 }
