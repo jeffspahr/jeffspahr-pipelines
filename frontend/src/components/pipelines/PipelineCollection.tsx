@@ -37,7 +37,7 @@ export function PipelineCollection({ table }: { table: CustomTableRenderModel })
   }
   return (
     <div className='kfp-pipeline-collection'>
-      <PipelineControls table={table} showSort={view === 'cards'}>
+      <PipelineControls table={table}>
         <div className='kfp-pipeline-view-toggle' role='group' aria-label='Pipeline view'>
           <Button
             variant={view === 'table' ? 'secondary' : 'ghost'}

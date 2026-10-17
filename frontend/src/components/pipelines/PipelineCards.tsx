@@ -147,49 +147,43 @@ export function PipelineCards({
 export function PipelineControls({
   table,
   children,
-  showSort = true,
 }: {
   table: CustomTableRenderModel;
   children?: ReactNode;
-  showSort?: boolean;
 }) {
   const id = useId();
   const SortIcon = table.sortOrder === 'asc' ? ArrowUp : ArrowDown;
   return (
     <CollectionToolbar table={table} filterLabel='Filter pipelines'>
       {children}
-      {showSort && (
-        <>
-          <label className='kfp-pipeline-sort' htmlFor={`${id}-sort`}>
-            Sort
-            <span className='kfp-pipeline-sort-select'>
-              <select
-                id={`${id}-sort`}
-                aria-label='Sort pipelines'
-                value={table.sortBy}
-                onChange={(event) => table.onSort(event.target.value)}
-              >
-                {table.columns
-                  .filter((column) => column.sortKey)
-                  .map((column) => (
-                    <option key={column.sortKey} value={column.sortKey}>
-                      {column.label}
-                    </option>
-                  ))}
-              </select>
-              <ChevronDown size={14} aria-hidden='true' />
-            </span>
-          </label>
-          <Button
-            variant='secondary'
-            size='icon'
-            aria-label={`Sort ${table.sortOrder === 'asc' ? 'descending' : 'ascending'}`}
-            onClick={() => table.onSort(table.sortBy)}
+      <label className='kfp-pipeline-sort' htmlFor={`${id}-sort`}>
+        Sort
+        <span className='kfp-pipeline-sort-select'>
+          <select
+            id={`${id}-sort`}
+            aria-label='Sort pipelines'
+            value={table.sortBy}
+            onChange={(event) => table.onSort(event.target.value)}
           >
-            <SortIcon aria-hidden='true' />
-          </Button>
-        </>
-      )}
+            {table.columns
+              .filter((column) => column.sortKey)
+              .map((column) => (
+                <option key={column.sortKey} value={column.sortKey}>
+                  {column.label}
+                </option>
+              ))}
+          </select>
+          <ChevronDown size={14} aria-hidden='true' />
+        </span>
+      </label>
+      <Button
+        variant='secondary'
+        size='icon'
+        aria-label={`Sort ${table.sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+        onClick={() => table.onSort(table.sortBy)}
+      >
+        <SortIcon aria-hidden='true' />
+      </Button>
     </CollectionToolbar>
   );
 }

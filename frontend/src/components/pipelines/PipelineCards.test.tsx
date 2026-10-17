@@ -212,3 +212,27 @@ it('keeps one shared filter and pagination strip when switching presentations', 
   expect(screen.getByText('2 on this page')).toBeVisible();
   expect(screen.getAllByLabelText('Rows per page')).toHaveLength(1);
 });
+
+it('keeps the same sort controls and sort selection across table and cards', async () => {
+  localStorage.clear();
+  const model = table();
+  const view = render(<PipelineCollection table={model} />);
+  const sort = screen.getByRole('combobox', { name: 'Sort pipelines' });
+  const toggle = screen.getByRole('group', { name: 'Pipeline view' });
+  await userEvent.selectOptions(sort, 'display_name');
+  expect(model.onSort).toHaveBeenLastCalledWith('display_name');
+  view.rerender(
+    <PipelineCollection table={{ ...model, sortBy: 'display_name', sortOrder: 'asc' }} />,
+  );
+  vi.mocked(model.onSort).mockClear();
+  await userEvent.click(screen.getByRole('button', { name: 'Cards', exact: true }));
+  expect(screen.getByRole('combobox', { name: 'Sort pipelines' })).toBe(sort);
+  expect(sort).toHaveValue('display_name');
+  expect(screen.getByRole('group', { name: 'Pipeline view' })).toBe(toggle);
+  expect(model.onSort).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Sort descending' }));
+  expect(model.onSort).toHaveBeenLastCalledWith('display_name');
+  await userEvent.click(screen.getByRole('button', { name: 'Table', exact: true }));
+  expect(screen.getByRole('combobox', { name: 'Sort pipelines' })).toBe(sort);
+  expect(sort).toHaveValue('display_name');
+});
