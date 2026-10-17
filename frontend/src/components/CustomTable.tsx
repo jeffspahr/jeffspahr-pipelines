@@ -56,7 +56,7 @@ export interface CustomTableRenderModel {
   onFilterChange: (value: string) => void;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
-  onSort: (key: string) => void;
+  onSort: (key: string, order?: 'asc' | 'desc') => void;
   onSelect: (id: string) => void;
   onSelectAll: (checked: boolean) => void;
   isBusy: boolean;
@@ -215,7 +215,7 @@ export default class CustomTable extends React.Component<CustomTableProps, Custo
           onFilterChange: this.changeFilter,
           sortBy,
           sortOrder,
-          onSort: (key) => this._requestSort(key),
+          onSort: (key, order) => this._requestSort(key, order),
           onSelect: (id) => this.selectRow(id),
           onSelectAll: (checked) => this.selectAll(checked),
           isBusy: this.state.isBusy,
@@ -329,12 +329,12 @@ export default class CustomTable extends React.Component<CustomTableProps, Custo
     }
   }
 
-  private _requestSort(sortBy?: string): void {
+  private _requestSort(sortBy?: string, requestedOrder?: 'asc' | 'desc'): void {
     if (sortBy) {
-      // Set the sort column to the provided column if it's different, and
-      // invert the sort order it if it's the same column
+      // Menus supply an explicit direction; column headers toggle the current field.
       const sortOrder =
-        this.state.sortBy === sortBy ? (this.state.sortOrder === 'asc' ? 'desc' : 'asc') : 'asc';
+        requestedOrder ??
+        (this.state.sortBy === sortBy ? (this.state.sortOrder === 'asc' ? 'desc' : 'asc') : 'asc');
       this.setStateSafe({ sortOrder, sortBy }, async () => {
         await this._reload({ pageToken: '', orderAscending: sortOrder === 'asc', sortBy }, 'reset');
       });

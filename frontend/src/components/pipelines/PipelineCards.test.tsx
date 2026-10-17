@@ -14,13 +14,26 @@
  * limitations under the License.
  */
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ExpandState } from '../CustomTable';
 import type { CustomTableRenderModel } from '../CustomTable';
 import { PipelineCards } from './PipelineCards';
 import { PipelineCollection } from './PipelineCollection';
+import { ThemeProvider } from '../shell/ThemeProvider';
+import type { ReactElement } from 'react';
 import { LocalStorageKey } from '../../lib/LocalStorage';
+
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: ThemeProvider });
+
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+});
+afterEach(() => vi.unstubAllGlobals());
 
 function table(overrides: Partial<CustomTableRenderModel> = {}): CustomTableRenderModel {
   return {
@@ -108,13 +121,16 @@ it('connects filtering, sorting and paging to the existing controller', async ()
     target: { value: 'First' },
   });
   expect(model.onFilterChange).toHaveBeenCalledWith('First');
-  await userEvent.selectOptions(
-    screen.getByRole('combobox', { name: 'Sort pipelines' }),
-    'display_name',
+  screen.getByRole('button', { name: 'Sort pipelines' }).focus();
+  await userEvent.keyboard('{Enter}');
+  await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Name: A–Z' }));
+  expect(model.onSort).toHaveBeenLastCalledWith('display_name', 'asc');
+  screen.getByRole('button', { name: 'Sort pipelines' }).focus();
+  await userEvent.keyboard('{Enter}');
+  await userEvent.click(
+    await screen.findByRole('menuitemradio', { name: 'Uploaded: oldest first' }),
   );
-  expect(model.onSort).toHaveBeenLastCalledWith('display_name');
-  await userEvent.click(screen.getByRole('button', { name: 'Sort ascending' }));
-  expect(model.onSort).toHaveBeenLastCalledWith('created_at');
+  expect(model.onSort).toHaveBeenLastCalledWith('created_at', 'asc');
   await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Rows per page' }), '20');
   expect(model.onPageSizeChange).toHaveBeenCalledWith(20);
   await userEvent.click(screen.getByRole('button', { name: 'Next page' }));
@@ -213,26 +229,24 @@ it('keeps one shared filter and pagination strip when switching presentations', 
   expect(screen.getAllByLabelText('Rows per page')).toHaveLength(1);
 });
 
-it('keeps the same sort controls and sort selection across table and cards', async () => {
+it('keeps the sort trigger and checked choice across table and cards', async () => {
   localStorage.clear();
-  const model = table();
-  const view = render(<PipelineCollection table={model} />);
-  const sort = screen.getByRole('combobox', { name: 'Sort pipelines' });
+  const model = table({ sortBy: 'display_name', sortOrder: 'desc' });
+  render(<PipelineCollection table={model} />);
+  const sort = screen.getByRole('button', { name: 'Sort pipelines' });
   const toggle = screen.getByRole('group', { name: 'Pipeline view' });
-  await userEvent.selectOptions(sort, 'display_name');
-  expect(model.onSort).toHaveBeenLastCalledWith('display_name');
-  view.rerender(
-    <PipelineCollection table={{ ...model, sortBy: 'display_name', sortOrder: 'asc' }} />,
-  );
-  vi.mocked(model.onSort).mockClear();
-  await userEvent.click(screen.getByRole('button', { name: 'Cards', exact: true }));
-  expect(screen.getByRole('combobox', { name: 'Sort pipelines' })).toBe(sort);
-  expect(sort).toHaveValue('display_name');
-  expect(screen.getByRole('group', { name: 'Pipeline view' })).toBe(toggle);
+  for (const name of ['Cards', 'Table']) {
+    await userEvent.click(screen.getByRole('button', { name, exact: true }));
+    expect(screen.getByRole('button', { name: 'Sort pipelines' })).toBe(sort);
+    expect(screen.getByRole('group', { name: 'Pipeline view' })).toBe(toggle);
+    sort.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(await screen.findByRole('menuitemradio', { name: 'Name: Z–A' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await userEvent.keyboard('{Escape}');
+    expect(sort).toHaveFocus();
+  }
   expect(model.onSort).not.toHaveBeenCalled();
-  await userEvent.click(screen.getByRole('button', { name: 'Sort descending' }));
-  expect(model.onSort).toHaveBeenLastCalledWith('display_name');
-  await userEvent.click(screen.getByRole('button', { name: 'Table', exact: true }));
-  expect(screen.getByRole('combobox', { name: 'Sort pipelines' })).toBe(sort);
-  expect(sort).toHaveValue('display_name');
 });

@@ -16,7 +16,9 @@
 
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowDownUp, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { Menu } from '@base-ui/react/menu';
+import { useTheme } from '../shell/ThemeProvider';
 import { ExpandState } from '../CustomTable';
 import type { CustomTableRenderModel, Row } from '../CustomTable';
 import { Button } from '../ui/button';
@@ -151,39 +153,50 @@ export function PipelineControls({
   table: CustomTableRenderModel;
   children?: ReactNode;
 }) {
-  const id = useId();
-  const SortIcon = table.sortOrder === 'asc' ? ArrowUp : ArrowDown;
+  const { themeClassName } = useTheme();
+  const options = [
+    { key: 'display_name', order: 'asc', label: 'Name: A–Z' },
+    { key: 'display_name', order: 'desc', label: 'Name: Z–A' },
+    { key: 'created_at', order: 'desc', label: 'Uploaded: newest first' },
+    { key: 'created_at', order: 'asc', label: 'Uploaded: oldest first' },
+  ] as const;
   return (
     <CollectionToolbar table={table} filterLabel='Filter pipelines'>
       {children}
-      <label className='kfp-pipeline-sort' htmlFor={`${id}-sort`}>
-        Sort
-        <span className='kfp-pipeline-sort-select'>
-          <select
-            id={`${id}-sort`}
-            aria-label='Sort pipelines'
-            value={table.sortBy}
-            onChange={(event) => table.onSort(event.target.value)}
-          >
-            {table.columns
-              .filter((column) => column.sortKey)
-              .map((column) => (
-                <option key={column.sortKey} value={column.sortKey}>
-                  {column.label}
-                </option>
-              ))}
-          </select>
-          <ChevronDown size={14} aria-hidden='true' />
-        </span>
-      </label>
-      <Button
-        variant='secondary'
-        size='icon'
-        aria-label={`Sort ${table.sortOrder === 'asc' ? 'descending' : 'ascending'}`}
-        onClick={() => table.onSort(table.sortBy)}
-      >
-        <SortIcon aria-hidden='true' />
-      </Button>
+      <Menu.Root>
+        <Menu.Trigger render={<Button variant='secondary' size='sm' aria-label='Sort pipelines' />}>
+          <ArrowDownUp size={16} aria-hidden='true' /> Sort
+        </Menu.Trigger>
+        <Menu.Portal className={themeClassName}>
+          <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>
+            <Menu.Popup className='kfp-density-menu' aria-label='Sort pipelines'>
+              <Menu.RadioGroup
+                value={`${table.sortBy}:${table.sortOrder}`}
+                onValueChange={(value) => {
+                  const option = options.find(
+                    (option) => `${option.key}:${option.order}` === value,
+                  );
+                  if (option) table.onSort(option.key, option.order);
+                }}
+              >
+                {options.map(({ key, order, label }) => (
+                  <Menu.RadioItem
+                    key={`${key}:${order}`}
+                    value={`${key}:${order}`}
+                    className='kfp-density-option'
+                    closeOnClick
+                  >
+                    {label}
+                    <Menu.RadioItemIndicator>
+                      <Check size={16} aria-hidden='true' />
+                    </Menu.RadioItemIndicator>
+                  </Menu.RadioItem>
+                ))}
+              </Menu.RadioGroup>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
     </CollectionToolbar>
   );
 }

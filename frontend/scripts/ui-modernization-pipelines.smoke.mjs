@@ -474,10 +474,10 @@ test('pipeline cards retain filtering, sorting, paging, selection and lazy versi
       page.waitForResponse(
         (response) => new URL(response.url()).searchParams.get('sort_by') === 'display_name',
       ),
-      page.getByRole('combobox', { name: 'Sort pipelines' }).selectOption('display_name'),
+      chooseSort(page, 'Name: A–Z'),
     ]);
     assert.equal(fixture.lists.at(-1).sort_by, 'display_name');
-    await page.getByRole('button', { name: 'Sort descending', exact: true }).click();
+    await chooseSort(page, 'Name: Z–A');
     await page.getByRole('link', { name: 'Pipeline 15', exact: true }).waitFor();
     assert.equal(fixture.lists.at(-1).sort_by, 'display_name desc');
     await card(page, 'Pipeline 15')
@@ -488,9 +488,9 @@ test('pipeline cards retain filtering, sorting, paging, selection and lazy versi
       page.waitForResponse(
         (response) => new URL(response.url()).searchParams.get('sort_by') === 'created_at',
       ),
-      page.getByRole('combobox', { name: 'Sort pipelines' }).selectOption('created_at'),
+      chooseSort(page, 'Uploaded: oldest first'),
     ]);
-    await page.getByRole('button', { name: 'Sort descending', exact: true }).click();
+    await chooseSort(page, 'Uploaded: newest first');
     await page.getByRole('button', { name: 'Expand pipeline Pipeline 01' }).click();
     const versionsTable = card(page, 'Pipeline 01').getByRole('table', {
       name: 'Pipeline versions',
@@ -716,3 +716,8 @@ test('local file upload creates a private pipeline using its namespace and packa
     assert.equal(fixture.mutations[0].data.name, 'browser-upload');
   });
 });
+
+async function chooseSort(page, label) {
+  await page.getByRole('button', { name: 'Sort pipelines', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: label, exact: true }).click();
+}

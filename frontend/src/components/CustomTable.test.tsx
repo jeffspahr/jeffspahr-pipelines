@@ -389,6 +389,30 @@ describe('CustomTable', () => {
     );
   });
 
+  it('accepts explicit sort direction without toggling the current field', async () => {
+    const reload = vi.fn(async () => '');
+    renderTable({
+      columns: [{ label: 'Name', sortKey: 'name' }],
+      reload,
+      renderTable: (table) => <button onClick={() => table.onSort('name', 'desc')}>Newest</button>,
+    });
+    await waitFor(() => expect(reload).toHaveBeenCalled());
+    reload.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Newest' }));
+    await waitFor(() =>
+      expect(reload).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sortBy: 'name desc', orderAscending: false, pageToken: '' }),
+      ),
+    );
+    reload.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Newest' }));
+    await waitFor(() =>
+      expect(reload).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sortBy: 'name desc', orderAscending: false }),
+      ),
+    );
+  });
+
   it('calls reload function with same sort key in reverse order if same column is clicked twice', async () => {
     const testColumns = [
       {
