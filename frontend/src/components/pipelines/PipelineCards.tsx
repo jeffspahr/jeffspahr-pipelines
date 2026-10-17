@@ -16,7 +16,7 @@
 
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowDownUp, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { MoreVertical, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { Menu } from '@base-ui/react/menu';
 import { useTheme } from '../shell/ThemeProvider';
 import { ExpandState } from '../CustomTable';
@@ -149,9 +149,15 @@ export function PipelineCards({
 export function PipelineControls({
   table,
   children,
+  cards = true,
+  actions,
+  filters,
 }: {
   table: CustomTableRenderModel;
   children?: ReactNode;
+  cards?: boolean;
+  actions?: ReactNode;
+  filters?: ReactNode;
 }) {
   const { themeClassName } = useTheme();
   const options = [
@@ -161,42 +167,56 @@ export function PipelineControls({
     { key: 'created_at', order: 'asc', label: 'Uploaded: oldest first' },
   ] as const;
   return (
-    <CollectionToolbar table={table} filterLabel='Filter pipelines'>
+    <CollectionToolbar
+      table={{
+        ...table,
+        filterActions: (
+          <Menu.Root>
+            <Menu.Trigger render={<Button variant='ghost' size='icon' aria-label='More actions' />}>
+              <MoreVertical size={16} aria-hidden='true' />
+            </Menu.Trigger>
+            <Menu.Portal className={themeClassName}>
+              <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>
+                <Menu.Popup className='kfp-density-menu' aria-label='More actions'>
+                  {cards && (
+                    <>
+                      <div className='kfp-density-heading'>Sort by</div>
+                      <Menu.RadioGroup
+                        value={`${table.sortBy}:${table.sortOrder}`}
+                        onValueChange={(value) => {
+                          const option = options.find(
+                            (option) => `${option.key}:${option.order}` === value,
+                          );
+                          if (option) table.onSort(option.key, option.order);
+                        }}
+                      >
+                        {options.map(({ key, order, label }) => (
+                          <Menu.RadioItem
+                            key={`${key}:${order}`}
+                            value={`${key}:${order}`}
+                            className='kfp-density-option'
+                            closeOnClick
+                          >
+                            {label}
+                            <Menu.RadioItemIndicator>
+                              <Check size={16} aria-hidden='true' />
+                            </Menu.RadioItemIndicator>
+                          </Menu.RadioItem>
+                        ))}
+                      </Menu.RadioGroup>
+                      {filters}
+                    </>
+                  )}
+                  {actions}
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        ),
+      }}
+      filterLabel='Search pipelines'
+    >
       {children}
-      <Menu.Root>
-        <Menu.Trigger render={<Button variant='secondary' size='sm' aria-label='Sort pipelines' />}>
-          <ArrowDownUp size={16} aria-hidden='true' /> Sort
-        </Menu.Trigger>
-        <Menu.Portal className={themeClassName}>
-          <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>
-            <Menu.Popup className='kfp-density-menu' aria-label='Sort pipelines'>
-              <Menu.RadioGroup
-                value={`${table.sortBy}:${table.sortOrder}`}
-                onValueChange={(value) => {
-                  const option = options.find(
-                    (option) => `${option.key}:${option.order}` === value,
-                  );
-                  if (option) table.onSort(option.key, option.order);
-                }}
-              >
-                {options.map(({ key, order, label }) => (
-                  <Menu.RadioItem
-                    key={`${key}:${order}`}
-                    value={`${key}:${order}`}
-                    className='kfp-density-option'
-                    closeOnClick
-                  >
-                    {label}
-                    <Menu.RadioItemIndicator>
-                      <Check size={16} aria-hidden='true' />
-                    </Menu.RadioItemIndicator>
-                  </Menu.RadioItem>
-                ))}
-              </Menu.RadioGroup>
-            </Menu.Popup>
-          </Menu.Positioner>
-        </Menu.Portal>
-      </Menu.Root>
     </CollectionToolbar>
   );
 }

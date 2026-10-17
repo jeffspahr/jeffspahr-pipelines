@@ -353,6 +353,13 @@ function filterV2Resources<T extends V2FilterableResource>(
     const key = predicate.key || '';
     const stringValue = predicate.string_value || '';
     switch (predicate.operation) {
+      case V2beta1PredicateOperation.GREATER_THAN_EQUALS:
+        if (!predicate.timestamp_value) throw new Error('Timestamp is required for date filtering');
+        return filteredResources.filter(
+          (resource) =>
+            new Date(String(getV2ResourceValue(resource, key))).getTime() >=
+            new Date(predicate.timestamp_value!).getTime(),
+        );
       case V2beta1PredicateOperation.EQUALS:
         return filteredResources.filter(
           (resource) => String(getV2ResourceValue(resource, key) || '') === stringValue,

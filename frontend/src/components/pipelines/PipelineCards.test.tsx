@@ -54,7 +54,7 @@ function table(overrides: Partial<CustomTableRenderModel> = {}): CustomTableRend
     })),
     selectedIds: [],
     filter: '',
-    filterLabel: 'Filter pipelines',
+    filterLabel: 'Search pipelines',
     sortBy: 'created_at',
     sortOrder: 'desc',
     pageSize: 10,
@@ -117,15 +117,15 @@ it('supports keyboard selection and communicates partial page selection', async 
 it('connects filtering, sorting and paging to the existing controller', async () => {
   const model = table();
   render(<PipelineCards table={model} />);
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Filter pipelines' }), {
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search pipelines' }), {
     target: { value: 'First' },
   });
   expect(model.onFilterChange).toHaveBeenCalledWith('First');
-  screen.getByRole('button', { name: 'Sort pipelines' }).focus();
+  screen.getByRole('button', { name: 'More actions' }).focus();
   await userEvent.keyboard('{Enter}');
   await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Name: A–Z' }));
   expect(model.onSort).toHaveBeenLastCalledWith('display_name', 'asc');
-  screen.getByRole('button', { name: 'Sort pipelines' }).focus();
+  screen.getByRole('button', { name: 'More actions' }).focus();
   await userEvent.keyboard('{Enter}');
   await userEvent.click(
     await screen.findByRole('menuitemradio', { name: 'Uploaded: oldest first' }),
@@ -217,36 +217,42 @@ describe('pipeline view choice', () => {
 
 it('keeps one shared filter and pagination strip when switching presentations', async () => {
   window.localStorage.clear();
-  const model = table({ filterActions: <button>More pipeline actions</button> });
+  const model = table();
   render(<PipelineCollection table={model} />);
   expect(screen.getAllByRole('searchbox')).toHaveLength(1);
-  expect(screen.getAllByRole('button', { name: 'More pipeline actions' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: 'More actions' })).toHaveLength(1);
   expect(screen.getByText('2 on this page')).toBeVisible();
   await userEvent.click(screen.getByRole('button', { name: 'Cards', exact: true }));
   expect(screen.getAllByRole('searchbox')).toHaveLength(1);
-  expect(screen.getAllByRole('button', { name: 'More pipeline actions' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: 'More actions' })).toHaveLength(1);
   expect(screen.getByText('2 on this page')).toBeVisible();
   expect(screen.getAllByLabelText('Rows per page')).toHaveLength(1);
 });
 
-it('keeps the sort trigger and checked choice across table and cards', async () => {
+it('sorts through headers in table view and overflow in cards without remounting the toggle', async () => {
   localStorage.clear();
   const model = table({ sortBy: 'display_name', sortOrder: 'desc' });
   render(<PipelineCollection table={model} />);
-  const sort = screen.getByRole('button', { name: 'Sort pipelines' });
+  expect(screen.queryByRole('button', { name: 'Sort pipelines' })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Pipeline name' }));
+  expect(model.onSort).toHaveBeenCalledWith('display_name');
+  const menu = screen.getByRole('button', { name: 'More actions' });
   const toggle = screen.getByRole('group', { name: 'Pipeline view' });
   for (const name of ['Cards', 'Table']) {
     await userEvent.click(screen.getByRole('button', { name, exact: true }));
-    expect(screen.getByRole('button', { name: 'Sort pipelines' })).toBe(sort);
+    expect(screen.getByRole('button', { name: 'More actions' })).toBe(menu);
     expect(screen.getByRole('group', { name: 'Pipeline view' })).toBe(toggle);
-    sort.focus();
+    menu.focus();
     await userEvent.keyboard('{Enter}');
-    expect(await screen.findByRole('menuitemradio', { name: 'Name: Z–A' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    if (name === 'Cards') {
+      expect(await screen.findByRole('menuitemradio', { name: 'Name: Z–A' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+    } else {
+      expect(screen.queryByRole('menuitemradio', { name: 'Name: Z–A' })).not.toBeInTheDocument();
+    }
     await userEvent.keyboard('{Escape}');
-    expect(sort).toHaveFocus();
+    expect(menu).toHaveFocus();
   }
-  expect(model.onSort).not.toHaveBeenCalled();
 });

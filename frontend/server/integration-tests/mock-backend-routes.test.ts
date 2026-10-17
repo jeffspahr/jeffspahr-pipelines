@@ -74,6 +74,34 @@ describe('mock backend routes', () => {
       });
     });
 
+    it('combines uploaded timestamps and name filters before pagination', async () => {
+      const all = await request.get('/apis/v2beta1/pipelines?page_size=100').expect(200);
+      const pipeline = all.body.pipelines.find(
+        (item: { display_name: string }) => item.display_name === 'XGBoost',
+      );
+      const predicates = [
+        { key: 'name', operation: 'IS_SUBSTRING', string_value: 'XGBoost' },
+        {
+          key: 'created_at',
+          operation: 'GREATER_THAN_EQUALS',
+          timestamp_value: pipeline.created_at,
+        },
+      ];
+      const inclusive = await request
+        .get(
+          `/apis/v2beta1/pipelines${buildQuery({ filter: JSON.stringify({ predicates }), page_size: '1' })}`,
+        )
+        .expect(200);
+      expect(inclusive.body.pipelines).toHaveLength(1);
+      predicates[1].timestamp_value = new Date(
+        new Date(pipeline.created_at).getTime() + 1000,
+      ).toISOString();
+      const excluded = await request
+        .get(`/apis/v2beta1/pipelines${buildQuery({ filter: JSON.stringify({ predicates }) })}`)
+        .expect(200);
+      expect(excluded.body.pipelines || []).toHaveLength(0);
+    });
+
     it('filters v2 pipelines by name', async () => {
       const filter = JSON.stringify({
         predicates: [{ key: 'name', operation: 'IS_SUBSTRING', string_value: 'XGBoost' }],

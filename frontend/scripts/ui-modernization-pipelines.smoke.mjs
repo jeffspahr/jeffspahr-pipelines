@@ -464,7 +464,7 @@ test('pipeline cards retain filtering, sorting, paging, selection and lazy versi
     );
     await page.getByRole('button', { name: 'Next page', exact: true }).click();
     await page.getByRole('link', { name: 'Pipeline 11', exact: true }).waitFor();
-    await page.getByRole('searchbox', { name: 'Filter pipelines' }).fill('Pipeline 01');
+    await page.getByRole('searchbox', { name: 'Search pipelines' }).fill('Pipeline 01');
     await page.getByRole('link', { name: 'Pipeline 01', exact: true }).waitFor();
     assert.equal(fixture.lists.at(-1).page_token || '', '');
     await waitForCards(page, 1);
@@ -718,6 +718,6 @@ test('local file upload creates a private pipeline using its namespace and packa
 });
 
 async function chooseSort(page, label) {
-  await page.getByRole('button', { name: 'Sort pipelines', exact: true }).click();
+  await page.getByRole('button', { name: 'More actions', exact: true }).click();
   await page.getByRole('menuitemradio', { name: label, exact: true }).click();
 }

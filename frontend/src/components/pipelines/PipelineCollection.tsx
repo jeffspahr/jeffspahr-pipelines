@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { LocalStorage } from '../../lib/LocalStorage';
 import type { CustomTableRenderModel, Row } from '../CustomTable';
@@ -29,7 +29,19 @@ function pipelineName(row: Row): string {
 
 // CustomTable remains the owner of filtering, sorting, paging, expansion, and selection.
 // Changing the presentation never remounts that controller or reloads its data.
-export function PipelineCollection({ table }: { table: CustomTableRenderModel }) {
+export function PipelineCollection({
+  table,
+  actions,
+  filters,
+  dateFilter,
+  activeFilters,
+}: {
+  table: CustomTableRenderModel;
+  actions?: ReactNode;
+  filters?: ReactNode;
+  dateFilter?: ReactNode;
+  activeFilters?: ReactNode;
+}) {
   const [view, setView] = useState(LocalStorage.getPipelineView);
   function changeView(next: 'table' | 'cards') {
     setView(next);
@@ -37,7 +49,7 @@ export function PipelineCollection({ table }: { table: CustomTableRenderModel })
   }
   return (
     <div className='kfp-pipeline-collection'>
-      <PipelineControls table={table}>
+      <PipelineControls table={table} cards={view === 'cards'} actions={actions} filters={filters}>
         <div className='kfp-pipeline-view-toggle' role='group' aria-label='Pipeline view'>
           <Button
             variant={view === 'table' ? 'secondary' : 'ghost'}
@@ -57,11 +69,13 @@ export function PipelineCollection({ table }: { table: CustomTableRenderModel })
           </Button>
         </div>
       </PipelineControls>
+      {activeFilters}
       {view === 'cards' ? (
         <PipelineCards table={table} hideControls />
       ) : (
         <ResourceTable
           table={{ ...table, noFilterBox: true, filterActions: undefined }}
+          headerActions={{ created_at: dateFilter }}
           label='Pipelines'
           singular='pipeline'
           plural='pipelines'

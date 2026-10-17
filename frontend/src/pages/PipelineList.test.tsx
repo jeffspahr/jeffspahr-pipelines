@@ -229,6 +229,36 @@ describe('PipelineList', () => {
     vi.resetAllMocks();
   });
 
+  it('applies uploaded dates server-side and preserves the filter across views', async () => {
+    await renderPipelineList();
+    await userEvent.click(screen.getByRole('button', { name: 'Filter uploaded date' }));
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Last 30 days' }));
+    await waitFor(() => {
+      const call = listPipelinesSpy.mock.calls.at(-1)!;
+      const predicates = JSON.parse(decodeURIComponent(call[4] as string)).predicates;
+      expect(predicates).toEqual([
+        {
+          key: 'created_at',
+          operation: 'GREATER_THAN_EQUALS',
+          timestamp_value: expect.any(String),
+        },
+      ]);
+      expect(call[1]).toBe('');
+    });
+    const filter = listPipelinesSpy.mock.calls.at(-1)![4];
+    await userEvent.click(screen.getByRole('button', { name: 'Cards', exact: true }));
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(await screen.findByRole('menuitemradio', { name: 'Last 30 days' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await userEvent.keyboard('{Escape}');
+    expect(listPipelinesSpy.mock.calls.at(-1)![4]).toBe(filter);
+    await userEvent.click(screen.getByRole('button', { name: 'Clear uploaded date filter' }));
+    await waitFor(() => expect(listPipelinesSpy.mock.calls.at(-1)![4]).toBe(''));
+    await userEvent.click(screen.getByRole('button', { name: 'Table', exact: true }));
+  });
+
   it('opens namespace transfer from the accessible More actions menu', async () => {
     await renderPipelineList();
     const trigger = screen.getByRole('button', { name: 'More actions' });

@@ -15,7 +15,7 @@
  */
 
 import { Fragment, useId } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, TriangleAlert } from 'lucide-react';
 import { ExpandState } from '../CustomTable';
 import type { CustomTableRenderModel, Row } from '../CustomTable';
@@ -28,6 +28,7 @@ import './RunsTable.css';
 
 interface ResourceTableProps {
   table: CustomTableRenderModel;
+  headerActions?: Record<string, ReactNode>;
   onOpenRow?: (id: string) => void;
   label?: string;
   singular?: string;
@@ -47,6 +48,7 @@ function defaultRowLabel(row: Row): string {
 
 export function ResourceTable({
   table,
+  headerActions,
   onOpenRow,
   label = 'Resources',
   singular = 'resource',
@@ -147,6 +149,7 @@ export function ResourceTable({
                       ) : (
                         column.label
                       )}
+                      {column.sortKey && headerActions?.[column.sortKey]}
                     </th>
                   );
                 })}

@@ -34,21 +34,21 @@ import { Page } from './Page';
 import PipelineVersionList from './PipelineVersionList';
 import { PipelineCollection } from 'src/components/pipelines/PipelineCollection';
 import { Menu } from '@base-ui/react/menu';
-import { MoreVertical } from 'lucide-react';
 import { Button } from 'src/components/ui/button';
-import { useTheme } from 'src/components/shell/ThemeProvider';
-
-function PipelineActionsPortal({ children }: { children: React.ReactNode }) {
-  const { themeClassName } = useTheme();
-  return <Menu.Portal className={themeClassName}>{children}</Menu.Portal>;
-}
+import {
+  UploadedDateFilter,
+  UploadedDateOptions,
+  uploadedDatePredicates,
+  type UploadedPeriod,
+} from 'src/components/pipelines/UploadedDateFilter';
 
 interface DisplayPipeline extends V2beta1Pipeline {
   expandState?: ExpandState;
 }
 
 interface PipelineListState {
-  moreActionsOpen: boolean;
+  uploadedPeriod: UploadedPeriod;
+  uploadedSince?: Date;
   displayPipelines: DisplayPipeline[];
   selectedIds: string[];
   loadError: boolean;
@@ -73,7 +73,7 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
     super(props);
 
     this.state = {
-      moreActionsOpen: false,
+      uploadedPeriod: 'all',
       displayPipelines: [],
       loadError: false,
       selectedIds: [],
@@ -128,7 +128,46 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
       <div className='kfp-pipelines-page'>
         <CustomTable
           ref={this._tableRef}
-          renderTable={(table) => <PipelineCollection table={table} />}
+          filterPredicates={uploadedDatePredicates(this.state.uploadedSince)}
+          renderTable={(table) => (
+            <PipelineCollection
+              table={table}
+              actions={
+                <Menu.Item
+                  render={<Link to={RoutePage.METADATA_TRANSFER} />}
+                  className='kfp-density-option'
+                >
+                  Import / export namespace data…
+                </Menu.Item>
+              }
+              filters={
+                <UploadedDateOptions
+                  value={this.state.uploadedPeriod}
+                  onChange={this._setUploadedPeriod}
+                />
+              }
+              dateFilter={
+                <UploadedDateFilter
+                  value={this.state.uploadedPeriod}
+                  onChange={this._setUploadedPeriod}
+                />
+              }
+              activeFilters={
+                this.state.uploadedPeriod !== 'all' && (
+                  <div className='kfp-pipeline-active-filters'>
+                    <Button
+                      variant='secondary'
+                      size='sm'
+                      aria-label='Clear uploaded date filter'
+                      onClick={() => this._setUploadedPeriod('all')}
+                    >
+                      Uploaded: last {this.state.uploadedPeriod} days ×
+                    </Button>
+                  </div>
+                )
+              }
+            />
+          )}
           errorMessage={this.state.loadError ? 'Unable to load pipelines. Try Refresh.' : undefined}
           columns={columns}
           rows={rows}
@@ -138,36 +177,26 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
           reload={this._reload.bind(this)}
           toggleExpansion={this._toggleRowExpand.bind(this)}
           getExpandComponent={this._getExpandedPipelineComponent.bind(this)}
-          filterLabel='Filter pipelines'
-          filterActions={
-            <Menu.Root
-              open={this.state.moreActionsOpen}
-              onOpenChange={(open) => this.setState({ moreActionsOpen: open })}
-            >
-              <Menu.Trigger
-                render={<Button variant='ghost' size='icon' aria-label='More actions' />}
-              >
-                <MoreVertical aria-hidden='true' />
-              </Menu.Trigger>
-              <PipelineActionsPortal>
-                <Menu.Positioner sideOffset={4} className='kfp-shell-utility-positioner'>
-                  <Menu.Popup className='kfp-shell-theme-menu' aria-label='More actions'>
-                    <Menu.Item
-                      render={<Link to={RoutePage.METADATA_TRANSFER} />}
-                      className='kfp-shell-theme-option'
-                    >
-                      Import / export namespace data…
-                    </Menu.Item>
-                  </Menu.Popup>
-                </Menu.Positioner>
-              </PipelineActionsPortal>
-            </Menu.Root>
+          filterLabel='Search pipelines'
+          emptyMessage={
+            this.state.uploadedPeriod === 'all'
+              ? 'No pipelines found. Click "Upload pipeline" to start.'
+              : 'No pipelines match the uploaded date. Clear the date filter to see older pipelines.'
           }
-          emptyMessage='No pipelines found. Click "Upload pipeline" to start.'
         />
       </div>
     );
   }
+
+  private _setUploadedPeriod = (uploadedPeriod: UploadedPeriod): void => {
+    this.setState({
+      uploadedPeriod,
+      uploadedSince:
+        uploadedPeriod === 'all'
+          ? undefined
+          : new Date(Date.now() - Number(uploadedPeriod) * 86400000),
+    });
+  };
 
   public async refresh(): Promise<void> {
     if (this._tableRef.current) {

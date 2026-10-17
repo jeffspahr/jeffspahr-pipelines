@@ -249,3 +249,10 @@
 .kfp-pipeline-cards-view[data-density='compact'] .kfp-pipeline-selection {
   margin-bottom: 8px;
 }
+
+.kfp-theme .kfp-pipeline-active-filters {
+  margin: 0 0 8px;
+}
+.kfp-theme .kfp-runs-table th button[data-active='true'] {
+  color: var(--primary);
+}
