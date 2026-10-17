@@ -30,6 +30,8 @@ import { formatDateString, logger, errorToMessage, getRunDurationV2 } from 'src/
 import { RunsTable } from 'src/components/tables/RunsTable';
 import { RunStatus } from 'src/components/runs/RunStatus';
 
+import { DateListFilter, ColumnFilter, FilterChip } from 'src/components/tables/ColumnFilter';
+
 interface PipelineVersionInfo {
   displayName?: string;
   versionId?: string;
@@ -77,6 +79,7 @@ export type RunListProps = MaskProps &
 interface RunListState {
   runs: DisplayRun[];
   loadError: boolean;
+  statusFilter: string;
 }
 
 function _pipelineVersionKey(pipelineId: string, pipelineVersionId: string): string {
@@ -94,6 +97,7 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
     this.state = {
       runs: [],
       loadError: false,
+      statusFilter: 'all',
     };
   }
 
@@ -150,46 +154,113 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
 
     return (
       <div className='kfp-runs-table-view'>
-        <CustomTable
-          renderTable={(table) => (
-            <RunsTable
-              table={table}
-              reservedRowCount={this.props.runIdListMask?.length}
-              onOpenRun={(id) => this.props.navigate(RoutePageFactory.runDetails(id))}
+        <DateListFilter
+          label='Started'
+          field='created_at'
+          disabled={!!this.props.runIdListMask || this.props.noFilterBox}
+        >
+          {(date) => (
+            <CustomTable
+              filterPredicates={[
+                ...date.predicates,
+                ...(this.state.statusFilter === 'all'
+                  ? []
+                  : [
+                      {
+                        key: 'state',
+                        operation: V2beta1PredicateOperation.EQUALS,
+                        string_value: this.state.statusFilter,
+                      },
+                    ]),
+              ]}
+              renderTable={(table) => (
+                <RunsTable
+                  table={{
+                    ...table,
+                    emptyMessage:
+                      date.active || this.state.statusFilter !== 'all'
+                        ? 'No results match the selected filters.'
+                        : table.emptyMessage,
+                  }}
+                  headerActions={{
+                    created_at: date.control,
+                    Status: !this.props.runIdListMask && !this.props.noFilterBox && (
+                      <ColumnFilter
+                        label='Status'
+                        value={this.state.statusFilter}
+                        options={[
+                          { value: 'all', label: 'Any status' },
+                          ...[
+                            'PENDING',
+                            'RUNNING',
+                            'SUCCEEDED',
+                            'FAILED',
+                            'CANCELING',
+                            'CANCELED',
+                            'PAUSED',
+                            'SKIPPED',
+                          ].map((value) => ({
+                            value,
+                            label: value.charAt(0) + value.slice(1).toLowerCase(),
+                          })),
+                        ]}
+                        onChange={(statusFilter) => this.setState({ statusFilter })}
+                      />
+                    ),
+                  }}
+                  activeFilters={
+                    (date.active || this.state.statusFilter !== 'all') && (
+                      <>
+                        {date.chip}
+                        {this.state.statusFilter !== 'all' && (
+                          <FilterChip
+                            label={`Status: ${this.state.statusFilter.toLowerCase()}`}
+                            onClear={() => this.setState({ statusFilter: 'all' })}
+                          />
+                        )}
+                      </>
+                    )
+                  }
+                  reservedRowCount={this.props.runIdListMask?.length}
+                  onOpenRun={(id) => this.props.navigate(RoutePageFactory.runDetails(id))}
+                />
+              )}
+              columns={columns}
+              rows={rows}
+              selectedIds={this.props.selectedIds}
+              initialSortColumn={RunSortKeys.CREATED_AT}
+              ref={this._tableRef}
+              filterLabel='Search runs'
+              updateSelection={this.props.onSelectionChange}
+              reload={this._loadRuns.bind(this)}
+              disablePaging={this.props.disablePaging}
+              disableSorting={this.props.disableSorting}
+              disableSelection={this.props.disableSelection}
+              noFilterBox={this.props.noFilterBox}
+              errorMessage={
+                this.state.loadError
+                  ? 'Runs could not be loaded. Use Refresh to try again.'
+                  : undefined
+              }
+              emptyMessage={
+                `No` +
+                `${
+                  this.props.storageState === V2beta1RunStorageState.ARCHIVED
+                    ? ' archived'
+                    : ' available'
+                }` +
+                ` runs found` +
+                `${
+                  this.props.experimentIdMask
+                    ? ' for this experiment'
+                    : this.props.namespaceMask
+                      ? ' for this namespace'
+                      : ''
+                }.`
+              }
             />
           )}
-          columns={columns}
-          rows={rows}
-          selectedIds={this.props.selectedIds}
-          initialSortColumn={RunSortKeys.CREATED_AT}
-          ref={this._tableRef}
-          filterLabel='Filter runs by name'
-          updateSelection={this.props.onSelectionChange}
-          reload={this._loadRuns.bind(this)}
-          disablePaging={this.props.disablePaging}
-          disableSorting={this.props.disableSorting}
-          disableSelection={this.props.disableSelection}
-          noFilterBox={this.props.noFilterBox}
-          errorMessage={
-            this.state.loadError ? 'Runs could not be loaded. Use Refresh to try again.' : undefined
-          }
-          emptyMessage={
-            `No` +
-            `${
-              this.props.storageState === V2beta1RunStorageState.ARCHIVED
-                ? ' archived'
-                : ' available'
-            }` +
-            ` runs found` +
-            `${
-              this.props.experimentIdMask
-                ? ' for this experiment'
-                : this.props.namespaceMask
-                  ? ' for this namespace'
-                  : ''
-            }.`
-          }
-        />
+        </DateListFilter>
       </div>
     );
   }

@@ -43,6 +43,8 @@ import { RecentRunHealth } from 'src/components/runs/RecentRunHealth';
 import { NamespaceContext } from 'src/lib/KubeflowClient';
 import 'src/components/runs/ExperimentWorkflows.css';
 
+import { DateListFilter } from 'src/components/tables/ColumnFilter';
+
 interface DisplayExperiment extends V2beta1Experiment {
   last5Runs?: V2beta1Run[];
   error?: string;
@@ -123,26 +125,38 @@ export class ExperimentList extends Page<{ namespace?: string }, ExperimentListS
 
     return (
       <div className='kfp-workflow-page'>
-        <CustomTable
-          renderTable={(table) => (
-            <ResourceTable
-              table={table}
-              label='Experiments'
-              singular='experiment'
-              plural='experiments'
+        <DateListFilter label='Recent activity' field='last_run_created_at'>
+          {(date) => (
+            <CustomTable
+              filterPredicates={date.predicates}
+              renderTable={(table) => (
+                <ResourceTable
+                  table={{
+                    ...table,
+                    emptyMessage: date.active
+                      ? 'No results match the selected filters.'
+                      : table.emptyMessage,
+                  }}
+                  headerActions={{ last_run_created_at: date.control }}
+                  activeFilters={date.chip}
+                  label='Experiments'
+                  singular='experiment'
+                  plural='experiments'
+                />
+              )}
+              columns={columns}
+              rows={rows}
+              ref={this._tableRef}
+              disableSelection={true}
+              initialSortColumn={ExperimentSortKeys.CREATED_AT}
+              reload={this._reload.bind(this)}
+              toggleExpansion={this._toggleRowExpand.bind(this)}
+              getExpandComponent={this._getExpandedExperimentComponent.bind(this)}
+              filterLabel='Search experiments'
+              emptyMessage='No experiments found. Click "Create experiment" to start.'
             />
           )}
-          columns={columns}
-          rows={rows}
-          ref={this._tableRef}
-          disableSelection={true}
-          initialSortColumn={ExperimentSortKeys.CREATED_AT}
-          reload={this._reload.bind(this)}
-          toggleExpansion={this._toggleRowExpand.bind(this)}
-          getExpandComponent={this._getExpandedExperimentComponent.bind(this)}
-          filterLabel='Filter experiments'
-          emptyMessage='No experiments found. Click "Create experiment" to start.'
-        />
+        </DateListFilter>
       </div>
     );
   }

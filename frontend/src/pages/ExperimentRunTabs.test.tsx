@@ -15,6 +15,11 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+vi.mock('src/components/shell/ThemeProvider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('src/components/shell/ThemeProvider')>()),
+  useTheme: () => ({ themeClassName: 'kfp-theme' }),
+}));
+
 import { produce } from 'immer';
 import ExperimentRunTabs, { ExperimentRunTabsProps } from './ExperimentRunTabs';
 import { RouteParams } from 'src/components/Router';

@@ -292,7 +292,23 @@ function getSortKeyAndOrder(
   return { desc, key };
 }
 
+// API artifact enums are strings on the wire, but the database filter uses integer values.
+const artifactTypeValues: Record<ArtifactArtifactType, number> = {
+  TYPE_UNSPECIFIED: 0,
+  Artifact: 1,
+  Model: 2,
+  Dataset: 3,
+  HTML: 4,
+  Markdown: 5,
+  Metric: 6,
+  ClassificationMetric: 7,
+  SlicedClassificationMetric: 8,
+};
+
 function getV2ResourceValue(resource: V2FilterableResource, key: string): unknown {
+  if (key === 'type' && 'artifact_id' in resource && 'type' in resource) {
+    return artifactTypeValues[resource.type as ArtifactArtifactType];
+  }
   if (key === 'name') {
     return resource.name || resource.display_name;
   }
@@ -360,6 +376,12 @@ function filterV2Resources<T extends V2FilterableResource>(
             new Date(String(getV2ResourceValue(resource, key))).getTime() >=
             new Date(predicate.timestamp_value!).getTime(),
         );
+      case V2beta1PredicateOperation.IN: {
+        const values = predicate.int_values?.values || predicate.string_values?.values || [];
+        return filteredResources.filter((resource) =>
+          values.some((value) => value === getV2ResourceValue(resource, key)),
+        );
+      }
       case V2beta1PredicateOperation.EQUALS:
         return filteredResources.filter(
           (resource) => String(getV2ResourceValue(resource, key) || '') === stringValue,
@@ -430,7 +452,18 @@ export default (app: express.Application) => {
   app.get(v2beta1Prefix + '/experiments', (req, res) => {
     res.header('Content-Type', 'application/json');
     const experiments = sortV2Resources(
-      filterV2Resources(fixedData.experiments, getQueryString(req.query.filter)),
+      filterV2Resources(
+        fixedData.experiments.map((experiment) => {
+          const runTimes = fixedData.runs
+            .filter((run) => run.experiment_id === experiment.experiment_id && run.created_at)
+            .map((run) => new Date(run.created_at!).getTime());
+          return {
+            ...experiment,
+            last_run_created_at: runTimes.length ? new Date(Math.max(...runTimes)) : undefined,
+          };
+        }),
+        getQueryString(req.query.filter),
+      ),
       ExperimentSortKeys.NAME,
       getQueryString(req.query.sort_by),
     );
@@ -549,8 +582,22 @@ export default (app: express.Application) => {
     res.json({ tasks: req.params.rid === mockNativeRunId ? mockV2Tasks : [] });
   });
 
-  app.get(v2beta1Prefix + '/artifacts', (_req, res) => {
-    res.json({ artifacts: mockV2Artifacts, total_size: mockV2Artifacts.length });
+  app.get(v2beta1Prefix + '/artifacts', (req, res) => {
+    const namespace = getQueryString(req.query.namespace);
+    const artifacts = sortV2Resources(
+      filterV2Resources(
+        mockV2Artifacts.filter((artifact) => !namespace || artifact.namespace === namespace),
+        getQueryString(req.query.filter),
+      ),
+      'created_at',
+      getQueryString(req.query.sort_by),
+    );
+    const page = getPage(artifacts, req.query.page_token, req.query.page_size);
+    res.json({
+      artifacts: page.page,
+      total_size: artifacts.length,
+      next_page_token: page.nextPageToken,
+    });
   });
 
   app.get(v2beta1Prefix + '/artifacts/:artifactId', (req, res) => {

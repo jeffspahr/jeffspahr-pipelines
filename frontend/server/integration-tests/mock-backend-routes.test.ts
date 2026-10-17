@@ -249,6 +249,63 @@ describe('mock backend routes', () => {
       });
     });
 
+    it('combines artifact type, date and name filters before pagination', async () => {
+      const predicates = [
+        { key: 'type', operation: 'IN', int_values: { values: [2, 3] } },
+        {
+          key: 'created_at',
+          operation: 'GREATER_THAN_EQUALS',
+          timestamp_value: '2026-01-01T00:00:00Z',
+        },
+        { key: 'name', operation: 'IS_SUBSTRING', string_value: 'dataset' },
+      ];
+      const query = { filter: JSON.stringify({ predicates }), page_size: 1, sort_by: 'name desc' };
+      const first = await request.get(`/apis/v2beta1/artifacts${buildQuery(query)}`).expect(200);
+      expect(first.body.total_size).toBe(1);
+      expect(first.body.artifacts[0].artifact_id).toBe('mock-artifact-1');
+      const next = await request
+        .get(`/apis/v2beta1/artifacts${buildQuery({ ...query, page_token: 1 })}`)
+        .expect(200);
+      expect(next.body).toMatchObject({ total_size: 1, artifacts: [], next_page_token: '' });
+    });
+
+    it.each([
+      { key: 'type', operation: 'IN', int_values: { values: [2] } },
+      {
+        key: 'created_at',
+        operation: 'GREATER_THAN_EQUALS',
+        timestamp_value: '2026-02-01T00:00:00Z',
+      },
+    ])('excludes artifacts that fail a predicate: %j', async (predicate) => {
+      const response = await request
+        .get(
+          `/apis/v2beta1/artifacts${buildQuery({ filter: JSON.stringify({ predicates: [predicate] }) })}`,
+        )
+        .expect(200);
+      expect(response.body).toMatchObject({ total_size: 0, artifacts: [] });
+    });
+
+    it('filters experiments by their latest run date and excludes experiments without runs', async () => {
+      const filter = JSON.stringify({
+        predicates: [
+          {
+            key: 'last_run_created_at',
+            operation: 'GREATER_THAN_EQUALS',
+            timestamp_value: '2026-01-01T00:00:00Z',
+          },
+        ],
+      });
+      const response = await request
+        .get(`/apis/v2beta1/experiments${buildQuery({ filter })}`)
+        .expect(200);
+      expect(
+        response.body.experiments.map(
+          (experiment: { display_name: string }) => experiment.display_name,
+        ),
+      ).toEqual(['Default']);
+      expect(response.body.experiments[0].last_run_created_at).toBe('2026-01-01T00:00:00.000Z');
+    });
+
     it('returns 404 for an unknown native artifact', async () => {
       await request
         .get('/apis/v2beta1/artifacts/does-not-exist')

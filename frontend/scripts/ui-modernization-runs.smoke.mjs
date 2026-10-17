@@ -416,7 +416,7 @@ test('Runs preserves token paging, filtering, sorting, and page selection contra
     await reloadRows(page, () => page.getByRole('button', { name: 'Next page' }).click(), 5);
     await reloadRows(
       page,
-      () => page.getByRole('searchbox', { name: 'Filter runs by name' }).fill('Training 15'),
+      () => page.getByRole('searchbox', { name: 'Search runs' }).fill('Training 15'),
       1,
     );
     assert.deepEqual(
@@ -621,10 +621,10 @@ test('Runs recovers after an API error and keeps dialogs themed, keyboard access
     );
     const region = page.getByRole('region', { name: 'Runs table', exact: true });
     assert.equal(await region.evaluate((node) => node.scrollWidth > node.clientWidth), true);
-    await page.getByRole('searchbox', { name: 'Filter runs by name' }).focus();
+    await page.getByRole('searchbox', { name: 'Search runs' }).focus();
     assert.equal(
       await page
-        .getByRole('searchbox', { name: 'Filter runs by name' })
+        .getByRole('searchbox', { name: 'Search runs' })
         .evaluate((node) => node === document.activeElement),
       true,
     );
@@ -782,7 +782,7 @@ test('Runs keeps columns, pagination and sidebar controls stable across held loa
       ['', 10],
     ]) {
       fixture.listGate = gate();
-      await page.getByRole('searchbox', { name: 'Filter runs by name' }).fill(filter);
+      await page.getByRole('searchbox', { name: 'Search runs' }).fill(filter);
       await fixture.listGate.entered;
       same(initial, await geometry());
       fixture.listGate.release();

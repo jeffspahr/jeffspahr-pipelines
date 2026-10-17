@@ -39,7 +39,7 @@ function model(overrides: Partial<CustomTableRenderModel> = {}): CustomTableRend
     ],
     selectedIds: [],
     filter: '',
-    filterLabel: 'Filter runs by name',
+    filterLabel: 'Search runs',
     onFilterChange: vi.fn(),
     sortBy: 'created_at',
     sortOrder: 'desc',

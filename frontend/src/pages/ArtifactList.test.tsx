@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
+import userEvent from '@testing-library/user-event';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+vi.mock('src/components/shell/ThemeProvider', () => ({
+  useTheme: () => ({ themeClassName: 'kfp-theme' }),
+}));
+
 import * as React from 'react';
 import { MemoryRouter } from 'react-router';
 import { ArtifactArtifactType, V2beta1Artifact } from 'src/apisv2beta1/artifact';
@@ -382,7 +387,7 @@ describe('ArtifactList', () => {
       </MemoryRouter>,
     );
     await screen.findByRole('link', { name: 'test artifact 1' });
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter artifacts by name' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search artifacts' }), {
       target: { value: 'test' },
     });
     await waitFor(() => expect(api.mock.lastCall?.[4]).toContain('test'));
@@ -390,7 +395,10 @@ describe('ArtifactList', () => {
     await waitFor(() => expect(api.mock.lastCall?.[3]).toBe('name'));
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     await waitFor(() => expect(api.mock.lastCall?.[1]).toBe('next'));
-    fireEvent.click(screen.getByRole('button', { name: 'Metrics', exact: true }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filter type' }));
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Metrics', exact: true }),
+    );
     await waitFor(() => expect(api.mock.lastCall?.[1]).toBeFalsy());
     expect(api.mock.lastCall?.[0]).toBe('team-a');
     expect(api.mock.lastCall?.[3]).toBe('name');
@@ -401,11 +409,8 @@ describe('ArtifactList', () => {
       ],
     });
     expect(screen.getByRole('searchbox')).toHaveValue('test');
-    expect(screen.getByRole('button', { name: 'Metrics', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'All', exact: true }));
+    expect(screen.getByRole('button', { name: 'Clear Type: Metrics filter' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear Type: Metrics filter' }));
     await waitFor(() =>
       expect(JSON.parse(decodeURIComponent(api.mock.lastCall?.[4] || '')).predicates).toHaveLength(
         1,
@@ -438,7 +443,8 @@ describe('ArtifactList', () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(api).toHaveBeenCalledTimes(2));
-    fireEvent.click(screen.getByRole('button', { name: 'Model', exact: true }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filter type' }));
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Model', exact: true }));
     const result = await screen.findByRole('link', { name: 'Model result' });
     expect(result).toHaveAttribute('href', '/artifacts/artifact%2Fwith%20space');
     await act(async () => old.resolve({ artifacts: generateArtifacts(1) }));

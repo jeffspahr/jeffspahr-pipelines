@@ -15,6 +15,10 @@
  */
 
 import * as React from 'react';
+vi.mock('src/components/shell/ThemeProvider', () => ({
+  useTheme: () => ({ themeClassName: 'kfp-theme' }),
+}));
+
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';

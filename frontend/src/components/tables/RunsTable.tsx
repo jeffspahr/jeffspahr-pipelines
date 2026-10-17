@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { ReactNode } from 'react';
 import type { CustomTableRenderModel } from '../CustomTable';
 import { ResourceTable } from './ResourceTable';
 
@@ -28,21 +29,27 @@ const columnWidths: Record<string, number> = {
 
 export function RunsTable({
   table,
+  headerActions,
+  activeFilters,
   onOpenRun,
   reservedRowCount,
 }: {
   table: CustomTableRenderModel;
+  headerActions?: Record<string, ReactNode>;
+  activeFilters?: ReactNode;
   reservedRowCount?: number;
   onOpenRun: (id: string) => void;
 }) {
   return (
     <ResourceTable
       table={table}
+      headerActions={headerActions}
+      activeFilters={activeFilters}
       onOpenRow={onOpenRun}
       label='Runs'
       singular='run'
       plural='runs'
-      filterLabel='Filter runs by name'
+      filterLabel='Search runs'
       minWidth={1100}
       className='kfp-runs-data-table'
       columnWidths={table.columns.map((column) => columnWidths[column.label])}

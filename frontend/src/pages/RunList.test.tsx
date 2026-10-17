@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
+import userEvent from '@testing-library/user-event';
 import * as React from 'react';
+vi.mock('src/components/shell/ThemeProvider', () => ({
+  useTheme: () => ({ themeClassName: 'kfp-theme' }),
+}));
+
 import * as Utils from 'src/lib/Utils';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import RunList, { RunListProps } from './RunList';
@@ -182,6 +187,35 @@ describe('RunList', () => {
   afterEach(() => {
     runListRef = null;
     vi.resetAllMocks();
+  });
+
+  it('combines status and date predicates and clears them independently', async () => {
+    await renderRunList();
+    await userEvent.click(screen.getByRole('button', { name: 'Filter status' }));
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Failed', exact: true }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Filter started' }));
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Last 7 days' }));
+    await waitFor(() => {
+      const filter = JSON.parse(decodeURIComponent(listRunsSpy.mock.calls.at(-1)![5] as string));
+      expect(filter.predicates).toEqual(
+        expect.arrayContaining([
+          { key: 'state', operation: 'EQUALS', string_value: 'FAILED' },
+          {
+            key: 'created_at',
+            operation: 'GREATER_THAN_EQUALS',
+            timestamp_value: expect.any(String),
+          },
+        ]),
+      );
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Clear Status: failed filter' }));
+    await waitFor(() => {
+      const filter = JSON.parse(decodeURIComponent(listRunsSpy.mock.calls.at(-1)![5] as string));
+      expect(filter.predicates.some((p: { key: string }) => p.key === 'state')).toBe(false);
+      expect(filter.predicates.some((p: { key: string }) => p.key === 'created_at')).toBe(true);
+    });
   });
 
   it('loads experiment metadata while the run response is pending', async () => {

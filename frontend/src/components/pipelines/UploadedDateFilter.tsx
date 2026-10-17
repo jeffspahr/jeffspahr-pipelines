@@ -15,9 +15,8 @@
  */
 
 import { Menu } from '@base-ui/react/menu';
-import { Check, Filter } from 'lucide-react';
-import { Button } from '../ui/button';
-import { useTheme } from '../shell/ThemeProvider';
+import { Check } from 'lucide-react';
+import { ColumnFilter, DATE_OPTIONS } from '../tables/ColumnFilter';
 import { V2beta1PredicateOperation, type V2beta1Predicate } from '../../apisv2beta1/filter';
 
 export type UploadedPeriod = 'all' | '7' | '30' | '90';
@@ -58,22 +57,15 @@ export function UploadedDateOptions({ value, onChange }: Props) {
 }
 
 export function UploadedDateFilter(props: Props) {
-  const { themeClassName } = useTheme();
   return (
-    <Menu.Root>
-      <Menu.Trigger
-        render={<Button variant='ghost' size='icon' aria-label='Filter uploaded date' />}
-        data-active={props.value !== 'all'}
-      >
-        <Filter size={14} aria-hidden='true' />
-      </Menu.Trigger>
-      <Menu.Portal className={themeClassName}>
-        <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>
-          <Menu.Popup className='kfp-density-menu' aria-label='Filter uploaded date'>
-            <UploadedDateOptions {...props} />
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+    <ColumnFilter
+      label='Uploaded date'
+      value={props.value}
+      options={DATE_OPTIONS}
+      onChange={(value) => {
+        if (value === 'all' || value === '7' || value === '30' || value === '90')
+          props.onChange(value);
+      }}
+    />
   );
 }

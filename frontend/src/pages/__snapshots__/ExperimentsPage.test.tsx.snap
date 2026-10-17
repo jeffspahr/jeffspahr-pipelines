@@ -23,7 +23,7 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
           class="kfp-inspection-tab"
           data-activation-direction="none"
           data-orientation="horizontal"
-          id="base-ui-_r_7_"
+          id="base-ui-_r_c_"
           role="tab"
           tabindex="-1"
           type="button"
@@ -31,7 +31,7 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
           Active
         </button>
         <button
-          aria-controls="base-ui-_r_9_"
+          aria-controls="base-ui-_r_e_"
           aria-disabled="false"
           aria-selected="true"
           class="kfp-inspection-tab"
@@ -39,7 +39,7 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
           data-active=""
           data-composite-item-active=""
           data-orientation="horizontal"
-          id="base-ui-_r_8_"
+          id="base-ui-_r_d_"
           role="tab"
           tabindex="0"
           type="button"
@@ -48,12 +48,12 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
         </button>
       </div>
       <div
-        aria-labelledby="base-ui-_r_8_"
+        aria-labelledby="base-ui-_r_d_"
         class="kfp-inspection-tab-panel"
         data-activation-direction="none"
         data-index="0"
         data-orientation="horizontal"
-        id="base-ui-_r_9_"
+        id="base-ui-_r_e_"
         role="tabpanel"
         tabindex="0"
       >
@@ -72,7 +72,7 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
                   class="kfp-collection-search"
                 >
                   <label
-                    for="_r_b_"
+                    for="_r_g_"
                   >
                     Filter experiments
                   </label>
@@ -101,7 +101,7 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
                   <input
                     class="h-[34px] w-full min-w-0 rounded-control border border-muted-foreground bg-background px-3 font-kfp-sans text-[13px] pointer-coarse:text-[16px] text-foreground placeholder:text-muted-foreground focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive"
                     data-slot="input"
-                    id="_r_b_"
+                    id="_r_g_"
                     placeholder="Filter experiments"
                     type="search"
                     value=""
@@ -136,42 +136,50 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
                         <th
                           scope="col"
                         >
-                          <button
-                            type="button"
+                          <span
+                            class="kfp-column-heading"
                           >
-                            Experiment name
-                            <svg
-                              aria-hidden="true"
-                              class="lucide lucide-arrow-up-down"
-                              fill="none"
-                              height="13"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              viewBox="0 0 24 24"
-                              width="13"
-                              xmlns="http://www.w3.org/2000/svg"
+                            <button
+                              type="button"
                             >
-                              <path
-                                d="m21 16-4 4-4-4"
-                              />
-                              <path
-                                d="M17 20V4"
-                              />
-                              <path
-                                d="m3 8 4-4 4 4"
-                              />
-                              <path
-                                d="M7 4v16"
-                              />
-                            </svg>
-                          </button>
+                              Experiment name
+                              <svg
+                                aria-hidden="true"
+                                class="lucide lucide-arrow-up-down"
+                                fill="none"
+                                height="13"
+                                stroke="currentColor"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                viewBox="0 0 24 24"
+                                width="13"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  d="m21 16-4 4-4-4"
+                                />
+                                <path
+                                  d="M17 20V4"
+                                />
+                                <path
+                                  d="m3 8 4-4 4 4"
+                                />
+                                <path
+                                  d="M7 4v16"
+                                />
+                              </svg>
+                            </button>
+                          </span>
                         </th>
                         <th
                           scope="col"
                         >
-                          Description
+                          <span
+                            class="kfp-column-heading"
+                          >
+                            Description
+                          </span>
                         </th>
                       </tr>
                     </thead>
@@ -202,13 +210,13 @@ exports[`ExperimentsAndArchive > renders archive page 1`] = `
                     class="kfp-runs-pagination"
                   >
                     <label
-                      for="_r_d_"
+                      for="_r_i_"
                     >
                       Rows per page
                     </label>
                     <select
                       disabled=""
-                      id="_r_d_"
+                      id="_r_i_"
                     >
                       <option
                         value="10"
@@ -372,7 +380,7 @@ exports[`ExperimentsAndArchive > renders experiments page 1`] = `
                 <label
                   for="_r_4_"
                 >
-                  Filter experiments
+                  Search experiments
                 </label>
                 <svg
                   aria-hidden="true"
@@ -400,7 +408,7 @@ exports[`ExperimentsAndArchive > renders experiments page 1`] = `
                   class="h-[34px] w-full min-w-0 rounded-control border border-muted-foreground bg-background px-3 font-kfp-sans text-[13px] pointer-coarse:text-[16px] text-foreground placeholder:text-muted-foreground focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive"
                   data-slot="input"
                   id="_r_4_"
-                  placeholder="Filter experiments"
+                  placeholder="Search experiments"
                   type="search"
                   value=""
                 />
@@ -434,77 +442,117 @@ exports[`ExperimentsAndArchive > renders experiments page 1`] = `
                       <th
                         scope="col"
                       >
-                        <button
-                          type="button"
+                        <span
+                          class="kfp-column-heading"
                         >
-                          Experiment name
-                          <svg
-                            aria-hidden="true"
-                            class="lucide lucide-arrow-up-down"
-                            fill="none"
-                            height="13"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                            width="13"
-                            xmlns="http://www.w3.org/2000/svg"
+                          <button
+                            type="button"
                           >
-                            <path
-                              d="m21 16-4 4-4-4"
-                            />
-                            <path
-                              d="M17 20V4"
-                            />
-                            <path
-                              d="m3 8 4-4 4 4"
-                            />
-                            <path
-                              d="M7 4v16"
-                            />
-                          </svg>
-                        </button>
+                            Experiment name
+                            <svg
+                              aria-hidden="true"
+                              class="lucide lucide-arrow-up-down"
+                              fill="none"
+                              height="13"
+                              stroke="currentColor"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              viewBox="0 0 24 24"
+                              width="13"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="m21 16-4 4-4-4"
+                              />
+                              <path
+                                d="M17 20V4"
+                              />
+                              <path
+                                d="m3 8 4-4 4 4"
+                              />
+                              <path
+                                d="M7 4v16"
+                              />
+                            </svg>
+                          </button>
+                        </span>
                       </th>
                       <th
                         scope="col"
                       >
-                        Description
+                        <span
+                          class="kfp-column-heading"
+                        >
+                          Description
+                        </span>
                       </th>
                       <th
                         scope="col"
                       >
-                        <button
-                          type="button"
+                        <span
+                          class="kfp-column-heading"
                         >
-                          Recent runs · up to 5
-                          <svg
-                            aria-hidden="true"
-                            class="lucide lucide-arrow-up-down"
-                            fill="none"
-                            height="13"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                            width="13"
-                            xmlns="http://www.w3.org/2000/svg"
+                          <button
+                            type="button"
                           >
-                            <path
-                              d="m21 16-4 4-4-4"
-                            />
-                            <path
-                              d="M17 20V4"
-                            />
-                            <path
-                              d="m3 8 4-4 4 4"
-                            />
-                            <path
-                              d="M7 4v16"
-                            />
-                          </svg>
-                        </button>
+                            Recent runs · up to 5
+                            <svg
+                              aria-hidden="true"
+                              class="lucide lucide-arrow-up-down"
+                              fill="none"
+                              height="13"
+                              stroke="currentColor"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              viewBox="0 0 24 24"
+                              width="13"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="m21 16-4 4-4-4"
+                              />
+                              <path
+                                d="M17 20V4"
+                              />
+                              <path
+                                d="m3 8 4-4 4 4"
+                              />
+                              <path
+                                d="M7 4v16"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            aria-expanded="false"
+                            aria-haspopup="menu"
+                            aria-label="Filter recent activity"
+                            class="kfp-column-filter"
+                            data-active="false"
+                            id="base-ui-_r_9_"
+                            tabindex="0"
+                            type="button"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              class="lucide lucide-funnel lucide-filter"
+                              fill="none"
+                              height="13"
+                              stroke="currentColor"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              viewBox="0 0 24 24"
+                              width="13"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"
+                              />
+                            </svg>
+                          </button>
+                        </span>
                       </th>
                     </tr>
                   </thead>
@@ -535,13 +583,13 @@ exports[`ExperimentsAndArchive > renders experiments page 1`] = `
                   class="kfp-runs-pagination"
                 >
                   <label
-                    for="_r_6_"
+                    for="_r_b_"
                   >
                     Rows per page
                   </label>
                   <select
                     disabled=""
-                    id="_r_6_"
+                    id="_r_b_"
                   >
                     <option
                       value="10"

@@ -29,6 +29,7 @@ import './RunsTable.css';
 interface ResourceTableProps {
   table: CustomTableRenderModel;
   headerActions?: Record<string, ReactNode>;
+  activeFilters?: ReactNode;
   onOpenRow?: (id: string) => void;
   label?: string;
   singular?: string;
@@ -49,6 +50,7 @@ function defaultRowLabel(row: Row): string {
 export function ResourceTable({
   table,
   headerActions,
+  activeFilters,
   onOpenRow,
   label = 'Resources',
   singular = 'resource',
@@ -76,6 +78,7 @@ export function ResourceTable({
       {(!table.noFilterBox || table.filterActions) && (
         <CollectionToolbar table={table} filterLabel={filterLabel} />
       )}
+      {activeFilters && <div className='kfp-active-filters'>{activeFilters}</div>}
       <div className='kfp-runs-table-card'>
         <div
           className='kfp-runs-table-scroll'
@@ -141,15 +144,17 @@ export function ResourceTable({
                           : undefined
                       }
                     >
-                      {sortable ? (
-                        <button type='button' onClick={() => table.onSort(column.sortKey!)}>
-                          {column.label}
-                          <SortIcon size={13} aria-hidden='true' />
-                        </button>
-                      ) : (
-                        column.label
-                      )}
-                      {column.sortKey && headerActions?.[column.sortKey]}
+                      <span className='kfp-column-heading'>
+                        {sortable ? (
+                          <button type='button' onClick={() => table.onSort(column.sortKey!)}>
+                            {column.label}
+                            <SortIcon size={13} aria-hidden='true' />
+                          </button>
+                        ) : (
+                          column.label
+                        )}
+                        {headerActions?.[column.sortKey || column.label]}
+                      </span>
                     </th>
                   );
                 })}

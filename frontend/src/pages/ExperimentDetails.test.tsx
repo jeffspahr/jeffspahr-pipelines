@@ -15,6 +15,11 @@
  */
 
 import ExperimentDetailsWithContext, { ExperimentDetails } from './ExperimentDetails';
+vi.mock('src/components/shell/ThemeProvider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('src/components/shell/ThemeProvider')>()),
+  useTheme: () => ({ themeClassName: 'kfp-theme' }),
+}));
+
 import TestUtils, { RouterLocation, flushPromisesInAct, invokeAndFlush } from 'src/TestUtils';
 import { V2beta1Experiment, V2beta1ExperimentStorageState } from 'src/apisv2beta1/experiment';
 import { Apis } from 'src/lib/Apis';

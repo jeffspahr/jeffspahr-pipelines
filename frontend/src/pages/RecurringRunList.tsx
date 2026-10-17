@@ -61,6 +61,8 @@ export function getScheduleStatus(recurringRun: V2beta1RecurringRun): string {
   return 'Active';
 }
 
+import { DateListFilter } from 'src/components/tables/ColumnFilter';
+
 interface DisplayRecurringRun {
   experiment?: ExperimentInfo;
   recurringRun: V2beta1RecurringRun;
@@ -157,38 +159,54 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
 
     return (
       <div>
-        <CustomTable
-          renderTable={(table) => (
-            <ResourceTable
-              table={table}
-              label='Recurring runs'
-              singular='schedule'
-              plural='schedules'
+        <DateListFilter
+          label='Created'
+          field='created_at'
+          disabled={!!this.props.recurringRunIdListMask || this.props.noFilterBox}
+        >
+          {(date) => (
+            <CustomTable
+              filterPredicates={date.predicates}
+              renderTable={(table) => (
+                <ResourceTable
+                  table={{
+                    ...table,
+                    emptyMessage: date.active
+                      ? 'No results match the selected filters.'
+                      : table.emptyMessage,
+                  }}
+                  headerActions={{ created_at: date.control }}
+                  activeFilters={date.chip}
+                  label='Recurring runs'
+                  singular='schedule'
+                  plural='schedules'
+                />
+              )}
+              columns={columns}
+              rows={rows}
+              selectedIds={this.props.selectedIds}
+              initialSortColumn={JobSortKeys.CREATED_AT}
+              ref={this._tableRef}
+              filterLabel='Search recurring runs'
+              updateSelection={this.props.onSelectionChange}
+              reload={this._loadRecurringRuns.bind(this)}
+              disablePaging={this.props.disablePaging}
+              disableSorting={this.props.disableSorting}
+              disableSelection={this.props.disableSelection}
+              noFilterBox={this.props.noFilterBox}
+              emptyMessage={
+                `No available recurring runs found` +
+                `${
+                  this.props.experimentIdMask
+                    ? ' for this experiment'
+                    : this.props.namespaceMask
+                      ? ' for this namespace'
+                      : ''
+                }.`
+              }
             />
           )}
-          columns={columns}
-          rows={rows}
-          selectedIds={this.props.selectedIds}
-          initialSortColumn={JobSortKeys.CREATED_AT}
-          ref={this._tableRef}
-          filterLabel='Filter recurring runs'
-          updateSelection={this.props.onSelectionChange}
-          reload={this._loadRecurringRuns.bind(this)}
-          disablePaging={this.props.disablePaging}
-          disableSorting={this.props.disableSorting}
-          disableSelection={this.props.disableSelection}
-          noFilterBox={this.props.noFilterBox}
-          emptyMessage={
-            `No available recurring runs found` +
-            `${
-              this.props.experimentIdMask
-                ? ' for this experiment'
-                : this.props.namespaceMask
-                  ? ' for this namespace'
-                  : ''
-            }.`
-          }
-        />
+        </DateListFilter>
       </div>
     );
   }

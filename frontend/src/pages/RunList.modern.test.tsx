@@ -15,6 +15,10 @@
  */
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+vi.mock('src/components/shell/ThemeProvider', () => ({
+  useTheme: () => ({ themeClassName: 'kfp-theme' }),
+}));
+
 import { createRef } from 'react';
 import { MemoryRouter } from 'react-router';
 import RunList, { RunListProps } from './RunList';
@@ -163,7 +167,7 @@ it('retains embedded pipeline and recurring-run links alongside named state and 
   expect(screen.getByRole('link', { name: '[View pipeline]' }).getAttribute('href')).toContain(
     'fromRecurringRun=schedule',
   );
-  expect(screen.getByRole('searchbox', { name: 'Filter runs by name' })).toBeVisible();
+  expect(screen.getByRole('searchbox', { name: 'Search runs' })).toBeVisible();
   expect(vi.mocked(Apis.runServiceApiV2.listRuns).mock.calls[0][6]).toBe(true);
 });
 

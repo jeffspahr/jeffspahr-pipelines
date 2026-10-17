@@ -84,6 +84,7 @@ const runs: V2beta1Run[] = examples.map(([, name], i) => ({
 }));
 const recurringRuns: V2beta1RecurringRun[] = [0, 1].map((i) => ({
   recurring_run_id: `mock-recurring-${i}`,
+  created_at: new Date('2026-01-01T00:00:00Z'),
   display_name: `Scheduled ${examples[i][1]}`,
   experiment_id: experiments[1].experiment_id,
   pipeline_spec: versions[i].pipeline_spec,

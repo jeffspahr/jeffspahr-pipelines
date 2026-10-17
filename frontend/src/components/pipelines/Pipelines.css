@@ -253,13 +253,3 @@
 .kfp-theme .kfp-pipeline-active-filters {
   margin: 0 0 8px;
 }
-.kfp-theme .kfp-runs-table th button[data-active='true'] {
-  color: var(--primary);
-}
-.kfp-theme .kfp-pipeline-collection th button[aria-label='Filter uploaded date'] {
-  width: 24px;
-  height: 24px;
-  min-height: 0;
-  padding: 0;
-  vertical-align: middle;
-}

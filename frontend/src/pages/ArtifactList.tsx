@@ -27,9 +27,10 @@ import { getArtifactTypeName } from 'src/lib/v2/RuntimeArtifactUtils';
 import { PageTokenTracker } from 'src/lib/v2/PaginationUtils';
 import { Page, PageProps } from 'src/pages/Page';
 import { ResourceTable } from 'src/components/tables/ResourceTable';
-import { Button } from 'src/components/ui/button';
 import { V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
 import './Artifacts.css';
+
+import { DateListFilter, ColumnFilter, FilterChip } from 'src/components/tables/ColumnFilter';
 
 interface ArtifactListProps {
   namespace?: string;
@@ -83,57 +84,82 @@ export class ArtifactList extends Page<ArtifactListProps, ArtifactListState> {
   public render(): React.JSX.Element {
     return (
       <div className='kfp-artifact-list'>
-        <CustomTable
-          filterActions={
-            <div className='kfp-artifact-type-filters' role='group' aria-label='Artifact types'>
-              {TYPE_FILTERS.map((type, index) => (
-                <Button
-                  key={type.label}
-                  variant='ghost'
-                  size='sm'
-                  aria-pressed={this.state.selectedType === index}
-                  onClick={() => {
-                    if (this.state.selectedType === index) return;
-                    this.activeReloadGeneration++;
-                    this.setState({ selectedType: index, rows: [] });
+        <DateListFilter label='Created' field='created_at'>
+          {(date) => (
+            <CustomTable
+              filterPredicates={[
+                ...date.predicates,
+                ...(TYPE_FILTERS[this.state.selectedType].values.length
+                  ? [
+                      {
+                        key: 'type',
+                        operation: V2beta1PredicateOperation.IN,
+                        int_values: { values: TYPE_FILTERS[this.state.selectedType].values },
+                      },
+                    ]
+                  : []),
+              ]}
+              filterLabel='Search artifacts'
+              renderTable={(table) => (
+                <ResourceTable
+                  table={{
+                    ...table,
+                    emptyMessage:
+                      date.active || this.state.selectedType !== 0
+                        ? 'No results match the selected filters.'
+                        : table.emptyMessage,
                   }}
-                >
-                  {type.label}
-                </Button>
-              ))}
-            </div>
-          }
-          filterPredicates={
-            TYPE_FILTERS[this.state.selectedType].values.length
-              ? [
-                  {
-                    key: 'type',
-                    operation: V2beta1PredicateOperation.IN,
-                    int_values: { values: TYPE_FILTERS[this.state.selectedType].values },
-                  },
-                ]
-              : []
-          }
-          filterLabel='Filter artifacts by name'
-          renderTable={(table) => (
-            <ResourceTable
-              table={table}
-              onOpenRow={(id) => this.props.navigate(RoutePageFactory.artifactDetails(id))}
-              label='Artifacts'
-              singular='artifact'
-              plural='artifacts'
-              minWidth={920}
+                  headerActions={{
+                    created_at: date.control,
+                    type: (
+                      <ColumnFilter
+                        label='Type'
+                        value={this.state.selectedType ? String(this.state.selectedType) : 'all'}
+                        options={TYPE_FILTERS.map((type, index) => ({
+                          value: index ? String(index) : 'all',
+                          label: type.label,
+                        }))}
+                        onChange={(value) => {
+                          this.activeReloadGeneration++;
+                          this.setState({
+                            selectedType: value === 'all' ? 0 : Number(value),
+                            rows: [],
+                          });
+                        }}
+                      />
+                    ),
+                  }}
+                  activeFilters={
+                    (date.active || this.state.selectedType !== 0) && (
+                      <>
+                        {date.chip}
+                        {this.state.selectedType !== 0 && (
+                          <FilterChip
+                            label={`Type: ${TYPE_FILTERS[this.state.selectedType].label}`}
+                            onClear={() => this.setState({ selectedType: 0 })}
+                          />
+                        )}
+                      </>
+                    )
+                  }
+                  onOpenRow={(id) => this.props.navigate(RoutePageFactory.artifactDetails(id))}
+                  label='Artifacts'
+                  singular='artifact'
+                  plural='artifacts'
+                  minWidth={920}
+                />
+              )}
+              ref={this.tableRef}
+              columns={COLUMNS}
+              rows={this.state.rows}
+              disableSelection={true}
+              reload={this.reload}
+              initialSortColumn='created_at'
+              initialSortOrder='desc'
+              emptyMessage='No artifacts found.'
             />
           )}
-          ref={this.tableRef}
-          columns={COLUMNS}
-          rows={this.state.rows}
-          disableSelection={true}
-          reload={this.reload}
-          initialSortColumn='created_at'
-          initialSortOrder='desc'
-          emptyMessage='No artifacts found.'
-        />
+        </DateListFilter>
       </div>
     );
   }

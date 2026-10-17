@@ -15,6 +15,11 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+vi.mock('src/components/shell/ThemeProvider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('src/components/shell/ThemeProvider')>()),
+  useTheme: () => ({ themeClassName: 'kfp-theme' }),
+}));
+
 import { vi } from 'vitest';
 import ExperimentsPage, { ExperimentsPageProps, ExperimentsPageTab } from './ExperimentsPage';
 

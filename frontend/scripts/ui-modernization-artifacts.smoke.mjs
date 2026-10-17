@@ -458,7 +458,7 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
     await screenshot(page, 'artifacts-light');
     await page.getByRole('button', { name: 'Next page', exact: true }).click();
     await ready(page, 6);
-    await page.getByRole('searchbox', { name: 'Filter artifacts by name' }).fill('Artifact 1');
+    await page.getByRole('searchbox', { name: 'Search artifacts' }).fill('Artifact 1');
     await ready(page, 7);
     assert.ok(
       !fixture.requests.filter((item) => item.path === '/apis/v2beta1/artifacts').at(-1).query
