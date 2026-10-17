@@ -15,8 +15,8 @@
  */
 
 import type * as React from 'react';
+import { CollectionScopeToggle } from '../components/tables/CollectionScopeToggle';
 import AllRunsListPage from './AllRunsList';
-import { Link } from 'react-router';
 import '../components/tables/RunsTable.css';
 import { Page, PageProps } from './Page';
 import { RoutePage } from '../components/Router';
@@ -42,25 +42,22 @@ class RunsPage extends Page<RunsPageProps, RunsPageState> {
   }
 
   public render(): React.JSX.Element {
+    const scopeControl = (
+      <CollectionScopeToggle
+        label='Run scope'
+        archived={this.props.view === 1}
+        onChange={(archived) =>
+          this.props.navigate(archived ? RoutePage.ARCHIVED_RUNS : RoutePage.RUNS)
+        }
+      />
+    );
     return (
       <div className='kfp-runs-page'>
-        <nav className='kfp-runs-tabs' aria-label='Run views'>
-          <Link
-            to={RoutePage.RUNS}
-            aria-current={this.props.view === RunsPageTab.RUNS ? 'page' : undefined}
-          >
-            Active
-          </Link>
-          <Link
-            to={RoutePage.ARCHIVED_RUNS}
-            aria-current={this.props.view === RunsPageTab.ARCHIVE ? 'page' : undefined}
-          >
-            Archived
-          </Link>
-        </nav>
-        {this.props.view === 0 && <AllRunsListPage {...this.props} />}
-
-        {this.props.view === 1 && <ArchivedRunsPage {...this.props} />}
+        {this.props.view === 0 ? (
+          <AllRunsListPage {...this.props} scopeControl={scopeControl} />
+        ) : (
+          <ArchivedRunsPage {...this.props} scopeControl={scopeControl} />
+        )}
       </div>
     );
   }

@@ -25,6 +25,7 @@ import { NamespaceContext } from 'src/lib/KubeflowClient';
 
 interface ArchivedExperimentsProp {
   namespace?: string;
+  scopeControl?: React.ReactNode;
 }
 
 interface ArchivedExperimentsState {}
@@ -63,7 +64,7 @@ export class ArchivedExperiments extends Page<ArchivedExperimentsProp, ArchivedE
   }
 }
 
-const ArchivedExperimentsWithContext = (props: PageProps) => {
+const ArchivedExperimentsWithContext = (props: PageProps & { scopeControl?: React.ReactNode }) => {
   const namespace = React.useContext(NamespaceContext);
   return <ArchivedExperiments key={namespace} {...props} namespace={namespace} />;
 };

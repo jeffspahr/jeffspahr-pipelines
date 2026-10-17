@@ -15,9 +15,9 @@
  */
 
 import type * as React from 'react';
+import { CollectionScopeToggle } from '../components/tables/CollectionScopeToggle';
 import ActiveExperimentsPage from './ExperimentList';
 import ArchivedExperimentsPage from './ArchivedExperiments';
-import { InspectionTabs } from '../components/inspection/InspectionTabs';
 import '../components/runs/ExperimentWorkflows.css';
 import { Page, PageProps } from './Page';
 import { RoutePage } from '../components/Router';
@@ -42,32 +42,28 @@ class ExperimentsPage extends Page<ExperimentsPageProps, ExperimentsPageState> {
   }
 
   public render(): React.JSX.Element {
+    const scopeControl = (
+      <CollectionScopeToggle
+        label='Experiment scope'
+        archived={this.props.view === 1}
+        onChange={(archived) =>
+          this.props.navigate(archived ? RoutePage.ARCHIVED_EXPERIMENTS : RoutePage.EXPERIMENTS)
+        }
+      />
+    );
     return (
       <div className='kfp-workflow-page'>
-        <InspectionTabs
-          tabs={['Active', 'Archived']}
-          selectedTab={this.props.view}
-          onSwitch={this._tabSwitched.bind(this)}
-          ariaLabel='Experiments'
-        >
-          {this.props.view === 0 && <ActiveExperimentsPage {...this.props} />}
-
-          {this.props.view === 1 && <ArchivedExperimentsPage {...this.props} />}
-        </InspectionTabs>
+        {this.props.view === 0 ? (
+          <ActiveExperimentsPage {...this.props} scopeControl={scopeControl} />
+        ) : (
+          <ArchivedExperimentsPage {...this.props} scopeControl={scopeControl} />
+        )}
       </div>
     );
   }
 
   public async refresh(): Promise<void> {
     return;
-  }
-
-  private _tabSwitched(newTab: ExperimentsPageTab): void {
-    this.props.navigate(
-      newTab === ExperimentsPageTab.EXPERIMENTS
-        ? RoutePage.EXPERIMENTS
-        : RoutePage.ARCHIVED_EXPERIMENTS,
-    );
   }
 }
 

@@ -57,7 +57,10 @@ interface ExperimentListState {
   selectedTab: number;
 }
 
-export class ExperimentList extends Page<{ namespace?: string }, ExperimentListState> {
+export class ExperimentList extends Page<
+  { namespace?: string; scopeControl?: React.ReactNode },
+  ExperimentListState
+> {
   private _tableRef = React.createRef<CustomTable>();
 
   constructor(props: any) {
@@ -128,6 +131,7 @@ export class ExperimentList extends Page<{ namespace?: string }, ExperimentListS
         <DateListFilter label='Recent activity' field='last_run_created_at'>
           {(date) => (
             <CustomTable
+              filterActions={this.props.scopeControl}
               filterPredicates={date.predicates}
               renderTable={(table) => (
                 <ResourceTable
@@ -305,7 +309,9 @@ export class ExperimentList extends Page<{ namespace?: string }, ExperimentListS
   }
 }
 
-const ExperimentListWithContext: React.FC<PageProps> = (props) => {
+const ExperimentListWithContext: React.FC<PageProps & { scopeControl?: React.ReactNode }> = (
+  props,
+) => {
   const namespace = React.useContext(NamespaceContext);
   return <ExperimentList key={namespace} {...props} namespace={namespace} />;
 };

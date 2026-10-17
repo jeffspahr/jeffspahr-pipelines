@@ -523,11 +523,11 @@ test('Experiments: bounded recent-run samples, expansion, archive navigation, na
     assert.match(page.url(), /#\/experiments$/);
     await theme(page, 'dark');
     await screenshot(page, 'experiments-dark-expanded');
-    await page.getByRole('tab', { name: 'Archived', exact: true }).click();
+    await page.getByRole('group', { name: 'Experiment scope' }).getByRole('button', { name: 'Archived', exact: true }).click();
     await tableReady(page, 'Archived experiments');
     await page.getByRole('link', { name: 'Archived experiment', exact: true }).waitFor();
     assert.match(page.url(), /#\/archive\/experiments$/);
-    await page.getByRole('tab', { name: 'Active', exact: true }).click();
+    await page.getByRole('group', { name: 'Experiment scope' }).getByRole('button', { name: 'Active', exact: true }).click();
     await tableReady(page, 'Experiments');
     await page.evaluate(() => window.selectFixtureNamespace('team-b'));
     await page.getByRole('link', { name: 'Small experiment', exact: true }).waitFor();

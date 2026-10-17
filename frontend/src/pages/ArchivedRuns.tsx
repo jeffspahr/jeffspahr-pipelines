@@ -26,7 +26,10 @@ interface ArchivedRunsState {
   selectedIds: string[];
 }
 
-export class ArchivedRuns extends Page<{ namespace?: string }, ArchivedRunsState> {
+export class ArchivedRuns extends Page<
+  { namespace?: string; scopeControl?: React.ReactNode },
+  ArchivedRunsState
+> {
   private _runlistRef = React.createRef<RunList>();
 
   constructor(props: any) {
@@ -92,7 +95,7 @@ export class ArchivedRuns extends Page<{ namespace?: string }, ArchivedRunsState
   }
 }
 
-const ArchivedRunsWithContext = (props: PageProps) => {
+const ArchivedRunsWithContext = (props: PageProps & { scopeControl?: React.ReactNode }) => {
   const namespace = React.useContext(NamespaceContext);
   return <ArchivedRuns key={namespace} {...props} namespace={namespace} />;
 };

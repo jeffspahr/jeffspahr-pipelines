@@ -546,8 +546,8 @@ test('Runs confirms archive once, retains forbidden selections, and restores or 
       page,
       () =>
         page
-          .getByRole('navigation', { name: 'Run views' })
-          .getByRole('link', { name: 'Archived', exact: true })
+          .getByRole('group', { name: 'Run scope' })
+          .getByRole('button', { name: 'Archived', exact: true })
           .click(),
       5,
     );
@@ -564,8 +564,8 @@ test('Runs confirms archive once, retains forbidden selections, and restores or 
     assert.equal(await link(page, 16).count(), 0);
     await reloadRows(page, () =>
       page
-        .getByRole('navigation', { name: 'Run views' })
-        .getByRole('link', { name: 'Active', exact: true })
+        .getByRole('group', { name: 'Run scope' })
+        .getByRole('button', { name: 'Active', exact: true })
         .click(),
     );
     assert.equal(await link(page, 1).count(), 1);

@@ -56,11 +56,11 @@ describe('ExperimentsAndArchive', () => {
     props.navigate = spy;
     const { rerender } = render(<ExperimentsPage {...(props as any)} />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Archived' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Archived' }));
     expect(spy).toHaveBeenCalledWith('/archive/experiments');
 
     rerender(<ExperimentsPage {...(props as any)} view={ExperimentsPageTab.ARCHIVE} />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Active' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Active' }));
     expect(spy).toHaveBeenCalledWith('/experiments');
   });
 });

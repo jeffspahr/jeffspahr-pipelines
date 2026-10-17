@@ -63,6 +63,7 @@ type MaskProps = Exclude<
 
 export type RunListProps = MaskProps &
   NavigationProps & {
+    scopeControl?: React.ReactNode;
     disablePaging?: boolean;
     disableSelection?: boolean;
     disableSorting?: boolean;
@@ -161,6 +162,7 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
         >
           {(date) => (
             <CustomTable
+              filterActions={this.props.scopeControl}
               filterPredicates={[
                 ...date.predicates,
                 ...(this.state.statusFilter === 'all'

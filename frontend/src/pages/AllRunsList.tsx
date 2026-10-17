@@ -26,7 +26,10 @@ interface AllRunsListState {
   selectedIds: string[];
 }
 
-export class AllRunsList extends Page<{ namespace?: string }, AllRunsListState> {
+export class AllRunsList extends Page<
+  { namespace?: string; scopeControl?: React.ReactNode },
+  AllRunsListState
+> {
   private _runlistRef = React.createRef<RunList>();
 
   constructor(props: any) {
@@ -96,7 +99,7 @@ export class AllRunsList extends Page<{ namespace?: string }, AllRunsListState> 
   }
 }
 
-const AllRunsListWithContext = (props: PageProps) => {
+const AllRunsListWithContext = (props: PageProps & { scopeControl?: React.ReactNode }) => {
   const namespace = React.useContext(NamespaceContext);
   return <AllRunsList key={namespace} {...props} namespace={namespace} />;
 };

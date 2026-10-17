@@ -16,11 +16,39 @@
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, useLocation } from 'react-router';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router';
+import type { ReactNode } from 'react';
 import RunsPage, { RunsPageProps, RunsPageTab } from './RunsPage';
 
-vi.mock('./AllRunsList', () => ({ default: () => <div>Active run content</div> }));
-vi.mock('./ArchivedRuns', () => ({ default: () => <div>Archived run content</div> }));
+vi.mock('./AllRunsList', () => ({
+  default: ({ scopeControl }: { scopeControl?: ReactNode }) => (
+    <div>
+      {scopeControl}
+      <div>Active run content</div>
+    </div>
+  ),
+}));
+vi.mock('./ArchivedRuns', () => ({
+  default: ({ scopeControl }: { scopeControl?: ReactNode }) => (
+    <div>
+      {scopeControl}
+      <div>Archived run content</div>
+    </div>
+  ),
+}));
+function RoutedRuns() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <>
+      <RunsPage
+        {...props(location.pathname === '/archive/runs' ? RunsPageTab.ARCHIVE : RunsPageTab.RUNS)}
+        navigate={navigate}
+      />
+      <button onClick={() => navigate(-1)}>Back</button>
+    </>
+  );
+}
 function Location() {
   return <output aria-label='Location'>{useLocation().pathname}</output>;
 }
@@ -38,7 +66,7 @@ function props(view = RunsPageTab.RUNS): RunsPageProps {
   };
 }
 it.each([RunsPageTab.RUNS, RunsPageTab.ARCHIVE])(
-  'renders the requested view %s and marks its navigation link',
+  'renders the requested view %s and marks its scope toggle',
   (view) => {
     render(
       <MemoryRouter>
@@ -46,20 +74,23 @@ it.each([RunsPageTab.RUNS, RunsPageTab.ARCHIVE])(
       </MemoryRouter>,
     );
     const label = view === RunsPageTab.RUNS ? 'Active' : 'Archived';
-    expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(`${label} run content`)).toBeVisible();
   },
 );
-it('preserves active and archived route destinations with keyboard-operable links', async () => {
+it('preserves active and archived route destinations with keyboard-operable controls', async () => {
   render(
     <MemoryRouter initialEntries={['/runs']}>
-      <RunsPage {...props()} />
+      <RoutedRuns />
       <Location />
     </MemoryRouter>,
   );
-  await userEvent.click(screen.getByRole('link', { name: 'Archived' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Archived' }));
   expect(screen.getByLabelText('Location')).toHaveTextContent('/archive/runs');
-  screen.getByRole('link', { name: 'Active' }).focus();
+  await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+  expect(screen.getByLabelText('Location')).toHaveTextContent('/runs');
+  await userEvent.click(screen.getByRole('button', { name: 'Archived' }));
+  screen.getByRole('button', { name: 'Active' }).focus();
   await userEvent.keyboard('{Enter}');
   expect(screen.getByLabelText('Location')).toHaveTextContent('/runs');
 });

@@ -36,6 +36,7 @@ import 'src/components/runs/ExperimentWorkflows.css';
 
 export interface ExperimentListProps extends NavigationProps {
   namespace?: string;
+  scopeControl?: React.ReactNode;
   storageState?: V2beta1ExperimentStorageState;
   onError: (message: string, error: Error) => void;
 }
@@ -86,6 +87,7 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
     return (
       <div>
         <CustomTable
+          filterActions={this.props.scopeControl}
           renderTable={(table) => (
             <ResourceTable
               table={table}
@@ -102,7 +104,7 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
           reload={this._loadExperiments.bind(this)}
           toggleExpansion={this._toggleRowExpand.bind(this)}
           getExpandComponent={this._getExpandedExperimentComponent.bind(this)}
-          filterLabel='Filter experiments'
+          filterLabel='Search experiments'
           emptyMessage='No archived experiments found.'
         />
       </div>
