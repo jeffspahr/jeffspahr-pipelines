@@ -16,7 +16,7 @@
 
 import * as React from 'react';
 import { V2beta1RunStorageState } from 'src/apisv2beta1/run';
-import { InspectionTabs } from 'src/components/inspection/InspectionTabs';
+import { CollectionScopeToggle } from 'src/components/tables/CollectionScopeToggle';
 import RunList, { RunListProps } from './RunList';
 
 export enum RunListsGroupTab {
@@ -31,7 +31,7 @@ export type ExperimentRunTabsProps = RunListProps & {
 };
 
 /**
- * Contains two tab buttons which allows user to see Active or Archived runs list.
+ * Shows active or archived experiment runs with an inline scope toggle.
  */
 class ExperimentRunTabs extends React.PureComponent<ExperimentRunTabsProps> {
   private _runlistRef = React.createRef<RunList>();
@@ -62,26 +62,26 @@ class ExperimentRunTabs extends React.PureComponent<ExperimentRunTabsProps> {
   public render(): React.JSX.Element {
     return (
       <div className='kfp-workflow-content'>
-        <InspectionTabs
-          tabs={['Active', 'Archived']}
-          selectedTab={this._getSelectedTab()}
-          onSwitch={this.switchTab}
-          ariaLabel='Experiment runs'
-        >
-          {
-            <RunList
-              hideExperimentColumn={true}
-              experimentIdMask={this.props.experimentIdMask}
-              ref={this._runlistRef}
-              onSelectionChange={this.props.onSelectionChange}
-              selectedIds={this.props.selectedIds}
-              noFilterBox={false}
-              disablePaging={false}
-              disableSorting={true}
-              {...this.props}
+        <RunList
+          hideExperimentColumn={true}
+          experimentIdMask={this.props.experimentIdMask}
+          ref={this._runlistRef}
+          onSelectionChange={this.props.onSelectionChange}
+          selectedIds={this.props.selectedIds}
+          noFilterBox={false}
+          disablePaging={false}
+          disableSorting={true}
+          {...this.props}
+          scopeControl={
+            <CollectionScopeToggle
+              label='Experiment run scope'
+              archived={this._getSelectedTab() === RunListsGroupTab.ARCHIVE}
+              onChange={(archived) =>
+                this.switchTab(archived ? RunListsGroupTab.ARCHIVE : RunListsGroupTab.ACTIVE)
+              }
             />
           }
-        </InspectionTabs>
+        />
       </div>
     );
   }

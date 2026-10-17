@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 vi.mock('src/components/shell/ThemeProvider', async (importOriginal) => ({
   ...(await importOriginal<typeof import('src/components/shell/ThemeProvider')>()),
   useTheme: () => ({ themeClassName: 'kfp-theme' }),
@@ -136,15 +136,23 @@ describe('RunListsRouter', () => {
     vi.resetAllMocks();
   });
 
-  it('shows Active and Archive tabs', async () => {
+  it('shows the inline Active and Archived scope without a tab row', async () => {
     render(
       <BrowserRouter>
         <ExperimentRunTabs {...generateProps()} />
       </BrowserRouter>,
     );
 
-    screen.getByText('Active');
-    screen.getByText('Archived');
+    const scope = within(screen.getByRole('group', { name: 'Experiment run scope' }));
+    expect(scope.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(scope.getByRole('button', { name: 'Archived', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     await waitFor(() => screen.getByText(activeRunDisplayName));
   });
 });

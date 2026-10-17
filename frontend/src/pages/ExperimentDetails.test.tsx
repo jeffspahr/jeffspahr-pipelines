@@ -571,7 +571,7 @@ describe('ExperimentDetails', () => {
     await renderExperimentDetails();
     await waitForTableRows(4);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Archived' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Archived', exact: true }));
     await waitForTableRows(4);
 
     const rows = screen.queryAllByTestId('table-row');
@@ -595,12 +595,12 @@ describe('ExperimentDetails', () => {
     await renderExperimentDetails();
     await waitForTableRows(4);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Archived' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Archived', exact: true }));
     await waitForTableRows(4);
     expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Restore' })).toBeDefined();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Active' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Active', exact: true }));
     await waitForTableRows(4);
     expect(screen.getByRole('button', { name: 'Archive' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
@@ -612,7 +612,7 @@ describe('ExperimentDetails', () => {
     await waitForTableRows(4);
 
     await mockNRuns(2);
-    fireEvent.click(screen.getByRole('tab', { name: 'Archived' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Archived', exact: true }));
     await waitForTableRows(2);
   });
 
@@ -622,12 +622,12 @@ describe('ExperimentDetails', () => {
     await renderExperimentDetails();
     await waitForTableRows(4);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Archived' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Archived', exact: true }));
     await waitForTableRows(4);
     expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Restore' })).toBeDefined();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Active' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Active', exact: true }));
     await waitForTableRows(4);
     expect(screen.getByRole('button', { name: 'Archive' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
