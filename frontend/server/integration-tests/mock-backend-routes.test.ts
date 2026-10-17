@@ -224,15 +224,15 @@ describe('mock backend routes', () => {
       const listResponse = await request.get('/apis/v2beta1/artifacts').expect(200);
 
       expect(listResponse.body).toMatchObject({
-        total_size: 1,
-        artifacts: [
-          {
+        total_size: 6,
+        artifacts: expect.arrayContaining([
+          expect.objectContaining({
             artifact_id: 'mock-artifact-1',
             name: 'mock-dataset',
             namespace: 'kubeflow-user-example-com',
             type: 'Dataset',
-          },
-        ],
+          }),
+        ]),
       });
 
       const artifactResponse = await request
@@ -261,16 +261,18 @@ describe('mock backend routes', () => {
       ];
       const query = { filter: JSON.stringify({ predicates }), page_size: 1, sort_by: 'name desc' };
       const first = await request.get(`/apis/v2beta1/artifacts${buildQuery(query)}`).expect(200);
-      expect(first.body.total_size).toBe(1);
-      expect(first.body.artifacts[0].artifact_id).toBe('mock-artifact-1');
+      expect(first.body.total_size).toBe(3);
+      expect(first.body.artifacts[0].artifact_id).toBe('mock-artifact-3');
       const next = await request
         .get(`/apis/v2beta1/artifacts${buildQuery({ ...query, page_token: 1 })}`)
         .expect(200);
-      expect(next.body).toMatchObject({ total_size: 1, artifacts: [], next_page_token: '' });
+      expect(next.body.total_size).toBe(3);
+      expect(next.body.artifacts[0].artifact_id).toBe('mock-artifact-2');
+      expect(next.body.next_page_token).toBeTruthy();
     });
 
     it.each([
-      { key: 'type', operation: 'IN', int_values: { values: [2] } },
+      { key: 'type', operation: 'IN', int_values: { values: [4] } },
       {
         key: 'created_at',
         operation: 'GREATER_THAN_EQUALS',
@@ -304,6 +306,17 @@ describe('mock backend routes', () => {
         ),
       ).toEqual(['Default']);
       expect(response.body.experiments[0].last_run_created_at).toBe('2026-01-01T00:00:00.000Z');
+    });
+
+    it('does not assign the original dataset lineage to additional sample artifacts', async () => {
+      const response = await request
+        .get('/apis/v2beta1/artifact_tasks?artifact_ids=mock-artifact-4')
+        .expect(200);
+      expect(response.body.artifact_tasks).toEqual([]);
+      const original = await request
+        .get('/apis/v2beta1/artifact_tasks?artifact_ids=mock-artifact-1')
+        .expect(200);
+      expect(original.body.artifact_tasks).toHaveLength(2);
     });
 
     it('returns 404 for an unknown native artifact', async () => {

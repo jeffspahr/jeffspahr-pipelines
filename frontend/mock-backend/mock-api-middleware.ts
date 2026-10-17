@@ -84,6 +84,47 @@ const mockV2Artifacts: V2beta1Artifact[] = [
     type: ArtifactArtifactType.Dataset,
     uri: 's3://mlpipeline/private-artifacts/kubeflow-user-example-com/mock-run/mock-dataset',
   },
+  ...[
+    {
+      artifact_id: 'mock-artifact-2',
+      name: 'taxi-training-dataset',
+      type: ArtifactArtifactType.Dataset,
+      description: 'Cleaned taxi trips used to train the fare prediction model.',
+      created_at: new Date('2026-01-02T09:15:00.000Z'),
+    },
+    {
+      artifact_id: 'mock-artifact-3',
+      name: 'taxi-validation-dataset',
+      type: ArtifactArtifactType.Dataset,
+      description: 'Held-out taxi trips for evaluating prediction quality.',
+      created_at: new Date('2026-01-02T09:20:00.000Z'),
+    },
+    {
+      artifact_id: 'mock-artifact-4',
+      name: 'taxi-fare-xgboost',
+      type: ArtifactArtifactType.Model,
+      description: 'XGBoost fare prediction model trained on the cleaned taxi dataset.',
+      created_at: new Date('2026-01-03T14:30:00.000Z'),
+    },
+    {
+      artifact_id: 'mock-artifact-5',
+      name: 'taxi-fare-baseline',
+      type: ArtifactArtifactType.Model,
+      description: 'Baseline regression model for comparing prediction quality.',
+      created_at: new Date('2026-01-01T16:45:00.000Z'),
+    },
+    {
+      artifact_id: 'mock-artifact-6',
+      name: 'feature-statistics',
+      type: ArtifactArtifactType.Artifact,
+      description: 'Summary statistics for distance, duration, and passenger-count features.',
+      created_at: new Date('2026-01-02T10:00:00.000Z'),
+    },
+  ].map((artifact) => ({
+    ...artifact,
+    namespace: 'kubeflow-user-example-com',
+    uri: `s3://mlpipeline/private-artifacts/kubeflow-user-example-com/sample/${artifact.name}`,
+  })),
 ];
 const mockV2Tasks: V2beta1PipelineTask[] = [
   {
@@ -110,7 +151,7 @@ const mockV2Tasks: V2beta1PipelineTask[] = [
       artifacts: [
         {
           artifact_key: 'table',
-          artifacts: mockV2Artifacts,
+          artifacts: [mockV2Artifacts[0]],
           type: V2beta1IOType.OUTPUT,
         },
       ],
@@ -137,7 +178,7 @@ const mockV2Tasks: V2beta1PipelineTask[] = [
       artifacts: [
         {
           artifact_key: 'data',
-          artifacts: mockV2Artifacts,
+          artifacts: [mockV2Artifacts[0]],
           producer: { task_name: 'chicago-taxi-trips-dataset' },
           type: V2beta1IOType.TASK_OUTPUT_INPUT,
         },
@@ -611,8 +652,16 @@ export default (app: express.Application) => {
     res.json(artifact);
   });
 
-  app.get(v2beta1Prefix + '/artifact_tasks', (_req, res) => {
-    res.json({ artifact_tasks: mockV2ArtifactTasks });
+  app.get(v2beta1Prefix + '/artifact_tasks', (req, res) => {
+    const artifactIds = [req.query.artifact_ids]
+      .flat()
+      .filter((id): id is string => typeof id === 'string')
+      .flatMap((ids) => ids.split(','));
+    res.json({
+      artifact_tasks: mockV2ArtifactTasks.filter(
+        (task) => !artifactIds.length || artifactIds.includes(task.artifact_id || ''),
+      ),
+    });
   });
 
   app.get(v2beta1Prefix + '/recurringruns', (req, res) => {
