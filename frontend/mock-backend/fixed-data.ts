@@ -7,7 +7,7 @@ import fs from 'fs';
 import YAML from 'yaml';
 import { V2beta1Experiment } from '../src/apisv2beta1/experiment';
 import { V2beta1Pipeline, V2beta1PipelineVersion } from '../src/apisv2beta1/pipeline';
-import { V2beta1Run } from '../src/apisv2beta1/run';
+import { V2beta1Run, V2beta1RuntimeState } from '../src/apisv2beta1/run';
 import { V2beta1RecurringRun } from '../src/apisv2beta1/recurringrun';
 
 const examples = [
@@ -91,4 +91,68 @@ const recurringRuns: V2beta1RecurringRun[] = [0, 1].map((i) => ({
   status: 'ENABLED',
   trigger: { periodic_schedule: { interval_second: '3600' } },
 }));
-export const data = { experiments, pipelines, versions, runs, recurringRuns };
+const sampleRuns: {
+  id: string;
+  name: string;
+  state: V2beta1RuntimeState;
+  daysAgo: number;
+  archived?: boolean;
+}[] = [
+  { id: 'training-running', name: 'Taxi fare training', state: 'RUNNING', daysAgo: 0 },
+  { id: 'validation-pending', name: 'Validation queued', state: 'PENDING', daysAgo: 0 },
+  { id: 'daily-success', name: 'Daily taxi data refresh', state: 'SUCCEEDED', daysAgo: 1 },
+  { id: 'training-failed', name: 'Training with invalid features', state: 'FAILED', daysAgo: 2 },
+  { id: 'sweep-canceled', name: 'Hyperparameter sweep', state: 'CANCELED', daysAgo: 4 },
+  { id: 'refresh-canceling', name: 'Superseded data refresh', state: 'CANCELING', daysAgo: 0 },
+  { id: 'weekly-success', name: 'Weekly model evaluation', state: 'SUCCEEDED', daysAgo: 6 },
+  { id: 'import-failed', name: 'Dataset import retry', state: 'FAILED', daysAgo: 12 },
+  { id: 'monthly-success', name: 'Monthly baseline comparison', state: 'SUCCEEDED', daysAgo: 24 },
+  { id: 'backfill-canceled', name: 'Historical taxi backfill', state: 'CANCELED', daysAgo: 45 },
+  { id: 'evaluation-failed', name: 'Previous model evaluation', state: 'FAILED', daysAgo: 75 },
+  { id: 'baseline-success', name: 'Original fare baseline', state: 'SUCCEEDED', daysAgo: 120 },
+  {
+    id: 'archived-success',
+    name: 'Archived weekly training',
+    state: 'SUCCEEDED',
+    daysAgo: 3,
+    archived: true,
+  },
+  {
+    id: 'archived-failed',
+    name: 'Archived import failure',
+    state: 'FAILED',
+    daysAgo: 40,
+    archived: true,
+  },
+];
+
+// Roll review samples forward daily so the relative-date filters remain useful.
+// The original fixed runs above retain their IDs, dates, and task relationships.
+function reviewRuns(): V2beta1Run[] {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  return sampleRuns.map((sample, index) => {
+    const createdAt = new Date(today.getTime() - sample.daysAgo * 86_400_000 - 3_600_000);
+    const terminal = ['SUCCEEDED', 'FAILED', 'CANCELED'].includes(sample.state);
+    return {
+      run_id: `sample-run-${sample.id}`,
+      display_name: sample.name,
+      experiment_id: experiments[0].experiment_id,
+      pipeline_spec: versions[index % examples.length].pipeline_spec,
+      created_at: createdAt,
+      finished_at: terminal ? new Date(createdAt.getTime() + (index + 1) * 60_000) : undefined,
+      state: sample.state,
+      storage_state: sample.archived ? 'ARCHIVED' : 'AVAILABLE',
+    };
+  });
+}
+
+export const data = {
+  experiments,
+  pipelines,
+  versions,
+  get runs() {
+    return [...runs, ...reviewRuns()];
+  },
+  recurringRuns,
+};

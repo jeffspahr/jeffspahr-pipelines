@@ -180,6 +180,52 @@ describe('mock backend routes', () => {
       });
     });
 
+    it('filters review runs by status and relative date before pagination', async () => {
+      const query = {
+        experiment_id: '275ea11d-ac63-4ce3-bc33-ec81981ed56b',
+        filter: JSON.stringify({
+          predicates: [
+            { key: 'state', operation: 'EQUALS', string_value: 'FAILED' },
+            { key: 'storage_state', operation: 'EQUALS', string_value: 'AVAILABLE' },
+            {
+              key: 'created_at',
+              operation: 'GREATER_THAN_EQUALS',
+              timestamp_value: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+            },
+          ],
+        }),
+        sort_by: 'created_at desc',
+        page_size: 1,
+      };
+      const first = await request.get(`/apis/v2beta1/runs${buildQuery(query)}`).expect(200);
+      expect(first.body.total_size).toBe(2);
+      expect(first.body.runs[0].run_id).toBe('sample-run-training-failed');
+      const next = await request
+        .get(
+          `/apis/v2beta1/runs${buildQuery({ ...query, page_token: first.body.next_page_token })}`,
+        )
+        .expect(200);
+      expect(next.body.runs[0].run_id).toBe('sample-run-import-failed');
+      expect(next.body.next_page_token).toBe('');
+    });
+
+    it('keeps archived samples separate and unfinished runs without finish times', async () => {
+      const filter = JSON.stringify({
+        predicates: [{ key: 'storage_state', operation: 'EQUALS', string_value: 'ARCHIVED' }],
+      });
+      const archived = await request.get(`/apis/v2beta1/runs${buildQuery({ filter })}`).expect(200);
+      expect(archived.body.total_size).toBe(2);
+      expect(
+        archived.body.runs.every(
+          (run: { storage_state: string }) => run.storage_state === 'ARCHIVED',
+        ),
+      ).toBe(true);
+      for (const id of ['training-running', 'validation-pending', 'refresh-canceling']) {
+        const response = await request.get(`/apis/v2beta1/runs/sample-run-${id}`).expect(200);
+        expect(response.body.finished_at).toBeUndefined();
+      }
+    });
+
     it('fetches a v2 run by id', async () => {
       const response = await request
         .get('/apis/v2beta1/runs/e0115ac1-0479-4194-a22d-01e65e09a32b')
@@ -305,7 +351,9 @@ describe('mock backend routes', () => {
           (experiment: { display_name: string }) => experiment.display_name,
         ),
       ).toEqual(['Default']);
-      expect(response.body.experiments[0].last_run_created_at).toBe('2026-01-01T00:00:00.000Z');
+      expect(Date.parse(response.body.experiments[0].last_run_created_at)).toBeGreaterThan(
+        Date.now() - 2 * 86_400_000,
+      );
     });
 
     it('does not assign the original dataset lineage to additional sample artifacts', async () => {
