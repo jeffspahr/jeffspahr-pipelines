@@ -202,6 +202,14 @@
   width: 30px;
   height: 30px;
 }
+.kfp-graph-canvas .react-flow__controls-button:disabled {
+  color: var(--muted-foreground);
+  background: var(--muted);
+  cursor: not-allowed;
+}
+.kfp-graph-canvas .react-flow__controls-button:disabled svg {
+  opacity: 0.35;
+}
 .kfp-graph-canvas .react-flow__minimap {
   overflow: hidden;
   border: 1px solid var(--border);
@@ -260,7 +268,15 @@
   }
 }
 @media (max-width: 600px) {
-  .kfp-graph-canvas .react-flow__minimap {
+  .kfp-graph-canvas .react-flow__controls-button:disabled {
+  color: var(--muted-foreground);
+  background: var(--muted);
+  cursor: not-allowed;
+}
+.kfp-graph-canvas .react-flow__controls-button:disabled svg {
+  opacity: 0.35;
+}
+.kfp-graph-canvas .react-flow__minimap {
     display: none;
   }
 }

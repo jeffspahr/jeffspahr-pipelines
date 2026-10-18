@@ -49,6 +49,8 @@ function PaletteButton({ label, tooltip = label, ...props }: PaletteButtonProps)
 export interface GraphControlsProps {
   showSubDagControls: boolean;
   hasSubDags: boolean;
+  canExpand?: boolean;
+  canCollapse?: boolean;
   locked: boolean;
   onLockChange: (locked: boolean) => void;
   onExpandAll: () => void;
@@ -58,6 +60,8 @@ export interface GraphControlsProps {
 export default function GraphControls({
   showSubDagControls,
   hasSubDags,
+  canExpand = true,
+  canCollapse = true,
   locked,
   onLockChange,
   onExpandAll,
@@ -74,20 +78,20 @@ export default function GraphControls({
       aria-label='Graph controls'
       data-testid='rf__controls'
     >
-      {showSubDagControls && (
+      {showSubDagControls && hasSubDags && (
         <>
           <PaletteButton
             label='Expand all'
-            tooltip='Expand all sub-DAGs'
-            disabled={!hasSubDags}
+            tooltip={canExpand ? 'Expand all sub-DAGs' : 'All sub-DAGs are expanded'}
+            disabled={!canExpand}
             onClick={onExpandAll}
           >
             <UnfoldMoreIcon />
           </PaletteButton>
           <PaletteButton
             label='Collapse all'
-            tooltip='Collapse all sub-DAGs'
-            disabled={!hasSubDags}
+            tooltip={canCollapse ? 'Collapse all sub-DAGs' : 'All sub-DAGs are collapsed'}
+            disabled={!canCollapse}
             onClick={onCollapseAll}
           >
             <UnfoldLessIcon />

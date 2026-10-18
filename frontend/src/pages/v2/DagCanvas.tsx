@@ -350,6 +350,10 @@ function DagCanvasView({
           <GraphControls
             showSubDagControls={!!getSubDagElements}
             hasSubDags={nodes.some((node) => node.type === GROUP_NODE_TYPE)}
+            canExpand={nodes.some((node) => node.type === GROUP_NODE_TYPE && node.data.collapsed)}
+            canCollapse={nodes.some(
+              (node) => node.type === GROUP_NODE_TYPE && !node.data.collapsed,
+            )}
             locked={locked}
             onLockChange={setLocked}
             onExpandAll={expandAll}

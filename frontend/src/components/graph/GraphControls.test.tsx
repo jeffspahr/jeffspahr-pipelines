@@ -92,7 +92,7 @@ it.each([
 });
 
 it('retains the 500ms delay when moving between icons and explains disabled actions', async () => {
-  render(<GraphControls {...props()} hasSubDags={false} />);
+  render(<GraphControls {...props()} canExpand={false} />);
   const zoom = screen.getByRole('button', { name: 'Zoom in' });
   fireEvent.mouseEnter(zoom.parentElement!);
   fireEvent.mouseMove(zoom.parentElement!);
@@ -123,7 +123,7 @@ it('retains the 500ms delay when moving between icons and explains disabled acti
   await act(async () => {
     vi.advanceTimersToNextFrame();
   });
-  expect(screen.getByRole('tooltip')).toHaveTextContent('Expand all sub-DAGs');
+  expect(screen.getByRole('tooltip')).toHaveTextContent('All sub-DAGs are expanded');
 });
 
 it('respects zoom limits without disabling fit or expansion controls', () => {
@@ -135,4 +135,20 @@ it('respects zoom limits without disabling fit or expansion controls', () => {
   expect(screen.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Fit view' })).not.toBeDisabled();
   expect(screen.getByRole('button', { name: 'Expand all' })).not.toBeDisabled();
+});
+
+it('hides group actions on flat graphs while keeping viewport controls', () => {
+  render(<GraphControls {...props()} hasSubDags={false} />);
+  expect(screen.queryByRole('button', { name: 'Expand all' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Collapse all' })).not.toBeInTheDocument();
+  expect(screen.getAllByRole('button')).toHaveLength(4);
+});
+
+it('does not dispatch disabled group actions', () => {
+  const options = props();
+  render(<GraphControls {...options} canCollapse={false} />);
+  const collapse = screen.getByRole('button', { name: 'Collapse all' });
+  expect(collapse).toBeDisabled();
+  fireEvent.click(collapse);
+  expect(options.onCollapseAll).not.toHaveBeenCalled();
 });

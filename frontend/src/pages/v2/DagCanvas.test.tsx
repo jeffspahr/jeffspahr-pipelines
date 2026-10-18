@@ -321,9 +321,13 @@ it('places expand then collapse above native zoom controls and toggles all desce
   expect(buttons[4]).toHaveAccessibleName('Fit view');
   expect(buttons[5]).toHaveAccessibleName('Unlock graph');
   expect(buttons).toHaveLength(6);
+  expect(expandAll).toBeDisabled();
+  expect(collapseAll).toBeEnabled();
   expect(screen.queryByRole('button', { name: 'Render subdags' })).not.toBeInTheDocument();
   expect(screen.queryByText('Layers')).not.toBeInTheDocument();
   fireEvent.click(collapseAll);
+  expect(collapseAll).toBeDisabled();
+  expect(expandAll).toBeEnabled();
   expect(screen.queryByText('Prepare data')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Expand Training pipeline' }));
   expect(
