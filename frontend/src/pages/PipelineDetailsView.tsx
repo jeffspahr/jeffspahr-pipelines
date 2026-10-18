@@ -31,12 +31,17 @@ import type {
 
 import 'src/components/pipelines/Pipelines.css';
 import DagCanvas from './v2/DagCanvas';
+import {
+  PipelineDefinitionDetails,
+  PipelineDefinitionSource,
+} from 'src/components/pipelines/PipelineDefinitionDetails';
 
 const ROOT_LAYERS = ['root'];
 const TAB_NAMES = ['Graph', 'Details', 'Pipeline spec'];
 
 interface PipelineDetailsViewProps {
   templateString?: string;
+  definitionSource?: PipelineDefinitionSource;
   pipelineFlowElements: PipelineFlowElement[];
   pipeline: V2beta1Pipeline | null;
   selectedVersion: V2beta1PipelineVersion | undefined;
@@ -46,6 +51,7 @@ interface PipelineDetailsViewProps {
 
 function PipelineDetailsView({
   templateString,
+  definitionSource,
   pipelineFlowElements,
   pipeline,
   selectedVersion,
@@ -132,7 +138,11 @@ function PipelineDetailsView({
         )}
         {selectedTab === 1 && (
           <div className='kfp-inspection-scroll'>
-            <PipelineVersionCard pipeline={pipeline} selectedVersion={selectedVersion} />
+            {pipeline ? (
+              <PipelineVersionCard pipeline={pipeline} selectedVersion={selectedVersion} />
+            ) : (
+              <PipelineDefinitionDetails spec={pipelineSpec} source={definitionSource} />
+            )}
           </div>
         )}
       </InspectionTabs>

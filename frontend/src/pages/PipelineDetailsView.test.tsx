@@ -253,3 +253,69 @@ describe('PipelineDetailsV2', () => {
     await screen.findByText('Output Parameters');
   });
 });
+
+it('shows inline definition metadata, source and falsy parameter defaults in Details', () => {
+  mockResizeObserver();
+  render(
+    <CommonTestWrapper>
+      <PipelineDetailsView
+        templateString={JSON.stringify({
+          pipelineInfo: { name: 'inline-training', description: 'Train a model' },
+          deploymentSpec: {},
+          root: {
+            dag: { tasks: {} },
+            inputDefinitions: {
+              parameters: {
+                retries: { parameterType: 'NUMBER_INTEGER', defaultValue: 0 },
+                enabled: { parameterType: 'BOOLEAN', defaultValue: false },
+                label: { parameterType: 'STRING', defaultValue: '' },
+                required: { parameterType: 'STRING' },
+              },
+            },
+          },
+        })}
+        definitionSource={{
+          name: 'Nightly training',
+          href: '/recurringrun/details/schedule-1',
+          inline: true,
+        }}
+        pipelineFlowElements={[]}
+        pipeline={null}
+        selectedVersion={undefined}
+        versions={[]}
+        handleVersionSelected={async () => {}}
+      />
+    </CommonTestWrapper>,
+  );
+  fireEvent.click(screen.getByRole('tab', { name: 'Details', exact: true }));
+  expect(screen.getByText('inline-training')).toBeInTheDocument();
+  expect(screen.getByText('Train a model')).toBeInTheDocument();
+  expect(screen.getByText('Inline definition')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Nightly training' })).toHaveAttribute(
+    'href',
+    '/recurringrun/details/schedule-1',
+  );
+  for (const value of ['0', 'false', '""', 'No default'])
+    expect(screen.getByText(value, { exact: true })).toBeInTheDocument();
+  expect(screen.queryByText('Version ID')).not.toBeInTheDocument();
+  expect(screen.queryByText('Uploaded on')).not.toBeInTheDocument();
+});
+
+it('shows a useful Details empty state when spec metadata is absent', () => {
+  mockResizeObserver();
+  render(
+    <CommonTestWrapper>
+      <PipelineDetailsView
+        pipelineFlowElements={[]}
+        pipeline={null}
+        selectedVersion={undefined}
+        versions={[]}
+        handleVersionSelected={async () => {}}
+      />
+    </CommonTestWrapper>,
+  );
+  fireEvent.click(screen.getByRole('tab', { name: 'Details', exact: true }));
+  expect(screen.getByText('Not specified')).toBeInTheDocument();
+  expect(screen.getByText('No description')).toBeInTheDocument();
+  expect(screen.getByText('No input parameters defined.')).toBeInTheDocument();
+});

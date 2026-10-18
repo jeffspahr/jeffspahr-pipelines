@@ -39,7 +39,10 @@ import { V2beta1Run } from 'src/apisv2beta1/run';
 import { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
 import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
 
+import type { PipelineDefinitionSource } from 'src/components/pipelines/PipelineDefinitionDetails';
+
 interface PipelineDetailsPageState {
+  definitionSource?: PipelineDefinitionSource;
   graphV2: PipelineFlowElement[] | null;
   graphIsLoading: boolean;
   v2Pipeline: V2beta1Pipeline | null;
@@ -212,6 +215,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
           <PipelineDetailsView
             key={v2SelectedVersion?.pipeline_version_id ?? templateString}
             templateString={templateString}
+            definitionSource={this.state.definitionSource}
             pipelineFlowElements={graphV2 || []}
             pipeline={v2Pipeline}
             selectedVersion={v2SelectedVersion}
@@ -335,6 +339,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
       return;
     }
 
+    let definitionSource: PipelineDefinitionSource | undefined;
     let v2Pipeline: V2beta1Pipeline | null = null;
     let v2SelectedVersion: V2beta1PipelineVersion | undefined;
     let v2Versions: V2beta1PipelineVersion[] = [];
@@ -363,6 +368,14 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
           : await this.getTempStrFromRunOrRecurringRun(origin.v2Run!);
 
         templateString = templateStrFromOrigin || '';
+        const source = origin.isRecurring ? origin.v2RecurringRun : origin.v2Run;
+        definitionSource = {
+          name: source?.display_name || (origin.isRecurring ? 'Recurring run' : 'Run'),
+          href: origin.isRecurring
+            ? RoutePageFactory.recurringRunDetails(origin.recurringRunId!)
+            : RoutePageFactory.runDetails(origin.runId!),
+          inline: !!source?.pipeline_spec,
+        };
 
         const relatedExperimentId = origin.isRecurring
           ? origin.v2RecurringRun?.experiment_id
@@ -460,6 +473,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
 
     const graphV2 = await this._createGraph(templateString);
     this.setStateSafe({
+      definitionSource,
       v2Pipeline,
       v2SelectedVersion,
       v2Versions,
