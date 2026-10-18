@@ -16,14 +16,14 @@
 
 import * as React from 'react';
 import { ResourceTable } from 'src/components/tables/ResourceTable';
-import Buttons, { ButtonKeys } from 'src/lib/Buttons';
+import Buttons from 'src/lib/Buttons';
 import CustomTable, {
   Column,
   Row,
   ExpandState,
   CustomRendererProps,
 } from 'src/components/CustomTable';
-import RunList from './RunList';
+import { ExperimentRunPreview } from 'src/components/runs/ExperimentRunPreview';
 import { produce as immerProduce } from 'immer';
 import {
   V2beta1ListExperimentsResponse,
@@ -53,8 +53,6 @@ interface DisplayExperiment extends V2beta1Experiment {
 
 interface ExperimentListState {
   displayExperiments: DisplayExperiment[];
-  selectedIds: string[];
-  selectedTab: number;
 }
 
 export class ExperimentList extends Page<
@@ -68,26 +66,13 @@ export class ExperimentList extends Page<
 
     this.state = {
       displayExperiments: [],
-      selectedIds: [],
-      selectedTab: 0,
     };
   }
 
   public getInitialToolbarState(): ToolbarProps {
     const buttons = new Buttons(this.props, this.refresh.bind(this));
     return {
-      actions: buttons
-        .newExperiment()
-        .compareRuns(() => this.state.selectedIds)
-        .cloneRun(() => this.state.selectedIds, false)
-        .archive(
-          'run',
-          () => this.state.selectedIds,
-          false,
-          (ids) => this._selectionChanged(ids),
-        )
-        .refresh(this.refresh.bind(this))
-        .getToolbarActionMap(),
+      actions: buttons.newExperiment().refresh(this.refresh.bind(this)).getToolbarActionMap(),
       breadcrumbs: [],
       pageTitle: 'Experiments',
     };
@@ -273,15 +258,6 @@ export class ExperimentList extends Page<
     return response.next_page_token || '';
   }
 
-  private _selectionChanged(selectedIds: string[]): void {
-    const actions = this.props.toolbarProps.actions;
-    actions[ButtonKeys.COMPARE].disabled = selectedIds.length <= 1 || selectedIds.length > 10;
-    actions[ButtonKeys.CLONE_RUN].disabled = selectedIds.length !== 1;
-    actions[ButtonKeys.ARCHIVE].disabled = !selectedIds.length;
-    this.props.updateToolbar({ actions });
-    this.setState({ selectedIds });
-  }
-
   private _toggleRowExpand(rowIndex: number): void {
     const displayExperiments = immerProduce(this.state.displayExperiments, (draft) => {
       draft[rowIndex].expandState =
@@ -296,18 +272,10 @@ export class ExperimentList extends Page<
   private _getExpandedExperimentComponent(experimentIndex: number): React.JSX.Element {
     const experiment = this.state.displayExperiments[experimentIndex];
     return (
-      <RunList
-        hideExperimentColumn={true}
-        experimentIdMask={experiment.experiment_id}
-        onError={() => null}
-        {...this.props}
-        scopeControl={undefined}
-        disablePaging={false}
-        selectedIds={this.state.selectedIds}
-        noFilterBox={true}
-        storageState={V2beta1RunStorageState.AVAILABLE}
-        onSelectionChange={this._selectionChanged.bind(this)}
-        disableSorting={true}
+      <ExperimentRunPreview
+        experimentId={experiment.experiment_id!}
+        runs={experiment.last5Runs}
+        error={experiment.error}
       />
     );
   }

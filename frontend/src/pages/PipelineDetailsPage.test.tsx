@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
 import * as JsYaml from 'js-yaml';
 import { MemoryRouter } from 'react-router';
@@ -205,6 +205,61 @@ describe('PipelineDetails', () => {
       tree = undefined;
     }
     vi.clearAllMocks();
+  });
+
+  it('provides full version management at the versions URL without loading a graph', async () => {
+    const props = generateProps();
+    props.location = { ...props.location, search: '?tab=versions' };
+    tree = renderPipelineDetailsElement(<PipelineDetailsPage {...props} />);
+    const selection = await screen.findByRole('checkbox', {
+      name: 'Select version test-pipeline-version',
+    });
+    expect(screen.getByRole('searchbox', { name: 'Search versions' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Rows per page' })).toBeVisible();
+    expect(createGraphSpy).not.toHaveBeenCalled();
+    expect(getV2PipelineVersionSpy).not.toHaveBeenCalled();
+    fireEvent.click(selection);
+    expect(tree.instance().getInitialToolbarState().actions[ButtonKeys.DELETE_RUN].disabled).toBe(
+      false,
+    );
+    await act(async () => {
+      await tree!.instance().refresh();
+    });
+    expect(tree.instance().getInitialToolbarState().actions[ButtonKeys.DELETE_RUN].disabled).toBe(
+      true,
+    );
+  });
+
+  it('deletes selected versions from management and stays on the versions page', async () => {
+    listV2PipelineVersionsSpy.mockResolvedValue({
+      pipeline_versions: [originalTestV2PipelineVersion, newTestV2PipelineVersion],
+    });
+    const props = generateProps();
+    props.location = { ...props.location, search: '?tab=versions' };
+    tree = renderPipelineDetailsElement(<PipelineDetailsPage {...props} />);
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Select version test-pipeline-version' }),
+    );
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Select version new-test-pipeline-version' }),
+    );
+    await act(async () => {
+      await tree!.instance().getInitialToolbarState().actions[ButtonKeys.DELETE_RUN].action();
+    });
+    const dialog = updateDialogSpy.mock.calls[updateDialogSpy.mock.calls.length - 1][0];
+    await act(async () => {
+      await dialog.buttons.find((button: { text: string }) => button.text === 'Delete').onClick();
+    });
+    expect(deletePipelineVersionSpy).toHaveBeenCalledWith(
+      'test-pipeline-id',
+      'test-pipeline-version-id',
+    );
+    expect(deletePipelineVersionSpy).toHaveBeenCalledWith(
+      'test-pipeline-id',
+      'new-test-pipeline-version-id',
+    );
+    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(tree.instance().state.selectedVersionIds).toEqual([]);
   });
 
   it('shows pipeline name in page name, and breadcrumb to go back to pipelines', async () => {

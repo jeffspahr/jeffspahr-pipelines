@@ -30,7 +30,7 @@ import { V2beta1RunStorageState, V2beta1RuntimeState } from 'src/apisv2beta1/run
 import { Apis } from 'src/lib/Apis';
 import { ExpandState } from 'src/components/CustomTable';
 import { PageProps } from './Page';
-import { RoutePage, QUERY_PARAMS, RouteParams } from 'src/components/Router';
+import { RoutePage, RouteParams } from 'src/components/Router';
 import { range } from 'lodash';
 import { ButtonKeys } from 'src/lib/Buttons';
 import { NamespaceContext } from 'src/lib/KubeflowClient';
@@ -345,6 +345,12 @@ describe('ExperimentList', () => {
     const expandButtons = screen.getAllByRole('button', { name: /expand/i });
     await user.click(expandButtons[0]);
     expect(screen.getAllByRole('group', { name: 'Experiment scope' })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'View all runs' })).toHaveAttribute(
+      'href',
+      '/experiments/details/test-experiment-id0',
+    );
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(getInstance().state.displayExperiments).toEqual([
         {
@@ -372,7 +378,7 @@ describe('ExperimentList', () => {
       });
     });
     const runListTree = (getInstance() as any)._getExpandedExperimentComponent(0);
-    expect(runListTree.props.experimentIdMask).toEqual('experiment1');
+    expect(runListTree.props.experimentId).toEqual('experiment1');
   });
 
   it('navigates to new experiment page when Create experiment button is clicked', async () => {
@@ -390,105 +396,12 @@ describe('ExperimentList', () => {
     expect(toolbarCall.actions[ButtonKeys.NEW_EXPERIMENT]).not.toHaveProperty('disabled');
   });
 
-  it('enables clone button when one run is selected', async () => {
+  it('keeps run management actions on experiment details', async () => {
     await mountWithNExperiments(1, 1);
-    updateToolbarSpy.mockClear();
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1']);
-    });
-    expect(updateToolbarSpy).toHaveBeenCalledTimes(1);
-    expect(updateToolbarSpy.mock.calls[0][0].actions[ButtonKeys.CLONE_RUN]).toHaveProperty(
-      'disabled',
-      false,
-    );
-  });
-
-  it('disables clone button when more than one run is selected', async () => {
-    await mountWithNExperiments(1, 1);
-    updateToolbarSpy.mockClear();
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1', 'run2']);
-    });
-    expect(updateToolbarSpy).toHaveBeenCalledTimes(1);
-    expect(updateToolbarSpy.mock.calls[0][0].actions[ButtonKeys.CLONE_RUN]).toHaveProperty(
-      'disabled',
-      true,
-    );
-  });
-
-  it('enables compare runs button only when more than one is selected', async () => {
-    await mountWithNExperiments(1, 1);
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1']);
-    });
-    expect(TestUtils.getToolbarButton(updateToolbarSpy as any, ButtonKeys.COMPARE).disabled).toBe(
-      true,
-    );
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1', 'run2']);
-    });
-    expect(TestUtils.getToolbarButton(updateToolbarSpy as any, ButtonKeys.COMPARE).disabled).toBe(
-      false,
-    );
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1', 'run2', 'run3']);
-    });
-    expect(TestUtils.getToolbarButton(updateToolbarSpy as any, ButtonKeys.COMPARE).disabled).toBe(
-      false,
-    );
-  });
-
-  it('navigates to compare page with the selected run ids', async () => {
-    await mountWithNExperiments(1, 1);
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1', 'run2', 'run3']);
-    });
-    const compareBtn = getInstance().getInitialToolbarState().actions[ButtonKeys.COMPARE];
-    await act(async () => {
-      await compareBtn!.action();
-    });
-    expect(navigateSpy).toHaveBeenLastCalledWith(
-      `${RoutePage.COMPARE}?${QUERY_PARAMS.runlist}=run1%2Crun2%2Crun3`,
-    );
-  });
-
-  it('navigates to new run page with the selected run id for cloning', async () => {
-    await mountWithNExperiments(1, 1);
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1']);
-    });
-    const cloneBtn = getInstance().getInitialToolbarState().actions[ButtonKeys.CLONE_RUN];
-    await act(async () => {
-      await cloneBtn!.action();
-    });
-    expect(navigateSpy).toHaveBeenLastCalledWith(
-      `${RoutePage.NEW_RUN}?${QUERY_PARAMS.cloneFromRun}=run1`,
-    );
-  });
-
-  it('enables archive button when at least one run is selected', async () => {
-    await mountWithNExperiments(1, 1);
-    expect(TestUtils.getToolbarButton(updateToolbarSpy as any, ButtonKeys.ARCHIVE).disabled).toBe(
-      true,
-    );
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1']);
-    });
-    expect(TestUtils.getToolbarButton(updateToolbarSpy as any, ButtonKeys.ARCHIVE).disabled).toBe(
-      false,
-    );
-    await act(async () => {
-      (getInstance() as any)._selectionChanged(['run1', 'run2']);
-    });
-    expect(TestUtils.getToolbarButton(updateToolbarSpy as any, ButtonKeys.ARCHIVE).disabled).toBe(
-      false,
-    );
-    await act(async () => {
-      (getInstance() as any)._selectionChanged([]);
-    });
-    expect(TestUtils.getToolbarButton(updateToolbarSpy as any, ButtonKeys.ARCHIVE).disabled).toBe(
-      true,
-    );
+    const actions = getInstance().getInitialToolbarState().actions;
+    expect(actions[ButtonKeys.COMPARE]).toBeUndefined();
+    expect(actions[ButtonKeys.CLONE_RUN]).toBeUndefined();
+    expect(actions[ButtonKeys.ARCHIVE]).toBeUndefined();
   });
 
   it('renders experiment names as links to their details pages', async () => {

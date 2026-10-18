@@ -31,7 +31,7 @@ import { errorToMessage, formatDateString } from 'src/lib/Utils';
 import { Apis, ListRequest, PipelineSortKeys } from 'src/lib/Apis';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
 import { Page } from './Page';
-import PipelineVersionList from './PipelineVersionList';
+import { PipelineVersionsPreview } from 'src/components/pipelines/PipelineVersionsPreview';
 import { PipelineCollection } from 'src/components/pipelines/PipelineCollection';
 import { Menu } from '@base-ui/react/menu';
 import { Button } from 'src/components/ui/button';
@@ -52,10 +52,6 @@ interface PipelineListState {
   displayPipelines: DisplayPipeline[];
   selectedIds: string[];
   loadError: boolean;
-
-  // selectedVersionIds is a map from string to string array.
-  // For each pipeline, there is a list of selected version ids.
-  selectedVersionIds: { [pipelineId: string]: string[] };
 }
 
 const descriptionCustomRenderer: React.FC<CustomRendererProps<string>> = (
@@ -67,7 +63,6 @@ const descriptionCustomRenderer: React.FC<CustomRendererProps<string>> = (
 class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
   private _tableRef = React.createRef<CustomTable>();
   private _loadGeneration = 0;
-  private _versionBannerPipelineId?: string;
 
   constructor(props: any) {
     super(props);
@@ -77,7 +72,6 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
       displayPipelines: [],
       loadError: false,
       selectedIds: [],
-      selectedVersionIds: {},
     };
   }
 
@@ -89,8 +83,8 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
         .refresh(this.refresh.bind(this))
         .deletePipelinesAndPipelineVersions(
           () => this.state.selectedIds,
-          () => this.state.selectedVersionIds,
-          (pipelineId, ids) => this._selectionChanged(pipelineId, ids),
+          () => ({}),
+          (_pipelineId, ids) => this._selectionChanged(ids),
           false /* useCurrentResource */,
         )
         .getToolbarActionMap(),
@@ -172,7 +166,7 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
           columns={columns}
           rows={rows}
           initialSortColumn={PipelineSortKeys.CREATED_AT}
-          updateSelection={this._selectionChanged.bind(this, undefined)}
+          updateSelection={this._selectionChanged.bind(this)}
           selectedIds={this.state.selectedIds}
           reload={this._reload.bind(this)}
           toggleExpansion={this._toggleRowExpand.bind(this)}
@@ -218,26 +212,7 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
   private _getExpandedPipelineComponent(rowIndex: number): React.JSX.Element {
     const pipeline = this.state.displayPipelines[rowIndex];
     return (
-      <PipelineVersionList
-        pipelineId={pipeline.pipeline_id}
-        onError={(message, error) => {
-          if (this.state.loadError) return;
-          this._versionBannerPipelineId = pipeline.pipeline_id;
-          this.showPageError(message, error);
-        }}
-        onLoadSuccess={() => {
-          if (!this.state.loadError && this._versionBannerPipelineId === pipeline.pipeline_id) {
-            this._versionBannerPipelineId = undefined;
-            this.clearBanner();
-          }
-        }}
-        {...this.props}
-        selectedIds={this.state.selectedVersionIds[pipeline.pipeline_id!] || []}
-        noFilterBox={true}
-        onSelectionChange={this._selectionChanged.bind(this, pipeline.pipeline_id)}
-        disableSorting={false}
-        disablePaging={false}
-      />
+      <PipelineVersionsPreview key={pipeline.pipeline_id} pipelineId={pipeline.pipeline_id!} />
     );
   }
 
@@ -259,13 +234,11 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
         })),
         loadError: false,
       });
-      this._versionBannerPipelineId = undefined;
       this.clearBanner();
       return response.next_page_token || '';
     } catch (err) {
       const error = err instanceof Error ? err : new Error(await errorToMessage(err));
       if (!this._isMounted || generation !== this._loadGeneration) return '';
-      this._versionBannerPipelineId = undefined;
       this.setStateSafe({ loadError: true });
       await this.showPageError('Error: failed to retrieve list of pipelines.', error);
       return '';
@@ -284,30 +257,13 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
     </Link>
   );
 
-  // selection changes passed in via "selectedIds" can be
-  // (1) changes of selected pipeline ids, and will be stored in "this.state.selectedIds" or
-  // (2) changes of selected pipeline version ids, and will be stored in "selectedVersionIds" with key "pipelineId"
-  private _selectionChanged(pipelineId: string | undefined, selectedIds: string[]): void {
+  private _selectionChanged(selectedIds: string[]): void {
     if (!this._isMounted) return;
-    this.setState(
-      (current) => ({
-        selectedIds: pipelineId ? current.selectedIds : selectedIds || [],
-        selectedVersionIds: pipelineId
-          ? { ...current.selectedVersionIds, [pipelineId]: selectedIds || [] }
-          : current.selectedVersionIds,
-      }),
-      () => {
-        const actions = this.props.toolbarProps.actions;
-        actions[ButtonKeys.DELETE_RUN].disabled =
-          this.state.selectedIds.length === 0 &&
-          this._deepCountDictionary(this.state.selectedVersionIds) === 0;
-        this.props.updateToolbar({ actions });
-      },
-    );
-  }
-
-  private _deepCountDictionary(dict: { [pipelineId: string]: string[] }): number {
-    return Object.keys(dict).reduce((count, pipelineId) => count + dict[pipelineId].length, 0);
+    this.setState({ selectedIds: selectedIds || [] }, () => {
+      const actions = this.props.toolbarProps.actions;
+      actions[ButtonKeys.DELETE_RUN].disabled = this.state.selectedIds.length === 0;
+      this.props.updateToolbar({ actions });
+    });
   }
 }
 

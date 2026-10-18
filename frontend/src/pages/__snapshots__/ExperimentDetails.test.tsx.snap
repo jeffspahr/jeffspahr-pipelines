@@ -559,7 +559,7 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                           <span
                             class="kfp-column-heading"
                           >
-                            Recurring Run
+                            Recurring run
                           </span>
                         </th>
                         <th
@@ -1261,7 +1261,7 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                           <span
                             class="kfp-column-heading"
                           >
-                            Recurring Run
+                            Recurring run
                           </span>
                         </th>
                         <th
@@ -1981,7 +1981,7 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                           <span
                             class="kfp-column-heading"
                           >
-                            Recurring Run
+                            Recurring run
                           </span>
                         </th>
                         <th

@@ -50,7 +50,6 @@ describe('PipelineList', () => {
   let listPipelinesSpy: ReturnType<typeof vi.spyOn>;
   let listPipelineVersionsSpy: ReturnType<typeof vi.spyOn>;
   let deletePipelineSpy: ReturnType<typeof vi.spyOn>;
-  let deletePipelineVersionSpy: ReturnType<typeof vi.spyOn>;
 
   function spyInit() {
     updateBannerSpy = vi.fn();
@@ -66,9 +65,9 @@ describe('PipelineList', () => {
     deletePipelineSpy = vi
       .spyOn(Apis.pipelineServiceApiV2, 'deletePipeline')
       .mockResolvedValue(undefined as any);
-    deletePipelineVersionSpy = vi
-      .spyOn(Apis.pipelineServiceApiV2, 'deletePipelineVersion')
-      .mockResolvedValue(undefined as any);
+    vi.spyOn(Apis.pipelineServiceApiV2, 'deletePipelineVersion').mockResolvedValue(
+      undefined as any,
+    );
   }
 
   function generateProps(): PageProps {
@@ -158,18 +157,6 @@ describe('PipelineList', () => {
     const row = await waitForRowById(id);
     await userEvent.click(within(row).getByRole('checkbox', { name: /^Select pipeline / }));
     await waitForSelectedPipelines([]);
-  }
-
-  async function selectPipelineVersion(
-    pipelineId: string,
-    pipelineVersionId: string,
-  ): Promise<void> {
-    const row = await waitForRowById(pipelineVersionId);
-    await userEvent.click(row);
-    await waitFor(() => {
-      expect(getPipelineListState()).toHaveProperty('selectedVersionIds');
-      expect(getPipelineListState()!.selectedVersionIds[pipelineId]).toEqual([pipelineVersionId]);
-    });
   }
 
   async function openDeleteDialog(): Promise<any> {
@@ -451,41 +438,21 @@ describe('PipelineList', () => {
     expect(updateBannerSpy).toHaveBeenLastCalledWith(errorBanner);
   });
 
-  it('does not clear another pipeline version list error on successful expansion', async () => {
+  it('keeps preview errors local and provides version management links', async () => {
     await mountWithNPipelines(2);
-    listPipelineVersionsSpy.mockImplementation(async (pipelineId) => {
-      if (pipelineId === 'test-pipeline-id0') throw new Error('versions failed');
-      return { pipeline_versions: [] };
-    });
+    listPipelineVersionsSpy.mockRejectedValue(new Error('versions failed'));
     await userEvent.click(
       screen.getByRole('button', { name: 'Expand pipeline test pipeline name0' }),
     );
-    const errorBanner = expect.objectContaining({
-      additionalInfo: 'versions failed',
-      mode: 'error',
-    });
-    await waitFor(() => expect(updateBannerSpy).toHaveBeenLastCalledWith(errorBanner));
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Expand pipeline test pipeline name1' }),
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load versions');
+    expect(screen.getByRole('link', { name: 'View all versions' })).toHaveAttribute(
+      'href',
+      '/pipelines/details/test-pipeline-id0?tab=versions',
     );
-    await waitFor(() =>
-      expect(listPipelineVersionsSpy).toHaveBeenCalledWith(
-        'test-pipeline-id1',
-        '',
-        10,
-        'created_at desc',
-        '',
-      ),
-    );
-    expect(updateBannerSpy).toHaveBeenLastCalledWith(errorBanner);
+    expect(screen.queryByRole('checkbox', { name: /^Select version/ })).not.toBeInTheDocument();
     listPipelineVersionsSpy.mockResolvedValue({ pipeline_versions: [] });
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Collapse pipeline test pipeline name0' }),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Expand pipeline test pipeline name0' }),
-    );
-    await waitFor(() => expect(updateBannerSpy).toHaveBeenLastCalledWith({}));
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('No versions yet.')).toBeInTheDocument();
   });
 
   it('hides error banner when listing pipelines fails then succeeds', async () => {
@@ -558,49 +525,6 @@ describe('PipelineList', () => {
     await waitFor(() => {
       expect(getToolbarAction(ButtonKeys.DELETE_RUN).disabled).toBe(true);
     });
-  });
-
-  it('keeps Delete enabled while another expanded pipeline has a selected version', async () => {
-    listPipelineVersionsSpy.mockImplementation(async (pipelineId) => ({
-      pipeline_versions: [
-        {
-          pipeline_id: pipelineId,
-          pipeline_version_id: `${pipelineId}-version`,
-          display_name: `${pipelineId} version`,
-        },
-      ],
-    }));
-    await mountWithNPipelines(2);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Expand pipeline test pipeline name0' }),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Expand pipeline test pipeline name1' }),
-    );
-    const first = await screen.findByRole('checkbox', {
-      name: 'Select version test-pipeline-id0 version',
-    });
-    const second = await screen.findByRole('checkbox', {
-      name: 'Select version test-pipeline-id1 version',
-    });
-    await userEvent.click(first);
-    await userEvent.click(second);
-    await userEvent.click(second);
-    expect(updateToolbarSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        actions: expect.objectContaining({
-          [ButtonKeys.DELETE_RUN]: expect.objectContaining({ disabled: false }),
-        }),
-      }),
-    );
-    await userEvent.click(first);
-    expect(updateToolbarSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        actions: expect.objectContaining({
-          [ButtonKeys.DELETE_RUN]: expect.objectContaining({ disabled: true }),
-        }),
-      }),
-    );
   });
 
   it('shows delete dialog when delete button is clicked', async () => {
@@ -761,165 +685,6 @@ describe('PipelineList', () => {
         message: 'Deletion succeeded for 2 pipelines',
         open: true,
       });
-    });
-  });
-
-  it("delete a pipeline and some other pipeline's version together", async () => {
-    deletePipelineSpy.mockResolvedValue(undefined as any);
-    deletePipelineVersionSpy.mockResolvedValue(undefined as any);
-
-    listPipelineVersionsSpy.mockImplementation((pipelineId: string) => {
-      if (pipelineId === 'test-pipeline-id1') {
-        return Promise.resolve({
-          pipeline_versions: [
-            {
-              display_name: 'test-pipeline-id1_name',
-              name: 'test-pipeline-id1_name',
-              pipeline_id: 'test-pipeline-id1',
-              pipeline_version_id: 'test-pipeline-version-id1',
-            },
-          ],
-        });
-      }
-      return Promise.resolve({ pipeline_versions: [] });
-    });
-
-    await mountWithNPipelines(2);
-    const expandButtons = screen.getAllByRole('button', { name: /expand/i });
-    await userEvent.click(expandButtons[1]);
-    await waitFor(() => {
-      expect(listPipelineVersionsSpy).toHaveBeenCalled();
-    });
-
-    await selectPipeline('test-pipeline-id0');
-    await selectPipelineVersion('test-pipeline-id1', 'test-pipeline-version-id1');
-
-    const call = await openDeleteDialog();
-    const confirmBtn = call.buttons.find((b: any) => b.text === 'Delete');
-    await act(async () => {
-      await confirmBtn.onClick();
-    });
-
-    await waitFor(() => {
-      expect(deletePipelineSpy).toHaveBeenCalledTimes(1);
-      expect(deletePipelineSpy).toHaveBeenCalledWith('test-pipeline-id0', false);
-      expect(deletePipelineVersionSpy).toHaveBeenCalledTimes(1);
-      expect(deletePipelineVersionSpy).toHaveBeenCalledWith(
-        'test-pipeline-id1',
-        'test-pipeline-version-id1',
-      );
-    });
-    await waitForSelectedPipelines([]);
-    await waitFor(() => {
-      expect(getPipelineListState()).toHaveProperty('selectedVersionIds', {
-        'test-pipeline-id1': [],
-      });
-    });
-    await waitFor(() => {
-      expect(updateSnackbarSpy).toHaveBeenLastCalledWith({
-        message: 'Deletion succeeded for 1 pipeline and 1 pipeline version',
-        open: true,
-      });
-    });
-  });
-
-  it('waits for all selected version deletions before updating snackbar or selection state', async () => {
-    let resolveSecondDelete!: () => void;
-    const secondDeletePromise = new Promise<void>((resolve) => {
-      resolveSecondDelete = resolve;
-    });
-
-    deletePipelineVersionSpy
-      .mockImplementationOnce(() => {
-        throw {
-          text: () => Promise.resolve('first version failed'),
-        };
-      })
-      .mockImplementationOnce(() => secondDeletePromise as any);
-
-    listPipelineVersionsSpy.mockImplementation((pipelineId: string) => {
-      if (pipelineId === 'test-pipeline-id0') {
-        return Promise.resolve({
-          pipeline_versions: [
-            {
-              display_name: 'test-pipeline-id0_version_1',
-              name: 'test-pipeline-id0_version_1',
-              pipeline_id: 'test-pipeline-id0',
-              pipeline_version_id: 'test-pipeline-version-id1',
-            },
-            {
-              display_name: 'test-pipeline-id0_version_2',
-              name: 'test-pipeline-id0_version_2',
-              pipeline_id: 'test-pipeline-id0',
-              pipeline_version_id: 'test-pipeline-version-id2',
-            },
-          ],
-        });
-      }
-      return Promise.resolve({ pipeline_versions: [] });
-    });
-
-    await mountWithNPipelines(1);
-    const expandButtons = screen.getAllByRole('button', { name: /expand/i });
-    await userEvent.click(expandButtons[0]);
-    await waitFor(() => {
-      expect(listPipelineVersionsSpy).toHaveBeenCalled();
-    });
-
-    await userEvent.click(await waitForRowById('test-pipeline-version-id1'));
-    await userEvent.click(await waitForRowById('test-pipeline-version-id2'));
-    await waitFor(() => {
-      expect(
-        getPipelineListState()!.selectedVersionIds['test-pipeline-id0'].slice().sort(),
-      ).toEqual(['test-pipeline-version-id1', 'test-pipeline-version-id2']);
-    });
-
-    const call = await openDeleteDialog();
-    const confirmBtn = call.buttons.find((b: any) => b.text === 'Delete');
-
-    let confirmPromise!: Promise<void>;
-    await act(async () => {
-      confirmPromise = confirmBtn.onClick();
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(deletePipelineVersionSpy).toHaveBeenCalledTimes(2);
-    });
-    await flushPromisesInAct();
-
-    expect(updateSnackbarSpy).not.toHaveBeenCalled();
-    expect(updateDialogSpy).toHaveBeenCalledTimes(1);
-    expect(getPipelineListState()!.selectedVersionIds['test-pipeline-id0'].slice().sort()).toEqual([
-      'test-pipeline-version-id1',
-      'test-pipeline-version-id2',
-    ]);
-
-    await act(async () => {
-      resolveSecondDelete();
-      await confirmPromise;
-    });
-
-    await waitFor(() => {
-      expect(updateSnackbarSpy).toHaveBeenLastCalledWith({
-        message: 'Deletion succeeded for 1 pipeline version',
-        open: true,
-      });
-    });
-    await waitFor(() => {
-      expect(updateDialogSpy).toHaveBeenCalledTimes(2);
-    });
-    expect(updateDialogSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        content:
-          'Failed to delete pipeline version: test-pipeline-version-id1 with error: "first version failed"',
-        title: 'Failed to delete some pipelines and/or some pipeline versions',
-      }),
-    );
-    await waitFor(() => {
-      expect(getPipelineListState()!.selectedVersionIds['test-pipeline-id0']).toEqual([
-        'test-pipeline-version-id1',
-      ]);
     });
   });
 

@@ -79,3 +79,7 @@ controls perform their own actions. Read-only lists do not show dummy checkboxes
 Primary names use regular-weight foreground text; secondary metadata uses regular
 body text with a quieter color. Differences in columns reflect resource semantics, not independent
 page styling choices.
+
+### Expanded collection previews
+
+Expanded pipelines and experiments show at most five recent versions or runs in a compact list, with shared typography and spacing. Previews have no selection, sort controls or pagination. Their links open full detail-page management; pipeline versions use `?tab=versions` with search, sorting, pagination and bulk deletion. Top-level pipeline selection applies only to pipelines. Version labels must not infer a default from a display name: the v2 API has no default-version field.

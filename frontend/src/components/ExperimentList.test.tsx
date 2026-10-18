@@ -248,8 +248,8 @@ describe('ExperimentList', () => {
     expect(listRunsSpy).toHaveBeenLastCalledWith(
       undefined,
       'testexperiment1',
-      '',
-      10,
+      undefined,
+      5,
       'created_at desc',
       encodeURIComponent(
         JSON.stringify({
@@ -278,8 +278,8 @@ describe('ExperimentList', () => {
     expect(listRunsSpy).toHaveBeenLastCalledWith(
       undefined,
       'testexperiment1',
-      '',
-      10,
+      undefined,
+      5,
       'created_at desc',
       encodeURIComponent(
         JSON.stringify({

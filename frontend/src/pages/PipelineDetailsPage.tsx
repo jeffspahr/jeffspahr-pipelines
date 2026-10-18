@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import type * as React from 'react';
+import * as React from 'react';
+import { Link } from 'react-router';
+import PipelineVersionList from './PipelineVersionList';
 import * as JsYaml from 'js-yaml';
 import { Apis } from 'src/lib/Apis';
 import { convertFlowElements } from 'src/lib/v2/StaticFlow';
@@ -25,7 +27,7 @@ import {
   V2beta1Pipeline,
   V2beta1PipelineVersion,
 } from 'src/apisv2beta1/pipeline';
-import { QUERY_PARAMS, RoutePage, RouteParams } from 'src/components/Router';
+import { QUERY_PARAMS, RoutePage, RoutePageFactory, RouteParams } from 'src/components/Router';
 import { ToolbarProps } from 'src/lib/PageChromeTypes';
 import 'src/components/pipelines/Pipelines.css';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
@@ -44,6 +46,7 @@ interface PipelineDetailsPageState {
   v2SelectedVersion?: V2beta1PipelineVersion;
   templateString?: string;
   v2Versions: V2beta1PipelineVersion[];
+  selectedVersionIds: string[];
 }
 
 type Origin = {
@@ -55,6 +58,14 @@ type Origin = {
 };
 
 class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
+  private versionList = React.createRef<PipelineVersionList>();
+
+  private get managingVersions(): boolean {
+    return (
+      !this.getOrigin() && new URLSearchParams(this.props.location.search).get('tab') === 'versions'
+    );
+  }
+
   constructor(props: any) {
     super(props);
 
@@ -63,6 +74,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
       graphIsLoading: true,
       v2Pipeline: null,
       v2Versions: [],
+      selectedVersionIds: [],
     };
   }
 
@@ -71,6 +83,32 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
     const origin = this.getOrigin();
     const pipelineIdFromParams = this.props.params[RouteParams.pipelineId] ?? '';
     const pipelineVersionIdFromParams = this.props.params[RouteParams.pipelineVersionId] ?? '';
+
+    if (this.managingVersions) {
+      buttons
+        .newPipelineVersion('Upload version', () => pipelineIdFromParams)
+        .refresh(() => void this.refresh())
+        .deletePipelineVersion(
+          () => new Map(this.state.selectedVersionIds.map((id) => [id, pipelineIdFromParams])),
+          (_ids, success) => {
+            if (success) void this.refresh();
+          },
+          false,
+        );
+      const actions = buttons.getToolbarActionMap();
+      actions[ButtonKeys.DELETE_RUN].disabled = !this.state?.selectedVersionIds.length;
+      return {
+        actions,
+        breadcrumbs: [
+          { displayName: 'Pipelines', href: RoutePage.PIPELINES },
+          {
+            displayName: this.state?.v2Pipeline?.display_name || pipelineIdFromParams,
+            href: RoutePageFactory.pipelineDetails(pipelineIdFromParams),
+          },
+        ],
+        pageTitle: 'Versions',
+      };
+    }
 
     if (origin) {
       const getOriginIdList = () => [origin.isRecurring ? origin.recurringRunId! : origin.runId!];
@@ -135,8 +173,36 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
   public render(): React.JSX.Element {
     const { v2Pipeline, v2SelectedVersion, v2Versions, graphV2, templateString } = this.state;
 
+    if (this.managingVersions) {
+      return (
+        <div className='kfp-pipeline-detail'>
+          <PipelineVersionList
+            {...this.props}
+            ref={this.versionList}
+            pipelineId={this.props.params[RouteParams.pipelineId]}
+            selectedIds={this.state.selectedVersionIds}
+            onSelectionChange={(selectedVersionIds) =>
+              this.setState({ selectedVersionIds }, () =>
+                this.props.updateToolbar(this.getInitialToolbarState()),
+              )
+            }
+            onError={(message, error) => void this.showPageError(message, error)}
+          />
+        </div>
+      );
+    }
     return (
       <div className='kfp-pipeline-detail'>
+        {!this.getOrigin() && (
+          <Link
+            to={
+              RoutePageFactory.pipelineDetails(this.props.params[RouteParams.pipelineId] || '') +
+              '?tab=versions'
+            }
+          >
+            Manage versions
+          </Link>
+        )}
         {this.state.graphIsLoading && (
           <p className='kfp-pipeline-loading' role='status'>
             Currently loading pipeline information
@@ -158,6 +224,14 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
   }
 
   public async refresh(): Promise<void> {
+    if (this.managingVersions) {
+      this.setState({ selectedVersionIds: [] }, () =>
+        this.props.updateToolbar(this.getInitialToolbarState()),
+      );
+      this.clearBanner();
+      await this.versionList.current?.refresh();
+      return;
+    }
     return this.load();
   }
 
@@ -247,6 +321,19 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
   public async load(): Promise<void> {
     this.clearBanner();
     const origin = this.getOrigin();
+    if (this.managingVersions) {
+      try {
+        const v2Pipeline = await Apis.pipelineServiceApiV2.getPipeline(
+          this.props.params[RouteParams.pipelineId] || '',
+        );
+        this.setStateSafe({ v2Pipeline, graphIsLoading: false }, () =>
+          this.props.updateToolbar(this.getInitialToolbarState()),
+        );
+      } catch (error) {
+        await this.showPageError('Cannot retrieve pipeline details.', error);
+      }
+      return;
+    }
 
     let v2Pipeline: V2beta1Pipeline | null = null;
     let v2SelectedVersion: V2beta1PipelineVersion | undefined;

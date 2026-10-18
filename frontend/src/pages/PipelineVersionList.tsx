@@ -72,6 +72,10 @@ class PipelineVersionList extends React.PureComponent<
     };
   }
 
+  public async refresh(): Promise<void> {
+    await this._tableRef.current?.reload();
+  }
+
   public componentDidMount(): void {
     this._isMounted = true;
   }
@@ -149,6 +153,7 @@ class PipelineVersionList extends React.PureComponent<
           disableSorting={this.props.disableSorting}
           disableSelection={this.props.disableSelection}
           noFilterBox={this.props.noFilterBox}
+          filterLabel='Search versions'
           emptyMessage='No pipeline versions found.'
         />
       </div>

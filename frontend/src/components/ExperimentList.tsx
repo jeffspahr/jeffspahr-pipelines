@@ -28,9 +28,8 @@ import {
 import { errorToMessage } from 'src/lib/Utils';
 import { RoutePage, RouteParams } from './Router';
 import { Apis, ExperimentSortKeys, ListRequest } from 'src/lib/Apis';
-import { V2beta1RunStorageState } from 'src/apisv2beta1/run';
 import { V2beta1Filter, V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
-import RunList from 'src/pages/RunList';
+import { ExperimentRunPreview } from './runs/ExperimentRunPreview';
 import { produce as immerProduce } from 'immer';
 import 'src/components/runs/ExperimentWorkflows.css';
 
@@ -203,22 +202,11 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
 
   private _getExpandedExperimentComponent(experimentIndex: number): React.JSX.Element {
     const experiment = this.state.displayExperiments[experimentIndex];
-    const parentProps = { ...this.props, onError: () => null };
     return (
-      <RunList
-        hideExperimentColumn={true}
-        experimentIdMask={experiment.experiment_id}
-        {...parentProps}
-        scopeControl={undefined}
-        disablePaging={false}
-        noFilterBox={true}
-        storageState={
-          this.props.storageState === V2beta1ExperimentStorageState.ARCHIVED
-            ? V2beta1RunStorageState.ARCHIVED
-            : V2beta1RunStorageState.AVAILABLE
-        }
-        disableSorting={true}
-        disableSelection={true}
+      <ExperimentRunPreview
+        key={`${experiment.experiment_id}:${this.props.storageState}`}
+        experimentId={experiment.experiment_id!}
+        archived={this.props.storageState === V2beta1ExperimentStorageState.ARCHIVED}
       />
     );
   }
