@@ -734,7 +734,7 @@ describe('RunList', () => {
         'Pipeline version',
         ...(hideExperimentColumn ? [] : ['Experiment']),
         'Duration',
-        'Recurring Run',
+        'Recurring run',
         'Started',
       ]);
       const cells = within(screen.getByTestId('table-row')).getAllByRole('cell');
