@@ -21,6 +21,13 @@
   align-items: center;
   gap: 16px;
 }
+.kfp-collection-preview li + li {
+  border-top: 1px solid var(--border);
+}
+.kfp-collection-preview li:hover,
+.kfp-collection-preview li:focus-within {
+  background: var(--muted);
+}
 .kfp-collection-preview li > a {
   color: var(--foreground);
   font-weight: 400;
