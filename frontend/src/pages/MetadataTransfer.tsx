@@ -269,7 +269,7 @@ export default function MetadataTransferPage({ updateToolbar }: PageProps): Reac
   const buildInfo = React.useContext(BuildInfoContext);
   // External synchronization: the toolbar is owned by the router outside this page.
   React.useEffect(() => {
-    updateToolbar({ pageTitle: 'Export / Import', actions: {}, breadcrumbs: [] });
+    updateToolbar({ pageTitle: 'Export / import', actions: {}, breadcrumbs: [] });
   }, [updateToolbar]);
   return (
     <MetadataTransferForm

@@ -67,7 +67,7 @@ export class GettingStarted extends Page<{}, { links: string[] }> {
     return {
       actions: buttons.getToolbarActionMap(),
       breadcrumbs: [],
-      pageTitle: 'Getting Started',
+      pageTitle: 'Getting started',
     };
   }
 

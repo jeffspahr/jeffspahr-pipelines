@@ -120,7 +120,7 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
       { label: 'Duration', flex: 0.5, width: 100 },
       {
         customRenderer: this._recurringRunCustomRenderer,
-        label: 'Recurring Run',
+        label: 'Recurring run',
         flex: 0.5,
         width: 160,
       },

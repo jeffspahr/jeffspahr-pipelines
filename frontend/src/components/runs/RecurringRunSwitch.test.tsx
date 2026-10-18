@@ -43,6 +43,7 @@ it('sends one enable request while pending and accepts the refreshed server valu
       onUpdated={onUpdated}
     />,
   );
+  expect(screen.getByText('Disabled')).toBeInTheDocument();
   const control = screen.getByRole('switch', { name: 'Enable schedule Nightly training' });
   await user.click(control);
   expect(control).toHaveAttribute('aria-busy', 'true');
@@ -62,6 +63,7 @@ it('sends one enable request while pending and accepts the refreshed server valu
       onUpdated={onUpdated}
     />,
   );
+  expect(screen.getByText('Enabled')).toBeInTheDocument();
   expect(control).toBeChecked();
   expect(control).toHaveAttribute('aria-busy', 'false');
 });
@@ -128,7 +130,7 @@ it('keeps a confirmed mutation when refresh fails and permits the opposite mutat
   );
   expect(screen.getByRole('alert')).not.toHaveTextContent('Unable to update schedule');
   expect(control).toBeChecked();
-  expect(screen.getByText(Status.ENABLED)).toBeInTheDocument();
+  expect(screen.getByText('Enabled')).toBeInTheDocument();
   // An unrelated parent render still carries the old status after the failed refresh.
   view.rerender(
     <RecurringRunSwitch

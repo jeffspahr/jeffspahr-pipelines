@@ -424,7 +424,9 @@ describe('RecurringRunList', () => {
     const view = render(
       getInstance()._statusCustomRenderer({ value: status, id: 'recurring run-id' }),
     );
-    expect(view.getByText(status)).toBeVisible();
+    expect(
+      view.getByText(status === V2beta1RecurringRunStatus.ENABLED ? 'Enabled' : 'Disabled'),
+    ).toBeVisible();
     expect(view.getByRole('switch', { name: 'Enable schedule recurring run-id' })).toHaveAttribute(
       'aria-checked',
       String(checked),
@@ -436,7 +438,7 @@ describe('RecurringRunList', () => {
     const view = render(
       getInstance()._statusCustomRenderer({ value: 'Unknown Status', id: 'recurring run-id' }),
     );
-    expect(view.getByText('Unknown Status')).toBeVisible();
+    expect(view.getByText('Unknown')).toBeVisible();
     expect(view.getByRole('switch')).toHaveAttribute('aria-disabled', 'true');
   });
 

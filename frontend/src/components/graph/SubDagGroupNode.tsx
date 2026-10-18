@@ -68,7 +68,7 @@ export default function SubDagGroupNode({
             {collapsed ? <UnfoldMoreIcon size={16} /> : <UnfoldLessIcon size={16} />}
           </button>
           {data.state && (
-            <div title={data.state} className='kfp-subdag-status' data-testid='subdag-status'>
+            <div title={status.label} className='kfp-subdag-status' data-testid='subdag-status'>
               <TaskStateIndicator state={data.state} />
             </div>
           )}

@@ -94,7 +94,13 @@ export function RecurringRunSwitch({
         checked={confirmedStatus === V2beta1RecurringRunStatus.ENABLED}
         disabled={!knownStatus || !id}
         errorId={error ? errorId : undefined}
-        status={confirmedStatus || '-'}
+        status={
+          knownStatus
+            ? confirmedStatus === V2beta1RecurringRunStatus.ENABLED
+              ? 'Enabled'
+              : 'Disabled'
+            : 'Unknown'
+        }
         onChange={changeEnabled}
       />
       {error && (

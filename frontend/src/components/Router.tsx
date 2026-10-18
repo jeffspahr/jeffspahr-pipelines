@@ -506,7 +506,7 @@ const ApplicationLayout: React.FC<{ children: React.ReactNode }> = ({ children }
   if (KFP_FLAGS.DEPLOYMENT === Deployments.MARKETPLACE) {
     items.unshift({
       id: 'getting-started',
-      label: 'Getting Started',
+      label: 'Getting started',
       href: RoutePage.START,
       icon: BookOpen,
       active: pathname.startsWith(RoutePage.START),

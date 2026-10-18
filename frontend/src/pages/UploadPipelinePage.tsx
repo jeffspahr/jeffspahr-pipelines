@@ -206,7 +206,7 @@ export class UploadPipelineController extends Page<
     return {
       actions: {},
       breadcrumbs: [{ displayName: 'Pipeline Versions', href: RoutePage.NEW_PIPELINE_VERSION }],
-      pageTitle: 'New Pipeline',
+      pageTitle: 'New pipeline',
     };
   }
 

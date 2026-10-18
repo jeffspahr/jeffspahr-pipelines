@@ -48,7 +48,7 @@ export class RecurringRunsController extends Page<
         .refresh(this.refresh.bind(this))
         .getToolbarActionMap(),
       breadcrumbs: [],
-      pageTitle: 'Recurring Runs',
+      pageTitle: 'Recurring runs',
     };
   }
 

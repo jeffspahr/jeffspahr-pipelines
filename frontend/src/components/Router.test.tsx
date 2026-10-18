@@ -103,7 +103,7 @@ describe('Router', () => {
     await act(() => router.navigate(RoutePage.NEW_EXPERIMENT));
     expect(await screen.findByLabelText('Experiment name')).toBeVisible();
     await act(() => router.navigate(RoutePage.METADATA_TRANSFER));
-    expect(await screen.findByText('Export / Import', { selector: 'h1' })).toBeVisible();
+    expect(await screen.findByText('Export / import', { selector: 'h1' })).toBeVisible();
     await act(() => router.navigate('/runs'));
     expect(screen.getByText('Runs page')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Runs', exact: true })).toBe(runsLink);
@@ -534,7 +534,7 @@ describe('Router', () => {
 
   it.each([
     [undefined, RoutePage.PIPELINES, 'Pipelines landing'],
-    [Deployments.MARKETPLACE, RoutePage.START, 'Getting Started landing'],
+    [Deployments.MARKETPLACE, RoutePage.START, 'Getting started landing'],
   ])('retains the default route for deployment %s', async (deployment, expectedPath, title) => {
     KFP_FLAGS.DEPLOYMENT = deployment;
     const router = createMemoryRouter(
@@ -545,7 +545,7 @@ describe('Router', () => {
             <Router
               configs={[
                 { path: RoutePage.PIPELINES, Component: () => <div>Pipelines landing</div> },
-                { path: RoutePage.START, Component: () => <div>Getting Started landing</div> },
+                { path: RoutePage.START, Component: () => <div>Getting started landing</div> },
               ]}
             />
           ),
@@ -557,12 +557,12 @@ describe('Router', () => {
     expect(await screen.findByText(title)).toBeVisible();
     expect(router.state.location.pathname).toBe(expectedPath);
     if (deployment === Deployments.MARKETPLACE) {
-      expect(screen.getByRole('link', { name: 'Getting Started' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Getting started' })).toHaveAttribute(
         'href',
         RoutePage.START,
       );
     } else {
-      expect(screen.queryByRole('link', { name: 'Getting Started' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Getting started' })).not.toBeInTheDocument();
     }
   });
 

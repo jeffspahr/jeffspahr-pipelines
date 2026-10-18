@@ -365,7 +365,7 @@ describe('NewPipelineVersion', () => {
       expect(updateToolbarSpy).toHaveBeenLastCalledWith({
         actions: {},
         breadcrumbs: [{ displayName: 'Pipeline Versions', href: '/pipeline_versions/new' }],
-        pageTitle: 'New Pipeline',
+        pageTitle: 'New pipeline',
       });
       expect(getPipelineSpy).toHaveBeenCalledWith(MOCK_PIPELINE.pipeline_id);
     });
