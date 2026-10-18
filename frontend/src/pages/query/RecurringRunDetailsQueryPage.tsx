@@ -15,6 +15,7 @@
  */
 
 import 'src/pages/DetailLayouts.css';
+import { RecurringRunPipeline } from 'src/components/runs/RecurringRunPipeline';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
@@ -180,6 +181,7 @@ export function RecurringRunDetailsQueryPage(props: PageProps) {
     <div className='kfp-detail-page'>
       {recurringRun && (
         <div className='kfp-detail-sections'>
+          <RecurringRunPipeline run={recurringRun} />
           <DetailsTable
             title='Recurring run details'
             fields={getRecurringRunDetails(recurringRun)}

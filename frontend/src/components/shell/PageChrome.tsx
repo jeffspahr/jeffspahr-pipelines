@@ -194,7 +194,7 @@ function isWindowInactive() {
   return document.visibilityState === 'hidden' || !document.hasFocus();
 }
 
-function PageNotification({
+export function PageNotification({
   message,
   duration,
   onClose,

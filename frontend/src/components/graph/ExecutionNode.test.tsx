@@ -119,6 +119,7 @@ describe('task state presentation', () => {
         <ExecutionNode id='task' data={{ label: 'Train', state }} />
       </ReactFlowProvider>,
     );
+    expect(screen.getByRole('img', { name: 'Task' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Train' })).toHaveAccessibleDescription(label);
     expect(screen.getByRole('button', { name: 'Train' })).toHaveStyle({
       width: '200px',

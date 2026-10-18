@@ -15,6 +15,7 @@
  */
 
 import 'src/pages/DetailLayouts.css';
+import { RecurringRunPipeline } from 'src/components/runs/RecurringRunPipeline';
 import type * as React from 'react';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
 import { InspectionFields as DetailsTable } from 'src/components/inspection/InspectionFields';
@@ -112,6 +113,7 @@ class RecurringRunDetailsView extends Page<{}, RecurringRunConfigState> {
       <div className='kfp-detail-page'>
         {run && (
           <div className='kfp-detail-sections'>
+            <RecurringRunPipeline run={run} />
             <DetailsTable title='Recurring run details' fields={runDetails} />
 
             {!!triggerDetails.length && (

@@ -93,6 +93,7 @@ function DagCanvasView({
   const reactFlowInstance = useRef<ReactFlowInstance<PipelineNode, Edge> | null>(null);
   const lastFocusedNodeId = useRef<string | null>(null);
   const [locked, setLocked] = useState(true);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string>();
   const canDrag = nodesDraggable && !locked;
   const [expansion, setExpansion] = useState(() => loadGraphExpansion(graphId));
   // External synchronization: persist preferences after committed state changes.
@@ -183,14 +184,19 @@ function DagCanvasView({
       }),
     [grouped, positions, selectedId, toggleGroup, canDrag],
   );
-  const edges = useMemo(() => {
-    const states = new Map(nodes.map((node) => [node.id, node.data.state]));
-    return grouped.edges.map((edge) => ({
-      ...edge,
-      className: `${edge.className || ''} kfp-graph-edge-${getTaskStatus(states.get(edge.target)).tone}`,
-      style: { ...edge.style, strokeWidth: 1.5 },
-    }));
-  }, [grouped.edges, nodes]);
+  const edges = useMemo(
+    () =>
+      grouped.edges.map((edge) => ({
+        ...edge,
+        className: `${edge.className || ''} kfp-graph-edge${
+          [edge.source, edge.target].some((id) => id === selectedId || id === hoveredNodeId)
+            ? ' kfp-graph-edge-highlighted'
+            : ''
+        }`,
+        style: { ...edge.style, strokeWidth: 1.5 },
+      })),
+    [grouped.edges, selectedId, hoveredNodeId],
+  );
   const visibleStates = [
     ...new Set(
       nodes
@@ -306,6 +312,7 @@ function DagCanvasView({
     >
       <ReactFlowProvider>
         <ReactFlow<PipelineNode, Edge>
+          proOptions={{ hideAttribution: true }}
           nodes={nodes}
           edges={edges}
           snapToGrid={true}
@@ -326,6 +333,8 @@ function DagCanvasView({
           nodeTypes={NODE_TYPES}
           edgeTypes={{}}
           onNodeClick={handleElementClick}
+          onNodeMouseEnter={(_event, node) => setHoveredNodeId(node.id)}
+          onNodeMouseLeave={() => setHoveredNodeId(undefined)}
           onEdgeClick={handleElementClick}
           onNodesChange={onNodesChange}
           onNodeDragStop={canDrag ? onNodeDragStop : undefined}

@@ -26,13 +26,6 @@
   --xy-minimap-node-stroke-color: var(--muted-foreground);
   --xy-attribution-background-color: var(--card);
 }
-.kfp-graph-canvas .react-flow__attribution a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 4px;
-  color: var(--muted-foreground);
-}
 .kfp-graph-node {
   --kfp-node-state-color: var(--status-neutral);
   box-sizing: border-box;
@@ -205,10 +198,6 @@
   border-radius: 8px;
   box-shadow: var(--shadow-card);
 }
-/* Keep the bottom controls clear of the attribution's accessible target. */
-.kfp-graph-canvas .react-flow__controls.bottom {
-  bottom: 24px;
-}
 .kfp-graph-canvas .react-flow__controls-button {
   width: 30px;
   height: 30px;
@@ -245,21 +234,20 @@
   width: 8px;
   height: 8px;
 }
-.kfp-graph-edge-succeeded .react-flow__edge-path {
-  stroke: color-mix(in srgb, var(--status-succeeded) 60%, var(--border-strong));
+.kfp-graph-edge .react-flow__edge-path {
+  stroke: var(--border-strong);
 }
-.kfp-graph-edge-failed .react-flow__edge-path {
-  stroke: color-mix(in srgb, var(--status-failed) 60%, var(--border-strong));
+.kfp-graph-edge-highlighted .react-flow__edge-path,
+.kfp-graph-edge:hover .react-flow__edge-path,
+.kfp-graph-edge:focus-visible .react-flow__edge-path,
+.kfp-graph-edge.selected .react-flow__edge-path {
+  stroke: var(--primary);
+  stroke-width: 2;
 }
-.kfp-graph-edge-running .react-flow__edge-path {
-  stroke: var(--status-running);
-  stroke-dasharray: 6 6;
-  animation: kfp-graph-dash 1s linear infinite;
-}
-@keyframes kfp-graph-dash {
-  to {
-    stroke-dashoffset: -12;
-  }
+.kfp-graph-node-meta .kfp-graph-state-dot {
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
 }
 @keyframes kfp-graph-pulse {
   50% {
@@ -267,8 +255,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kfp-graph-state-dot,
-  .kfp-graph-edge-running .react-flow__edge-path {
+  .kfp-graph-state-dot {
     animation: none;
   }
 }

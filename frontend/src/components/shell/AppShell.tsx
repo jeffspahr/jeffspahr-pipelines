@@ -33,7 +33,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import KubeflowLogo from 'src/icons/kubeflowLogo';
 import { LocalStorage } from 'src/lib/LocalStorage';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
@@ -189,7 +188,12 @@ export function AppShell({
         >
           <div className='kfp-shell-brand' title={collapsed ? namespace : undefined}>
             <span className='kfp-shell-brand-mark' aria-hidden='true'>
-              <KubeflowLogo color='var(--primary-foreground)' style={{ width: 18, height: 18 }} />
+              <img
+                src={`${import.meta.env.BASE_URL}static/kubeflow-pipelines.svg`}
+                width={28}
+                height={28}
+                alt=''
+              />
             </span>
             <div className={collapsed ? 'kfp-shell-visually-hidden' : 'kfp-shell-brand-copy'}>
               <span className='kfp-shell-brand-title'>Pipelines</span>

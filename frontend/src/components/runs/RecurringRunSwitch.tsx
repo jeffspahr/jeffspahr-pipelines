@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { PageNotification } from '../shell/PageChrome';
+import { useTheme } from '../shell/ThemeProvider';
+import { Button } from '../ui/button';
+import { NoticeDetails } from '../ui/notice-details';
 import { V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
 import { Apis } from 'src/lib/Apis';
 import { errorToMessage } from 'src/lib/Utils';
@@ -33,21 +38,47 @@ export function RecurringRunSwitch({
   onUpdated: () => Promise<void>;
 }) {
   const errorId = useId();
+  const { themeClassName } = useTheme();
+  const inFlight = useRef(false);
+  const [retrying, setRetrying] = useState(false);
   const [state, setState] = useState({
     id,
     observedStatus: status,
     confirmedStatus: status,
     error: '',
+    refreshFailed: false,
   });
   // A successful mutation is authoritative until the parent supplies a changed server status.
   // Reconcile during render so stale responses cannot update a different schedule's control.
   if (state.id !== id || state.observedStatus !== status) {
-    setState({ id, observedStatus: status, confirmedStatus: status, error: '' });
+    setState({
+      id,
+      observedStatus: status,
+      confirmedStatus: status,
+      error: '',
+      refreshFailed: false,
+    });
   }
   const { confirmedStatus, error } = state;
   const knownStatus =
     confirmedStatus === V2beta1RecurringRunStatus.ENABLED ||
     confirmedStatus === V2beta1RecurringRunStatus.DISABLED;
+  const refresh = async () => {
+    try {
+      await onUpdated();
+    } catch (cause) {
+      const message = await errorToMessage(cause);
+      setState((current) =>
+        current.id === id
+          ? {
+              ...current,
+              error: `Schedule updated, but the list could not refresh: ${message}. Refresh the list to try again.`,
+              refreshFailed: true,
+            }
+          : current,
+      );
+    }
+  };
   const changeEnabled = async (enabled: boolean) => {
     setState((current) => ({ ...current, error: '' }));
     try {
@@ -58,7 +89,7 @@ export function RecurringRunSwitch({
       const message = await errorToMessage(cause);
       setState((current) =>
         current.id === id
-          ? { ...current, error: `Unable to update schedule: ${message}` }
+          ? { ...current, error: `Unable to update schedule: ${message}`, refreshFailed: false }
           : current,
       );
       return;
@@ -73,18 +104,20 @@ export function RecurringRunSwitch({
           }
         : current,
     );
+    await refresh();
+  };
+  const retry = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setRetrying(true);
+    const refreshOnly = state.refreshFailed;
+    setState((current) => ({ ...current, error: '' }));
     try {
-      await onUpdated();
-    } catch (cause) {
-      const message = await errorToMessage(cause);
-      setState((current) =>
-        current.id === id
-          ? {
-              ...current,
-              error: `Schedule updated, but the list could not refresh: ${message}. Refresh the list to try again.`,
-            }
-          : current,
-      );
+      if (refreshOnly) await refresh();
+      else await changeEnabled(confirmedStatus !== V2beta1RecurringRunStatus.ENABLED);
+    } finally {
+      inFlight.current = false;
+      setRetrying(false);
     }
   };
   return (
@@ -92,7 +125,7 @@ export function RecurringRunSwitch({
       <ScheduleSwitch
         name={name}
         checked={confirmedStatus === V2beta1RecurringRunStatus.ENABLED}
-        disabled={!knownStatus || !id}
+        disabled={!knownStatus || !id || retrying}
         errorId={error ? errorId : undefined}
         status={
           knownStatus
@@ -103,11 +136,27 @@ export function RecurringRunSwitch({
         }
         onChange={changeEnabled}
       />
-      {error && (
-        <p role='alert' id={errorId}>
-          {error}
-        </p>
-      )}
+      {error &&
+        createPortal(
+          <div className={themeClassName}>
+            <PageNotification
+              duration={null}
+              onClose={() => setState((current) => ({ ...current, error: '' }))}
+              message={
+                <span role='alert' id={errorId}>
+                  {state.refreshFailed
+                    ? `Schedule “${name}” updated, but the list could not refresh.`
+                    : `Could not update schedule “${name}”. Its previous setting is unchanged.`}{' '}
+                  <Button variant='secondary' size='sm' onClick={retry} disabled={retrying}>
+                    Retry
+                  </Button>{' '}
+                  <NoticeDetails>{error}</NoticeDetails>
+                </span>
+              }
+            />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

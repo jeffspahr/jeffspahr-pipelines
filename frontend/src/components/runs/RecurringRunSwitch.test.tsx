@@ -19,6 +19,7 @@ import userEvent from '@testing-library/user-event';
 import { Apis } from 'src/lib/Apis';
 import { V2beta1RecurringRunStatus as Status } from 'src/apisv2beta1/recurringrun';
 import { RecurringRunSwitch } from './RecurringRunSwitch';
+vi.mock('../shell/ThemeProvider', () => ({ useTheme: () => ({ themeClassName: 'kfp-theme' }) }));
 
 afterEach(() => {
   cleanup();
@@ -85,10 +86,14 @@ it('preserves enabled state on failure and clears the row error after a successf
   );
   const control = screen.getByRole('switch', { name: 'Enable schedule Nightly' });
   await user.click(control);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Permission denied');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Its previous setting is unchanged');
+  expect(control.closest('.kfp-schedule-control')).not.toContainElement(screen.getByRole('alert'));
+  await user.click(screen.getByRole('button', { name: 'Details' }));
+  expect(screen.getByRole('dialog')).toHaveTextContent('Permission denied');
+  await user.click(screen.getByRole('button', { name: 'Dismiss', exact: true }));
   expect(control).toBeChecked();
   expect(onUpdated).not.toHaveBeenCalled();
-  await user.click(control);
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
   await waitFor(() => expect(onUpdated).toHaveBeenCalledTimes(1));
   expect(disable).toHaveBeenCalledTimes(2);
   expect(disable).toHaveBeenLastCalledWith('nightly');
@@ -126,7 +131,7 @@ it('keeps a confirmed mutation when refresh fails and permits the opposite mutat
   const control = screen.getByRole('switch', { name: 'Enable schedule Nightly' });
   await user.click(control);
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Schedule updated, but the list could not refresh: List unavailable',
+    'updated, but the list could not refresh.',
   );
   expect(screen.getByRole('alert')).not.toHaveTextContent('Unable to update schedule');
   expect(control).toBeChecked();
@@ -229,5 +234,28 @@ it('does not apply a late mutation or refresh error to a different schedule', as
   );
   await act(async () => finishEnable());
   expect(screen.getByRole('switch', { name: 'Enable schedule New' })).not.toBeChecked();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('retries refresh without repeating a confirmed mutation', async () => {
+  const enable = vi.spyOn(Apis.recurringRunServiceApi, 'enableRecurringRun').mockResolvedValue({});
+  const onUpdated = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('Offline'))
+    .mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  render(
+    <RecurringRunSwitch
+      id='nightly'
+      name='Nightly'
+      status={Status.DISABLED}
+      onUpdated={onUpdated}
+    />,
+  );
+  await user.click(screen.getByRole('switch'));
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(onUpdated).toHaveBeenCalledTimes(2));
+  expect(enable).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('switch')).toBeChecked();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });

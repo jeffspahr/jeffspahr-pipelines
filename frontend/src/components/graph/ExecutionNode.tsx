@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { Workflow } from 'lucide-react';
+import { Box } from 'lucide-react';
 import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
 import { ExecutionFlowElementData, GRAPH_NODE_HEIGHT, GRAPH_NODE_WIDTH } from './Constants';
 import { ReadOnlyNodeHandles } from './ReadOnlyNodeHandles';
@@ -27,9 +27,7 @@ export interface ExecutionNodeProps {
 }
 
 export function TaskStateIndicator({ state }: { state?: PipelineTaskTaskState }) {
-  return state === undefined ? (
-    <Workflow className='kfp-graph-type-icon' size={16} aria-hidden='true' />
-  ) : (
+  return state === undefined ? null : (
     <span className='kfp-graph-state-dot' data-state={state} aria-hidden='true' />
   );
 }
@@ -47,12 +45,13 @@ export default function ExecutionNode({ id, data }: ExecutionNodeProps) {
         aria-label={data.label}
         aria-describedby={`${id}-status`}
       >
-        <TaskStateIndicator state={data.state} />
+        <Box className='kfp-graph-type-icon' size={16} role='img' aria-label='Task' />
         <span className='kfp-graph-node-copy'>
           <span className='kfp-graph-node-name' id={id}>
             {data.label}
           </span>
           <span className='kfp-graph-node-meta' id={`${id}-status`} aria-hidden='true'>
+            <TaskStateIndicator state={data.state} />
             {status.label}
           </span>
         </span>
