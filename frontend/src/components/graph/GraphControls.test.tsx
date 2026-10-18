@@ -57,7 +57,7 @@ it('orders the six graph controls and dispatches each action', () => {
   expect(options.onCollapseAll).toHaveBeenCalledOnce();
   expect(mocked.viewport.zoomIn).toHaveBeenCalledOnce();
   expect(mocked.viewport.zoomOut).toHaveBeenCalledOnce();
-  expect(mocked.viewport.fitView).toHaveBeenCalledOnce();
+  expect(mocked.viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 });
   expect(options.onLockChange).toHaveBeenCalledWith(true);
   rerender(<GraphControls {...options} locked />);
   fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));

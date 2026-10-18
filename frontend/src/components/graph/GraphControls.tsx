@@ -3,6 +3,7 @@
 
 import { ButtonHTMLAttributes, useId } from 'react';
 import { ControlButton, Panel, useReactFlow, useStore } from '@xyflow/react';
+import { GRAPH_FIT_OPTIONS } from './Constants';
 import { Tooltip } from '@base-ui/react/tooltip';
 import {
   Plus as AddIcon,
@@ -119,7 +120,7 @@ export default function GraphControls({
         aria-keyshortcuts='F'
         className='react-flow__controls-fitview'
         onClick={() => {
-          void fitView();
+          void fitView(GRAPH_FIT_OPTIONS);
         }}
       >
         <CropFreeIcon />

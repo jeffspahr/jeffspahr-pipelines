@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactFlowInstance, ReactFlowProps } from '@xyflow/react';
 import DagCanvas from './DagCanvas';
 
@@ -16,12 +16,16 @@ vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@xyflow/react')>()),
   MiniMap: () => null,
   Background: () => null,
-  ReactFlow: ({ onInit, children, nodesFocusable }: ReactFlowProps) => {
+  ReactFlow: ({ onInit, children, nodesFocusable, fitViewOptions, maxZoom }: ReactFlowProps) => {
+    const initialized = useRef(false);
     useEffect(() => {
-      onInit?.(viewport as unknown as ReactFlowInstance);
+      if (!initialized.current) {
+        initialized.current = true;
+        onInit?.(viewport as unknown as ReactFlowInstance);
+      }
     }, [onInit]);
     return (
-      <div>
+      <div data-testid='flow' data-fit-max={fitViewOptions?.maxZoom} data-max-zoom={maxZoom ?? 2}>
         <button data-focusable={String(nodesFocusable)}>Node</button>
         <input aria-label='Input' />
         <textarea aria-label='Textarea' />
@@ -64,7 +68,7 @@ it.each([
   if (!locked) fireEvent.click(screen.getByLabelText('Unlock graph'));
   viewport.fitView.mockClear();
   fireEvent.keyDown(screen.getByRole('button', { name: 'Node' }), { key });
-  expect(viewport.fitView).toHaveBeenCalledExactlyOnceWith();
+  expect(viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 });
   expect(viewport.setViewport).not.toHaveBeenCalled();
 });
 
@@ -120,4 +124,15 @@ it('enables keyboard node movement only while unlocked', () => {
   expect(node).toHaveAttribute('data-focusable', 'true');
   fireEvent.click(screen.getByRole('button', { name: 'Lock graph' }));
   expect(node).toHaveAttribute('data-focusable', 'false');
+});
+
+it('caps initial fitting without restricting manual zoom or refitting on refresh', () => {
+  const { rerender } = render(canvas());
+  expect(screen.getByTestId('flow')).toHaveAttribute('data-fit-max', '1');
+  expect(screen.getByTestId('flow')).toHaveAttribute('data-max-zoom', '2');
+  expect(viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 });
+  viewport.fitView.mockClear();
+  rerender(canvas());
+  expect(viewport.fitView).not.toHaveBeenCalled();
+  expect(viewport.setViewport).not.toHaveBeenCalled();
 });

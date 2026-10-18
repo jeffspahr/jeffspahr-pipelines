@@ -39,7 +39,7 @@ import 'src/components/graph/Graph.css';
 import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
 import { getTaskStatus } from 'src/lib/StatusUtils';
 import GraphControls from 'src/components/graph/GraphControls';
-import { FlowElementDataBase } from 'src/components/graph/Constants';
+import { FlowElementDataBase, GRAPH_FIT_OPTIONS } from 'src/components/graph/Constants';
 import { NODE_TYPES } from 'src/components/graph/NodeTypes';
 import { SUB_DAG_HEADER_CLASS_NAME } from 'src/components/graph/SubDagGroupNode';
 import { buildGroupedFlow, GROUP_NODE_TYPE, layerNodeId } from 'src/lib/v2/GroupedFlow';
@@ -150,7 +150,7 @@ function DagCanvasView({
   const resetPositionsAndFitView = useCallback(() => {
     setPositions({});
     requestAnimationFrame(() => {
-      void reactFlowInstance.current?.fitView();
+      void reactFlowInstance.current?.fitView(GRAPH_FIT_OPTIONS);
     });
   }, []);
   const expandAll = useCallback(() => {
@@ -253,7 +253,7 @@ function DagCanvasView({
     if (event.key === 'f' || event.key === 'F') {
       event.preventDefault();
       event.stopPropagation();
-      void instance.fitView();
+      void instance.fitView(GRAPH_FIT_OPTIONS);
       return;
     }
     const direction = panDirections.get(event.key);
@@ -271,7 +271,10 @@ function DagCanvasView({
   const fitCurrentView = useCallback(
     (instance: ReactFlowInstance<PipelineNode, Edge>) => {
       const focusedNodes = focusedId ? nodes.filter((node) => node.id === focusedId) : undefined;
-      void instance.fitView(focusedNodes?.length ? { nodes: focusedNodes } : undefined);
+      void instance.fitView({
+        ...GRAPH_FIT_OPTIONS,
+        ...(focusedNodes?.length ? { nodes: focusedNodes } : {}),
+      });
     },
     [focusedId, nodes],
   );
@@ -328,7 +331,10 @@ function DagCanvasView({
             fitCurrentView(instance);
           }}
           fitView
-          fitViewOptions={focusedId ? { nodes: [{ id: focusedId }] } : undefined}
+          fitViewOptions={{
+            ...GRAPH_FIT_OPTIONS,
+            ...(focusedId ? { nodes: [{ id: focusedId }] } : {}),
+          }}
           minZoom={0.05}
           nodeTypes={NODE_TYPES}
           edgeTypes={{}}
