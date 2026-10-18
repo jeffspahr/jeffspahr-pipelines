@@ -209,6 +209,7 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
         hideExperimentColumn={true}
         experimentIdMask={experiment.experiment_id}
         {...parentProps}
+        scopeControl={undefined}
         disablePaging={false}
         noFilterBox={true}
         storageState={

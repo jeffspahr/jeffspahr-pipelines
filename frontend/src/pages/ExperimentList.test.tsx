@@ -112,7 +112,7 @@ describe('ExperimentList', () => {
   }
 
   async function renderExperimentList(
-    propsPatch: Partial<PageProps & { namespace?: string }> = {},
+    propsPatch: Partial<PageProps & { namespace?: string; scopeControl?: React.ReactNode }> = {},
   ): Promise<PageProps> {
     experimentListRef = React.createRef<ExperimentList>();
     const props = { ...generateProps(), ...propsPatch } as PageProps;
@@ -128,7 +128,7 @@ describe('ExperimentList', () => {
   async function mountWithNExperiments(
     n: number,
     nRuns: number,
-    { namespace }: { namespace?: string } = {},
+    { namespace, scopeControl }: { namespace?: string; scopeControl?: React.ReactNode } = {},
   ): Promise<void> {
     listExperimentsSpy.mockImplementation(mockListNExperiments(n));
     listRunsSpy.mockImplementation(() => ({
@@ -137,7 +137,7 @@ describe('ExperimentList', () => {
         display_name: 'test run name' + i,
       })),
     }));
-    await renderExperimentList({ namespace });
+    await renderExperimentList({ namespace, scopeControl });
     await waitForDisplayExperiments(n);
   }
 
@@ -333,11 +333,18 @@ describe('ExperimentList', () => {
     expect(updateBannerSpy).toHaveBeenLastCalledWith({});
   });
 
-  it('can expand an experiment to see its runs', async () => {
-    await mountWithNExperiments(1, 1);
+  it('can expand an experiment without duplicating the page scope control', async () => {
+    await mountWithNExperiments(1, 1, {
+      scopeControl: (
+        <div aria-label='Experiment scope' role='group'>
+          Active / Archived
+        </div>
+      ),
+    });
     const user = userEvent.setup();
     const expandButtons = screen.getAllByRole('button', { name: /expand/i });
     await user.click(expandButtons[0]);
+    expect(screen.getAllByRole('group', { name: 'Experiment scope' })).toHaveLength(1);
     await waitFor(() => {
       expect(getInstance().state.displayExperiments).toEqual([
         {

@@ -76,6 +76,6 @@ Show selection only when the collection offers an operation on selected items.
 Use the shared 18px checkbox in a 40px selection column; picker dialogs may use
 radio selection. Clicking a selectable row toggles selection; links and other
 controls perform their own actions. Read-only lists do not show dummy checkboxes.
-Primary names use medium-weight foreground text; secondary metadata uses regular
-body text. Differences in columns reflect resource semantics, not independent
+Primary names use regular-weight foreground text; secondary metadata uses regular
+body text with a quieter color. Differences in columns reflect resource semantics, not independent
 page styling choices.

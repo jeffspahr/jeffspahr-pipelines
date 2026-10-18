@@ -395,16 +395,16 @@
   height: 26px;
 }
 
-/* Shared cell hierarchy: primary names carry emphasis, metadata stays quiet. */
+/* Shared cell hierarchy: primary names use stronger color, metadata stays quiet. */
 .kfp-theme .kfp-runs-table td[data-column='primary'] {
   color: var(--foreground);
-  font-weight: 500;
+  font-weight: 400;
 }
 .kfp-theme .kfp-runs-table td[data-column='primary'] a {
   color: var(--foreground);
   font-family: var(--kfp-font-sans);
   font-size: var(--kfp-text-body, 13px);
-  font-weight: 500;
+  font-weight: 400;
 }
 .kfp-theme .kfp-runs-table td[data-column='primary'] a:hover {
   color: var(--primary);

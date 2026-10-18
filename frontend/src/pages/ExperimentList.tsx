@@ -301,6 +301,7 @@ export class ExperimentList extends Page<
         experimentIdMask={experiment.experiment_id}
         onError={() => null}
         {...this.props}
+        scopeControl={undefined}
         disablePaging={false}
         selectedIds={this.state.selectedIds}
         noFilterBox={true}
