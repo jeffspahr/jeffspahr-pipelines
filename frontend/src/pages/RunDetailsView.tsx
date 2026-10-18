@@ -571,7 +571,9 @@ export function RunDetailsView(props: RunDetailsViewProps) {
   const pipelineUrl =
     pipelineId && pipelineVersionId
       ? RoutePageFactory.pipelineVersionDetails(pipelineId, pipelineVersionId)
-      : undefined;
+      : run.pipeline_spec && run.run_id
+        ? `${RoutePageFactory.pipelineDetails('')}?${new URLSearchParams({ [QUERY_PARAMS.fromRunId]: run.run_id })}`
+        : undefined;
 
   const openFailedTaskLogs = () => {
     if (!failedTask?.task_id) return;
@@ -678,6 +680,16 @@ export function RunDetailsView(props: RunDetailsViewProps) {
                 <dt>Pipeline</dt>
                 <dd>{pipelineUrl ? <Link to={pipelineUrl}>{pipelineName}</Link> : pipelineName}</dd>
               </div>
+              {run.recurring_run_id && (
+                <div>
+                  <dt>Recurring run</dt>
+                  <dd>
+                    <Link to={RoutePageFactory.recurringRunDetails(run.recurring_run_id)}>
+                      {run.recurring_run_id}
+                    </Link>
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt>Runtime tasks</dt>
                 <dd>
@@ -712,10 +724,10 @@ export function RunDetailsView(props: RunDetailsViewProps) {
             </dl>
             <div className='kfp-detail-sections'>
               <DetailsTable title='Run details' fields={getDetailsFields(run)} />
-              {!!run.runtime_config?.parameters && (
+              {Object.keys(run.runtime_config?.parameters || {}).length > 0 && (
                 <DetailsTable
                   title='Run parameters'
-                  fields={Object.entries(run.runtime_config?.parameters).map((param) => [
+                  fields={Object.entries(run.runtime_config?.parameters || {}).map((param) => [
                     param[0],
                     param[1],
                   ])}
@@ -833,7 +845,7 @@ function getActualStartTime(run?: V2beta1Run): Date | undefined {
   return run?.scheduled_at;
 }
 
-function getDetailsFields(run?: V2beta1Run): Array<KeyValue<string>> {
+export function getDetailsFields(run?: V2beta1Run): Array<KeyValue<string>> {
   const actualStart = getActualStartTime(run);
   const scheduledAt = run?.scheduled_at;
   const startDiffers =
@@ -843,7 +855,7 @@ function getDetailsFields(run?: V2beta1Run): Array<KeyValue<string>> {
     ['Run ID', run?.run_id || '-'],
     ['Workflow name', run?.display_name || '-'],
     ['Status', run?.state ? statusProtoMap.get(run?.state) : '-'],
-    ['Description', run?.description || ''],
+    ['Description', run?.description || 'No description'],
     ['Created at', run?.created_at ? formatDateString(run.created_at) : '-'],
     ['Started at', formatDateString(actualStart)],
     ['Finished at', hasFinishedV2(run?.state) ? formatDateString(run?.finished_at) : '-'],

@@ -177,6 +177,8 @@ export function RecurringRunDetailsQueryPage(props: PageProps) {
     );
   }
 
+  const parameters = recurringRun ? getRunParameters(recurringRun) : [];
+
   return (
     <div className='kfp-detail-page'>
       {recurringRun && (
@@ -187,10 +189,14 @@ export function RecurringRunDetailsQueryPage(props: PageProps) {
             fields={getRecurringRunDetails(recurringRun)}
           ></DetailsTable>
           <DetailsTable title='Run triggers' fields={getRunTriggers(recurringRun)}></DetailsTable>
-          <DetailsTable
-            title='Run parameters'
-            fields={getRunParameters(recurringRun)}
-          ></DetailsTable>
+          {parameters.length ? (
+            <DetailsTable title='Run parameters' fields={parameters} />
+          ) : (
+            <section className='kfp-inspection-fields' aria-label='Run parameters'>
+              <h3>Run parameters</h3>
+              <p>No run parameters configured.</p>
+            </section>
+          )}
         </div>
       )}
     </div>
@@ -230,7 +236,13 @@ function getRunTriggers(recurringRun: V2beta1RecurringRun): Array<KeyValue<strin
   triggers.push(['Trigger', triggerDisplayString(recurringRun.trigger)]);
   triggers.push(['Max. concurrent runs', recurringRun.max_concurrency]);
   triggers.push(['Catchup', `${!recurringRun.no_catchup}`]);
-  triggers.push(['Start time', '']);
+  const schedule = recurringRun.trigger?.cron_schedule || recurringRun.trigger?.periodic_schedule;
+  if (schedule?.start_time) {
+    triggers.push(['Start time', formatDateString(schedule.start_time)]);
+  }
+  if (schedule?.end_time) {
+    triggers.push(['End time', formatDateString(schedule.end_time)]);
+  }
 
   return triggers;
 }

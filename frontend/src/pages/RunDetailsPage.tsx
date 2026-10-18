@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { InspectionFields } from 'src/components/inspection/InspectionFields';
 import { NavigationProps } from 'src/lib/Navigation';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as JsYaml from 'js-yaml';
@@ -30,6 +31,7 @@ import { LoaderCircle } from 'lucide-react';
 import './SecondaryPages.css';
 import {
   RunDetailsView,
+  getDetailsFields,
   RunDetailsViewParams,
   RunDetailsViewProps,
   type RunTaskRetryState,
@@ -193,6 +195,18 @@ export default function RunDetailsPage(props: PageProps & NavigationProps<RunDet
       <div className='kfp-page-loading' role='progressbar' aria-label='Loading run details'>
         <LoaderCircle className='kfp-secondary-spinner' aria-hidden />
         Loading run details…
+      </div>
+    );
+  }
+  if (v2Run) {
+    return (
+      <div className='kfp-detail-page'>
+        <div role='alert'>
+          {loadError
+            ? 'Unable to load the pipeline definition. Available run metadata is shown below. Refresh this page to retry.'
+            : 'This run has no valid pipeline IR. Graph inspection is unavailable; available run metadata is shown below.'}
+        </div>
+        <InspectionFields title='Run details' fields={getDetailsFields(v2Run)} />
       </div>
     );
   }

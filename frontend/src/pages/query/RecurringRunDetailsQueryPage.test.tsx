@@ -25,6 +25,7 @@ import { Apis } from 'src/lib/Apis';
 import { PageProps } from 'src/pages/Page';
 import { RouteParams, RoutePage } from 'src/components/Router';
 import * as features from 'src/features';
+import { formatDateString } from 'src/lib/Utils';
 import v2YamlTemplateString from 'src/data/test/lightweight_python_functions_v2_pipeline_rev.yaml?raw';
 
 describe('RecurringRunDetailsV2FC', () => {
@@ -151,6 +152,10 @@ describe('RecurringRunDetailsV2FC', () => {
     screen.getByText('false');
     screen.getByText('param1');
     screen.getByText('value1');
+    screen.getByText(
+      formatDateString(fullTestV2RecurringRun.trigger!.periodic_schedule!.start_time),
+    );
+    screen.getByText(formatDateString(fullTestV2RecurringRun.trigger!.periodic_schedule!.end_time));
   });
 
   it('renders a recurring run with cron schedule', async () => {
@@ -184,6 +189,21 @@ describe('RecurringRunDetailsV2FC', () => {
     screen.getByText('50');
     screen.getByText('Catchup');
     screen.getByText('true');
+    screen.getByText(formatDateString(cronTestRecurringRun.trigger.cron_schedule.start_time));
+    screen.getByText(formatDateString(cronTestRecurringRun.trigger.cron_schedule.end_time));
+  });
+
+  it('explains absent parameters without showing blank schedule dates', async () => {
+    fullTestV2RecurringRun.runtime_config = {};
+    fullTestV2RecurringRun.trigger = { periodic_schedule: { interval_second: '3600' } };
+    render(
+      <CommonTestWrapper>
+        <RecurringRunDetailsPage {...generateProps()} />
+      </CommonTestWrapper>,
+    );
+    expect(await screen.findByText('No run parameters configured.')).toBeInTheDocument();
+    expect(screen.queryByText('Start time')).not.toBeInTheDocument();
+    expect(screen.queryByText('End time')).not.toBeInTheDocument();
   });
 
   it('loads the recurring run given its id in query params', async () => {

@@ -35,7 +35,8 @@ import { vi } from 'vitest';
 const observedRetryCallbacks = vi.hoisted(() => [] as Array<() => void>);
 const observedRunReferences = vi.hoisted(() => [] as V2beta1Run[]);
 
-vi.mock('src/pages/RunDetailsView', () => ({
+vi.mock('src/pages/RunDetailsView', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('src/pages/RunDetailsView')>()),
   RunDetailsView: (props: any) => {
     observedRetryCallbacks.push(props.onRetryStarted);
     observedRunReferences.push(props.run);
@@ -801,6 +802,8 @@ describe('RunDetailsRouter', () => {
     });
 
     expect(await screen.findByRole('alert')).toHaveTextContent('no valid pipeline IR');
+    expect(screen.getByText(TEST_RUN_ID, { exact: true })).toBeInTheDocument();
+    expect(screen.getByText('Run ID')).toBeInTheDocument();
   });
 
   it('does not add a router poller for an active v1 run', async () => {
@@ -907,7 +910,9 @@ describe('RunDetailsRouter', () => {
       </CommonTestWrapper>,
     );
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load run details');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to load the pipeline definition',
+    );
     expect(getRunSpy).toHaveBeenCalledWith(TEST_RUN_ID, undefined, 'FULL');
     await waitFor(() =>
       expect(props.updateBanner).toHaveBeenCalledWith(
@@ -1095,7 +1100,7 @@ describe('RunDetailsRouter', () => {
           mode: 'error',
         }),
       );
-      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load run details');
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the pipeline definition');
     });
   });
 

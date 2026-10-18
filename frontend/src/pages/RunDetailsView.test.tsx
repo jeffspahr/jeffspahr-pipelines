@@ -202,6 +202,24 @@ describe('RunDetailsV2', () => {
     );
   }
 
+  it('links inline definitions and source schedules while explaining absent metadata', async () => {
+    renderRoutedRunDetails('?tab=details', {
+      ...TEST_RUN,
+      description: '',
+      recurring_run_id: 'schedule/1',
+      runtime_config: { parameters: {} },
+    });
+    expect(
+      await screen.findByRole('link', { name: TEST_PIPELINE_SPEC.pipelineInfo!.name }),
+    ).toHaveAttribute('href', `/pipelines/details/?fromRun=${TEST_RUN.run_id}`);
+    expect(screen.getByRole('link', { name: 'schedule/1' })).toHaveAttribute(
+      'href',
+      '/recurringrun/details/schedule%2F1',
+    );
+    expect(screen.getByText('No description')).toBeInTheDocument();
+    expect(screen.queryByText('Run parameters')).not.toBeInTheDocument();
+  });
+
   function renderRunDetailsWithSearch(search: string) {
     const props = generateProps();
     const renderPage = (nextSearch: string) => (
