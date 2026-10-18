@@ -4,6 +4,7 @@
 // You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 import fs from 'fs';
+import { sampleRunPipelineSpec } from './sample-run-tasks';
 import YAML from 'yaml';
 import { V2beta1Experiment } from '../src/apisv2beta1/experiment';
 import { V2beta1Pipeline, V2beta1PipelineVersion } from '../src/apisv2beta1/pipeline';
@@ -131,16 +132,16 @@ const sampleRuns: {
 function reviewRuns(): V2beta1Run[] {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
-  return sampleRuns.map((sample, index) => {
+  return sampleRuns.map((sample) => {
     const createdAt = new Date(today.getTime() - sample.daysAgo * 86_400_000 - 3_600_000);
     const terminal = ['SUCCEEDED', 'FAILED', 'CANCELED'].includes(sample.state);
     return {
       run_id: `sample-run-${sample.id}`,
       display_name: sample.name,
       experiment_id: experiments[0].experiment_id,
-      pipeline_spec: versions[index % examples.length].pipeline_spec,
+      pipeline_spec: sampleRunPipelineSpec,
       created_at: createdAt,
-      finished_at: terminal ? new Date(createdAt.getTime() + (index + 1) * 60_000) : undefined,
+      finished_at: terminal ? new Date(createdAt.getTime() + 12 * 60_000) : undefined,
       state: sample.state,
       storage_state: sample.archived ? 'ARCHIVED' : 'AVAILABLE',
     };

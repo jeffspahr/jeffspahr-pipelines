@@ -58,6 +58,7 @@ import {
   RunSortKeys,
 } from '../src/lib/Apis';
 import { data as fixedData } from './fixed-data';
+import { sampleRunTasks } from './sample-run-tasks';
 import registerTensorboardProxy from './tensorboard-proxy';
 
 const rocMetadataJsonPath = './eval-output/metadata.json';
@@ -205,6 +206,12 @@ const mockV2Tasks: V2beta1PipelineTask[] = [
     type: PipelineTaskTaskType.RUNTIME,
   },
 ];
+function getMockRunTasks(runId: string): V2beta1PipelineTask[] {
+  if (runId === mockNativeRunId) return mockV2Tasks;
+  const run = fixedData.runs.find((run) => run.run_id === runId);
+  return run ? sampleRunTasks(run) : [];
+}
+
 const mockV2ArtifactTasks: V2beta1ArtifactTask[] = [
   {
     artifact_id: 'mock-artifact-1',
@@ -619,8 +626,19 @@ export default (app: express.Application) => {
     res.json(run);
   });
 
+  app.get(v2beta1Prefix + '/runs/:rid/tasks/:taskId', (req, res) => {
+    const task = getMockRunTasks(getQueryString(req.params.rid) || '').find(
+      (task) => task.task_id === req.params.taskId,
+    );
+    if (!task) {
+      res.status(404).json({ message: 'Task not found. Select a task from this run.' });
+      return;
+    }
+    res.json(task);
+  });
+
   app.get(v2beta1Prefix + '/runs/:rid/tasks', (req, res) => {
-    res.json({ tasks: req.params.rid === mockNativeRunId ? mockV2Tasks : [] });
+    res.json({ tasks: getMockRunTasks(getQueryString(req.params.rid) || '') });
   });
 
   app.get(v2beta1Prefix + '/artifacts', (req, res) => {
