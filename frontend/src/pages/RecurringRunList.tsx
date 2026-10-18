@@ -119,12 +119,17 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
         label: 'Recurring Run Name',
         sortKey: JobSortKeys.NAME,
       },
-      { customRenderer: this._statusCustomRenderer, label: 'Status', flex: 0.5 },
-      { customRenderer: this._triggerCustomRenderer, label: 'Trigger', flex: 1 },
-      { label: 'Start Time', flex: 1 },
-      { label: 'End Time', flex: 1 },
-      { customRenderer: this._scheduleStatusCustomRenderer, label: 'Schedule Status', flex: 0.7 },
-      { label: 'Created at', flex: 1, sortKey: JobSortKeys.CREATED_AT },
+      { customRenderer: this._statusCustomRenderer, label: 'Status', flex: 0.5, width: 120 },
+      { customRenderer: this._triggerCustomRenderer, label: 'Trigger', flex: 1, width: 160 },
+      { label: 'Start Time', flex: 1, width: 190 },
+      { label: 'End Time', flex: 1, width: 190 },
+      {
+        customRenderer: this._scheduleStatusCustomRenderer,
+        label: 'Schedule Status',
+        flex: 0.7,
+        width: 120,
+      },
+      { label: 'Created at', flex: 1, width: 190, sortKey: JobSortKeys.CREATED_AT },
     ];
 
     if (!this.props.hideExperimentColumn) {
@@ -132,6 +137,7 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
         customRenderer: this._experimentCustomRenderer,
         flex: 1,
         label: 'Experiment',
+        width: 160,
       });
     }
 
@@ -178,6 +184,7 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
                   headerActions={{ created_at: date.control }}
                   activeFilters={date.chip}
                   label='Recurring runs'
+                  minWidth={this.props.hideExperimentColumn ? 1250 : 1410}
                   singular='schedule'
                   plural='schedules'
                 />
@@ -242,6 +249,7 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
     return (
       <Link
         className='kfp-workflow-link'
+        title={props.value.displayName}
         onClick={(e) => e.stopPropagation()}
         to={RoutePageFactory.experimentDetails(props.value.id)}
       >
@@ -254,7 +262,11 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
     props: CustomRendererProps<V2beta1Trigger>,
   ) => {
     if (props.value?.cron_schedule) {
-      return <div>Cron: {props.value.cron_schedule.cron}</div>;
+      return (
+        <div title={`Cron: ${props.value.cron_schedule.cron}`}>
+          Cron: {props.value.cron_schedule.cron}
+        </div>
+      );
     }
     if (props.value?.periodic_schedule?.interval_second) {
       const interval_in_seconds = parseInt(props.value.periodic_schedule.interval_second, 10);

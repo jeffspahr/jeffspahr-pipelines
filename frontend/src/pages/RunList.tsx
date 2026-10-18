@@ -110,12 +110,23 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
         label: 'Run',
         sortKey: RunSortKeys.NAME,
       },
-      { customRenderer: this._statusCustomRenderer, flex: 0.5, label: 'Status' },
-      { customRenderer: this._pipelineVersionCustomRenderer, label: 'Pipeline version', flex: 1 },
-      { label: 'Duration', flex: 0.5 },
-      { customRenderer: this._recurringRunCustomRenderer, label: 'Recurring Run', flex: 0.5 },
+      { customRenderer: this._statusCustomRenderer, flex: 0.5, width: 120, label: 'Status' },
+      {
+        customRenderer: this._pipelineVersionCustomRenderer,
+        label: 'Pipeline version',
+        flex: 1,
+        width: 160,
+      },
+      { label: 'Duration', flex: 0.5, width: 100 },
+      {
+        customRenderer: this._recurringRunCustomRenderer,
+        label: 'Recurring Run',
+        flex: 0.5,
+        width: 160,
+      },
       {
         label: 'Started',
+        width: 190,
         flex: 1,
         sortKey: RunSortKeys.CREATED_AT,
         customRenderer: ({ value }) => (
@@ -131,6 +142,7 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
         customRenderer: this._experimentCustomRenderer,
         flex: 1,
         label: 'Experiment',
+        width: 160,
       });
     }
 

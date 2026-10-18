@@ -90,8 +90,9 @@
   margin: 0;
   min-width: 0;
   flex: 1;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--kfp-text-body, 13px);
+  line-height: 20px;
+  font-weight: 500;
 }
 .kfp-pipeline-card h2 a {
   display: block;
@@ -106,7 +107,8 @@
 }
 .kfp-pipeline-description {
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--kfp-text-body, 13px);
+  line-height: 20px;
   margin: 6px 0 8px;
   overflow-wrap: anywhere;
 }
@@ -201,7 +203,8 @@
   padding: 16px;
 }
 .kfp-pipeline-node-details h3 {
-  font-size: 13px;
+  font-size: var(--kfp-text-section, 16px);
+  line-height: 24px;
   margin: 20px 0 8px;
 }
 .kfp-pipeline-node-details pre {

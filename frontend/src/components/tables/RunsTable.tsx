@@ -18,15 +18,6 @@ import type { ReactNode } from 'react';
 import type { CustomTableRenderModel } from '../CustomTable';
 import { ResourceTable } from './ResourceTable';
 
-const columnWidths: Record<string, number> = {
-  Status: 116,
-  'Pipeline version': 160,
-  Experiment: 140,
-  Duration: 100,
-  'Recurring Run': 140,
-  Started: 210,
-};
-
 export function RunsTable({
   table,
   headerActions,
@@ -50,9 +41,14 @@ export function RunsTable({
       singular='run'
       plural='runs'
       filterLabel='Search runs'
-      minWidth={1100}
+      minWidth={
+        280 +
+        table.columns.reduce(
+          (total, column) => total + (typeof column.width === 'number' ? column.width : 0),
+          0,
+        )
+      }
       className='kfp-runs-data-table'
-      columnWidths={table.columns.map((column) => columnWidths[column.label])}
       minScrollHeight={
         reservedRowCount === undefined ? undefined : 40 + Math.max(0, reservedRowCount) * 48
       }

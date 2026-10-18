@@ -77,6 +77,7 @@ export function PipelineCollection({
           table={{ ...table, noFilterBox: true, filterActions: undefined }}
           headerActions={{ created_at: dateFilter }}
           label='Pipelines'
+          minWidth={820}
           singular='pipeline'
           plural='pipelines'
           getRowLabel={pipelineName}

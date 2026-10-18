@@ -107,8 +107,8 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
         label: 'Pipeline name',
         sortKey: PipelineSortKeys.DISPLAY_NAME,
       },
-      { label: 'Description', flex: 3, customRenderer: descriptionCustomRenderer },
-      { label: 'Uploaded on', sortKey: PipelineSortKeys.CREATED_AT, flex: 1 },
+      { label: 'Description', width: '35%', flex: 3, customRenderer: descriptionCustomRenderer },
+      { label: 'Uploaded on', width: 190, sortKey: PipelineSortKeys.CREATED_AT, flex: 1 },
     ];
 
     const rows: Row[] = this.state.displayPipelines.map((p) => {

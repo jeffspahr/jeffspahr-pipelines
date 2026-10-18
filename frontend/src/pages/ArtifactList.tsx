@@ -58,11 +58,29 @@ const TYPE_FILTERS = [
 
 const COLUMNS: Column[] = [
   { customRenderer: artifactNameRenderer, flex: 2, label: 'Name', sortKey: 'name' },
-  { customRenderer: artifactIdRenderer, flex: 1.5, label: 'ID', sortKey: 'artifact_id' },
-  { customRenderer: artifactTypeRenderer, flex: 2, label: 'Type', sortKey: 'type' },
-  { customRenderer: artifactUriRenderer, flex: 1.8, label: 'URI', sortKey: 'uri' },
-  { customRenderer: wrappedTextRenderer, flex: 1.2, label: 'Namespace', sortKey: 'namespace' },
-  { customRenderer: artifactDateRenderer, flex: 1.5, label: 'Created at', sortKey: 'created_at' },
+  {
+    customRenderer: artifactIdRenderer,
+    flex: 1.5,
+    width: 160,
+    label: 'ID',
+    sortKey: 'artifact_id',
+  },
+  { customRenderer: artifactTypeRenderer, flex: 2, width: 160, label: 'Type', sortKey: 'type' },
+  { customRenderer: artifactUriRenderer, flex: 1.8, width: 210, label: 'URI', sortKey: 'uri' },
+  {
+    customRenderer: textRenderer,
+    flex: 1.2,
+    width: 160,
+    label: 'Namespace',
+    sortKey: 'namespace',
+  },
+  {
+    customRenderer: artifactDateRenderer,
+    flex: 1.5,
+    width: 190,
+    label: 'Created at',
+    sortKey: 'created_at',
+  },
 ];
 
 export class ArtifactList extends Page<ArtifactListProps, ArtifactListState> {
@@ -146,7 +164,7 @@ export class ArtifactList extends Page<ArtifactListProps, ArtifactListState> {
                   label='Artifacts'
                   singular='artifact'
                   plural='artifacts'
-                  minWidth={920}
+                  minWidth={1120}
                 />
               )}
               ref={this.tableRef}
@@ -263,7 +281,6 @@ function artifactNameRenderer({ id, value }: CustomRendererProps<string>) {
     <Link
       onClick={(event) => event.stopPropagation()}
       className='kfp-artifact-link'
-      style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}
       title={value}
       to={RoutePageFactory.artifactDetails(id)}
     >
@@ -288,8 +305,8 @@ function artifactIdRenderer({ id, value = '' }: CustomRendererProps<string>) {
   );
 }
 
-function wrappedTextRenderer({ value }: CustomRendererProps<string>) {
-  return <span style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{value}</span>;
+function textRenderer({ value }: CustomRendererProps<string>) {
+  return <span title={value}>{value}</span>;
 }
 
 function artifactTypeRenderer({ value = '' }: CustomRendererProps<string>) {
@@ -314,8 +331,7 @@ function artifactDateRenderer({ value }: CustomRendererProps<Date | string | und
   }
   return (
     <time dateTime={date.toISOString()} title={formatDateString(date)}>
-      <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{date.toLocaleDateString()}</span>
-      <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{date.toLocaleTimeString()}</span>
+      {formatDateString(date)}
     </time>
   );
 }

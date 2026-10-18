@@ -440,15 +440,15 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                     aria-busy="false"
                     aria-label="Runs"
                     class="kfp-runs-table"
-                    style="min-width: 1100px; table-layout: fixed;"
+                    style="min-width: 1010px; table-layout: fixed;"
                   >
                     <colgroup>
                       <col
-                        style="width: 46px;"
+                        style="width: 40px;"
                       />
                       <col />
                       <col
-                        style="width: 116px;"
+                        style="width: 120px;"
                       />
                       <col
                         style="width: 160px;"
@@ -457,10 +457,10 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                         style="width: 100px;"
                       />
                       <col
-                        style="width: 140px;"
+                        style="width: 160px;"
                       />
                       <col
-                        style="width: 210px;"
+                        style="width: 190px;"
                       />
                     </colgroup>
                     <thead>
@@ -1142,15 +1142,15 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                     aria-busy="false"
                     aria-label="Runs"
                     class="kfp-runs-table"
-                    style="min-width: 1100px; table-layout: fixed;"
+                    style="min-width: 1010px; table-layout: fixed;"
                   >
                     <colgroup>
                       <col
-                        style="width: 46px;"
+                        style="width: 40px;"
                       />
                       <col />
                       <col
-                        style="width: 116px;"
+                        style="width: 120px;"
                       />
                       <col
                         style="width: 160px;"
@@ -1159,10 +1159,10 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                         style="width: 100px;"
                       />
                       <col
-                        style="width: 140px;"
+                        style="width: 160px;"
                       />
                       <col
-                        style="width: 210px;"
+                        style="width: 190px;"
                       />
                     </colgroup>
                     <thead>
@@ -1862,15 +1862,15 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                     aria-busy="false"
                     aria-label="Runs"
                     class="kfp-runs-table"
-                    style="min-width: 1100px; table-layout: fixed;"
+                    style="min-width: 1010px; table-layout: fixed;"
                   >
                     <colgroup>
                       <col
-                        style="width: 46px;"
+                        style="width: 40px;"
                       />
                       <col />
                       <col
-                        style="width: 116px;"
+                        style="width: 120px;"
                       />
                       <col
                         style="width: 160px;"
@@ -1879,10 +1879,10 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                         style="width: 100px;"
                       />
                       <col
-                        style="width: 140px;"
+                        style="width: 160px;"
                       />
                       <col
-                        style="width: 210px;"
+                        style="width: 190px;"
                       />
                     </colgroup>
                     <thead>

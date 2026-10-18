@@ -52,3 +52,30 @@ List pages place filters on the left and view/sort controls on the right in one 
 Detail pages use the same header and tab rhythm, with metadata grouped into readable sections. Graphs and timelines retain a large dedicated workspace and task inspectors; metadata views use responsive fields rather than narrow nested cards. Special-purpose content can differ, but spacing and control placement should not depend on the resource type.
 
 Collection density and view are independent preferences. The Display menu sets Comfortable (default) or Compact globally across lists and cards; the pipeline Table/Cards toggle retains its own remembered preference. Density changes cell and card padding without changing page headers, filtering, selection, content, or page size. Browser storage failures preserve the choice for the current session.
+
+
+## Page layout contract
+
+Collection and detail pages share Public Sans: body and table values 13px/20px,
+secondary labels 12px/18px, section headings 16px/24px, and page titles 22px/30px.
+Use monospace only for code, structured output, and identifiers where character
+alignment is useful; ordinary names and type labels use the body face.
+Page gutters are 16px, section gaps 12px, and control gaps 8px. Detail surfaces
+use a 16px inset and a consistent label/value grid. Graphs, timelines, editors,
+and comparison matrices retain their domain-specific layouts within that frame.
+
+CollectionToolbar owns the search and view-control strip. ResourceTable owns
+cell padding, header styling, selection, scrolling, and pagination chrome.
+Comfortable rows are 40px; Compact rows are 32px without reducing text size.
+Declare metadata widths on each Column alongside its renderer: dates 190px,
+status 120px, duration 100px, and other metadata 160–200px. Leave primary names
+flexible and reserve at least 240px for them in the table minimum width. Wide
+schemas scroll horizontally instead of squeezing names or wrapping every cell.
+
+Show selection only when the collection offers an operation on selected items.
+Use the shared 18px checkbox in a 40px selection column; picker dialogs may use
+radio selection. Clicking a selectable row toggles selection; links and other
+controls perform their own actions. Read-only lists do not show dummy checkboxes.
+Primary names use medium-weight foreground text; secondary metadata uses regular
+body text. Differences in columns reflect resource semantics, not independent
+page styling choices.

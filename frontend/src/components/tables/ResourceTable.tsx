@@ -57,11 +57,16 @@ export function ResourceTable({
   plural = 'resources',
   filterLabel = table.filterLabel,
   minWidth = 640,
-  columnWidths,
+  columnWidths: explicitColumnWidths,
   minScrollHeight,
   className = '',
   getRowLabel = defaultRowLabel,
 }: ResourceTableProps) {
+  const columnWidths =
+    explicitColumnWidths ??
+    (table.columns.some((column) => column.width !== undefined)
+      ? table.columns.map((column) => column.width)
+      : undefined);
   const filterId = useId();
   const density = useDensity()?.density ?? 'comfortable';
   const visibleSelected = table.rows.filter((row) => table.selectedIds.includes(row.id)).length;
@@ -95,7 +100,7 @@ export function ResourceTable({
           >
             {columnWidths && (
               <colgroup>
-                {!table.disableSelection && <col style={{ width: 46 }} />}
+                {!table.disableSelection && <col style={{ width: 40 }} />}
                 {table.getExpandedContent && <col style={{ width: 36 }} />}
                 {table.columns.map((column, index) => (
                   <col key={column.label} style={{ width: columnWidths[index] }} />
@@ -187,7 +192,8 @@ export function ResourceTable({
                   <tr
                     data-testid='table-row'
                     data-row-id={row.id}
-                    data-selected={table.selectedIds.includes(row.id)}
+                    data-selected={!table.disableSelection && table.selectedIds.includes(row.id)}
+                    data-interactive={!table.disableSelection || !!onOpenRow}
                     onClick={(event) => {
                       if (
                         event.button !== 0 ||
@@ -262,7 +268,15 @@ export function ResourceTable({
                       </td>
                     )}
                     {table.columns.map((column, index) => (
-                      <td key={column.label}>
+                      <td
+                        key={column.label}
+                        data-column={index === 0 ? 'primary' : undefined}
+                        title={
+                          typeof row.otherFields[index] === 'string'
+                            ? row.otherFields[index]
+                            : undefined
+                        }
+                      >
                         {column.customRenderer
                           ? column.customRenderer({ value: row.otherFields[index], id: row.id })
                           : row.otherFields[index]}

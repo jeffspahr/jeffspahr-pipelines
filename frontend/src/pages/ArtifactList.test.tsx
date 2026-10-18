@@ -153,10 +153,10 @@ describe('ArtifactList', () => {
     expect(idLink.closest('td')).toHaveTextContent('12345678…9abc');
     expect(screen.getByRole('table', { name: 'Artifacts' })).toContainElement(idLink);
     expect(screen.getByText('system.Dataset')).toHaveStyle({ whiteSpace: 'nowrap' });
-    expect(screen.getByText('kubeflow')).toHaveStyle({ whiteSpace: 'normal' });
+    expect(screen.getByText('kubeflow')).toHaveAttribute('title', 'kubeflow');
   });
 
-  it('ellipsizes long types with a full tooltip and keeps date and time on deliberate lines', async () => {
+  it('preserves full names, types, namespaces, and dates while using shared compact cells', async () => {
     const createdAt = new Date('2026-08-01T12:34:56Z');
     const longName = 'a-very-long-artifact-name-that-remains-readable-without-clipping';
     vi.mocked(Apis.artifactServiceApiV2.artifacts).mockResolvedValue({
@@ -187,20 +187,14 @@ describe('ArtifactList', () => {
     });
     expect(type).toHaveAttribute('title', 'system.ClassificationMetrics');
 
-    const date = screen.getByText(createdAt.toLocaleDateString());
-    const time = screen.getByText(createdAt.toLocaleTimeString());
-    expect(date).toHaveStyle({ display: 'block', whiteSpace: 'nowrap' });
-    expect(time).toHaveStyle({ display: 'block', whiteSpace: 'nowrap' });
-    expect(time.parentElement).toHaveAttribute('datetime', createdAt.toISOString());
-    expect(time.parentElement).toHaveAttribute('title', createdAt.toLocaleString());
-    expect(screen.getByRole('link', { name: longName })).toHaveStyle({
-      whiteSpace: 'normal',
-      overflowWrap: 'anywhere',
-    });
-    expect(screen.getByText('a-long-namespace-that-can-wrap')).toHaveStyle({
-      whiteSpace: 'normal',
-      overflowWrap: 'anywhere',
-    });
+    const time = screen.getByTitle(createdAt.toLocaleString());
+    expect(time).toHaveAttribute('datetime', createdAt.toISOString());
+    expect(time).toHaveTextContent(createdAt.toLocaleString());
+    expect(screen.getByRole('link', { name: longName })).toHaveAttribute('title', longName);
+    expect(screen.getByText('a-long-namespace-that-can-wrap')).toHaveAttribute(
+      'title',
+      'a-long-namespace-that-can-wrap',
+    );
   });
 
   it('uses the native API page token and page size', async () => {

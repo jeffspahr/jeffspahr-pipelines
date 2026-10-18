@@ -1,3 +1,12 @@
+.kfp-theme {
+  --kfp-text-body: 13px;
+  --kfp-text-secondary: 12px;
+  --kfp-text-section: 16px;
+  --kfp-text-title: 22px;
+  --kfp-line-body: 20px;
+  --kfp-line-secondary: 18px;
+}
+
 .kfp-theme .kfp-modern-page {
   --kfp-page-gutter: 16px;
   --kfp-control-gap: 8px;
@@ -8,6 +17,9 @@
   min-width: 0;
   min-height: 0;
   color: var(--foreground);
+  font-family: var(--kfp-font-sans);
+  font-size: var(--kfp-text-body);
+  line-height: var(--kfp-line-body);
   background: var(--background);
   overflow: auto;
 }
@@ -36,7 +48,7 @@
 }
 .kfp-theme .kfp-page-title-row h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--kfp-text-title);
   line-height: 30px;
   font-weight: 600;
   letter-spacing: -0.025em;
@@ -173,7 +185,7 @@
 }
 .kfp-theme .kfp-page-title-row h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--kfp-text-section);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 24px;
 }

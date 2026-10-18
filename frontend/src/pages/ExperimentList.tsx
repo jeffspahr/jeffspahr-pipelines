@@ -104,11 +104,13 @@ export class ExperimentList extends Page<
       {
         flex: 2,
         label: 'Description',
+        width: '35%',
       },
       {
         customRenderer: this._last5RunsCustomRenderer,
         flex: 1,
         label: 'Recent runs · up to 5',
+        width: 240,
         sortKey: ExperimentSortKeys.LAST_RUN_CREATED_AT,
       },
     ];
@@ -144,6 +146,7 @@ export class ExperimentList extends Page<
                   headerActions={{ last_run_created_at: date.control }}
                   activeFilters={date.chip}
                   label='Experiments'
+                  minWidth={820}
                   singular='experiment'
                   plural='experiments'
                 />

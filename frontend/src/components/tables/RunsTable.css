@@ -17,7 +17,7 @@
   align-items: center;
   gap: var(--kfp-control-gap, 12px);
   flex-wrap: wrap;
-  min-height: 48px;
+  min-height: 44px;
   padding: 6px 0;
 }
 .kfp-theme .kfp-collection-search {
@@ -42,7 +42,7 @@
 }
 .kfp-theme .kfp-collection-search > input {
   width: 100%;
-  height: 36px;
+  height: 32px;
   padding-left: 36px;
   background: var(--card);
 }
@@ -66,7 +66,9 @@
   width: 100%;
   min-width: 1000px;
   border-collapse: collapse;
-  font-size: 13px;
+  font-family: var(--kfp-font-sans);
+  font-size: var(--kfp-text-body, 13px);
+  line-height: var(--kfp-line-body, 20px);
   text-align: left;
 }
 .kfp-theme .kfp-runs-table th {
@@ -97,7 +99,7 @@
 .kfp-theme .kfp-runs-table tbody tr:last-child td {
   border-bottom: none;
 }
-.kfp-theme .kfp-runs-table tbody tr[data-row-id] {
+.kfp-theme .kfp-runs-table tbody tr[data-interactive='true'] {
   cursor: pointer;
 }
 .kfp-theme .kfp-runs-table tbody tr[data-row-id]:hover {
@@ -107,8 +109,9 @@
   background: var(--primary-soft);
 }
 .kfp-theme .kfp-runs-table .kfp-runs-selection {
-  width: 46px;
-  padding-right: 2px;
+  width: 40px;
+  padding: 0 10px;
+  text-align: center;
 }
 .kfp-theme .kfp-runs-name {
   display: flex;
@@ -265,7 +268,7 @@
 .kfp-theme .kfp-runs-table-footer > [role='status'] {
   min-height: 18px;
 }
-.kfp-theme .kfp-runs-data-table .kfp-runs-table thead tr {
+.kfp-theme .kfp-runs-table thead tr {
   height: 40px;
 }
 .kfp-theme .kfp-runs-data-table .kfp-runs-table tbody tr[data-row-id] {
@@ -390,4 +393,40 @@
 }
 .kfp-theme .kfp-collection-scope-toggle > button {
   height: 26px;
+}
+
+/* Shared cell hierarchy: primary names carry emphasis, metadata stays quiet. */
+.kfp-theme .kfp-runs-table td[data-column='primary'] {
+  color: var(--foreground);
+  font-weight: 500;
+}
+.kfp-theme .kfp-runs-table td[data-column='primary'] a {
+  color: var(--foreground);
+  font-family: var(--kfp-font-sans);
+  font-size: var(--kfp-text-body, 13px);
+  font-weight: 500;
+}
+.kfp-theme .kfp-runs-table td[data-column='primary'] a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.kfp-theme .kfp-runs-table td:not(.kfp-runs-empty) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kfp-theme .kfp-runs-table td > a {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kfp-theme .kfp-runs-table .kfp-resource-details > td {
+  white-space: normal;
+  overflow: visible;
+}
+
+.kfp-theme .kfp-runs-warning {
+  white-space: normal;
 }

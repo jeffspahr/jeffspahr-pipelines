@@ -180,17 +180,15 @@ export function RecurringRunDetailsQueryPage(props: PageProps) {
     <div className='kfp-detail-page'>
       {recurringRun && (
         <div className='kfp-detail-sections'>
-          <div>
-            <DetailsTable
-              title='Recurring run details'
-              fields={getRecurringRunDetails(recurringRun)}
-            ></DetailsTable>
-            <DetailsTable title='Run triggers' fields={getRunTriggers(recurringRun)}></DetailsTable>
-            <DetailsTable
-              title='Run parameters'
-              fields={getRunParameters(recurringRun)}
-            ></DetailsTable>
-          </div>
+          <DetailsTable
+            title='Recurring run details'
+            fields={getRecurringRunDetails(recurringRun)}
+          ></DetailsTable>
+          <DetailsTable title='Run triggers' fields={getRunTriggers(recurringRun)}></DetailsTable>
+          <DetailsTable
+            title='Run parameters'
+            fields={getRunParameters(recurringRun)}
+          ></DetailsTable>
         </div>
       )}
     </div>

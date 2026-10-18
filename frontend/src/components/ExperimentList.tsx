@@ -72,6 +72,7 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
       {
         flex: 2,
         label: 'Description',
+        width: '35%',
       },
     ];
 
@@ -92,6 +93,7 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
             <ResourceTable
               table={table}
               label='Archived experiments'
+              minWidth={820}
               singular='experiment'
               plural='experiments'
             />

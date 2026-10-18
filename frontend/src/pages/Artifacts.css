@@ -37,8 +37,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--foreground-2);
-  font-family: var(--kfp-font-mono);
-  font-size: 11px;
+  font: inherit;
 }
 .kfp-theme .kfp-artifact-type::before {
   content: '';
@@ -66,7 +65,8 @@
   padding-top: var(--kfp-section-gap, 16px);
 }
 .kfp-theme .kfp-artifact-relationships h2 {
-  font-size: 15px;
+  font-size: var(--kfp-text-section, 16px);
+  line-height: 24px;
   font-weight: 600;
   margin: 0;
 }

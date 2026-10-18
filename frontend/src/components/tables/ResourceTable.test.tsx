@@ -136,3 +136,23 @@ it('selects and deselects a selectable row even when a navigation callback is su
   expect(screen.getByLabelText('Selected resources')).toBeEmptyDOMElement();
   expect(onOpenRow).not.toHaveBeenCalled();
 });
+
+it('uses column sizing without adding selection controls to read-only collections', async () => {
+  render(
+    <CustomTable
+      columns={[{ label: 'Artifact' }, { label: 'Created', width: 190 }]}
+      rows={[{ id: 'dataset', otherFields: ['Training data', 'Today'] }]}
+      selectedIds={[]}
+      disableSelection={true}
+      reload={async () => ''}
+      renderTable={(table) => <ResourceTable table={table} label='Artifacts' />}
+    />,
+  );
+  const table = screen.getByRole('table', { name: 'Artifacts' });
+  await waitFor(() => expect(table).toHaveAttribute('aria-busy', 'false'));
+  expect(table).toHaveStyle({ tableLayout: 'fixed' });
+  expect(table.querySelectorAll('col')).toHaveLength(2);
+  expect(table.querySelectorAll('col')[1]).toHaveStyle({ width: '190px' });
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  expect(screen.getByTestId('table-row')).toHaveAttribute('data-interactive', 'false');
+});

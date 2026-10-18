@@ -31,7 +31,8 @@
 }
 .kfp-theme .kfp-workflow-form h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--kfp-text-section, 16px);
+  line-height: 24px;
   font-weight: 600;
 }
 .kfp-theme .kfp-workflow-description,

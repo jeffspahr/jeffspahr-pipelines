@@ -28,6 +28,8 @@ export enum ExpandState {
 }
 
 export interface Column {
+  /** Fixed metadata width; leave primary names flexible. */
+  width?: React.CSSProperties['width'];
   flex?: number;
   label: string;
   sortKey?: string;
