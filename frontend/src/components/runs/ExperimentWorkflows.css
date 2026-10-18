@@ -92,12 +92,13 @@
 }
 .kfp-theme .kfp-recent-runs {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   max-width: 220px;
 }
 .kfp-theme .kfp-recent-runs-bar {
   display: flex;
+  flex: 0 0 64px;
   overflow: hidden;
   height: 6px;
   border-radius: 3px;

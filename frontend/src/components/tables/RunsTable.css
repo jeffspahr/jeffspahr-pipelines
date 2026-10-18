@@ -430,3 +430,8 @@
 .kfp-theme .kfp-runs-warning {
   white-space: normal;
 }
+
+.kfp-theme .kfp-resource-expansion button {
+  display: flex;
+  margin: auto;
+}
