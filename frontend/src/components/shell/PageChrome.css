@@ -57,6 +57,7 @@
 .kfp-theme .kfp-page-breadcrumbs {
   /* Keep the route breadcrumb slot stable while its metadata is loading. */
   min-height: 18px;
+  line-height: var(--kfp-line-secondary);
   display: flex;
   gap: 6px;
   margin-bottom: 4px;

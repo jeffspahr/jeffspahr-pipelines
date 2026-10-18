@@ -466,7 +466,8 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
     );
     await page.getByRole('button', { name: 'Name', exact: true }).click();
     await page.getByRole('columnheader', { name: 'Name', exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Metrics', exact: true }).click();
+    await page.getByRole('button', { name: 'Filter type', exact: true }).click();
+    await page.getByRole('menuitemradio', { name: 'Metrics', exact: true }).click();
     await ready(page, 3);
     const query = fixture.requests
       .filter((item) => item.path === '/apis/v2beta1/artifacts')
@@ -477,7 +478,7 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
       decodeFilter(query.filter).find((predicate) => predicate.key === 'type').int_values.values,
       [6, 7, 8],
     );
-    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await page.getByRole('button', { name: 'Clear Type: Metrics filter', exact: true }).click();
     await ready(page, 7);
     await page.getByRole('button', { name: 'Clear filter', exact: true }).click();
     await ready(page, 10);

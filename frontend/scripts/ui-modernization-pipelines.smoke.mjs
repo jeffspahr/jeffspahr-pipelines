@@ -90,7 +90,7 @@ function listPage(resources, query, resource) {
     (a, b) => String(a[sort]).localeCompare(String(b[sort])) * (direction === 'desc' ? -1 : 1),
   );
   const size = Number(query.page_size || 10);
-  assert.ok([1, 10, 20, 50, 100].includes(size));
+  assert.ok([1, 5, 10, 20, 50, 100].includes(size));
   const key = JSON.stringify({
     resource,
     filter: query.filter || '',
@@ -492,24 +492,31 @@ test('pipeline cards retain filtering, sorting, paging, selection and lazy versi
     ]);
     await chooseSort(page, 'Uploaded: newest first');
     await page.getByRole('button', { name: 'Expand pipeline Pipeline 01' }).click();
-    const versionsTable = card(page, 'Pipeline 01').getByRole('table', {
-      name: 'Pipeline versions',
+    const preview = card(page, 'Pipeline 01').getByRole('region', {
+      name: 'Recent pipeline versions',
     });
-    await versionsTable.getByRole('link', { name: 'Version 01', exact: true }).waitFor();
+    await preview.getByRole('link', { name: 'Version 01', exact: true }).waitFor();
     assert.equal(fixture.lists.filter(({ resource }) => resource === 'versions').length, 1);
+    assert.equal(fixture.lists.at(-1).page_size, '5');
+    assert.equal(fixture.lists.at(-1).sort_by, 'created_at desc');
+    assert.equal(await preview.getByRole('listitem').count(), 5);
+    assert.equal(await preview.getByRole('checkbox').count(), 0);
+    assert.equal(await preview.getByRole('button', { name: 'Next page', exact: true }).count(), 0);
     assert.equal(
-      await versionsTable
-        .getByRole('link', { name: 'Version 01', exact: true })
-        .getAttribute('href'),
+      await preview.getByRole('link', { name: 'Version 01', exact: true }).getAttribute('href'),
       `#${pipelinePath(specialPipelineId, specialVersionId)}`,
     );
-    await versionsTable.getByRole('checkbox', { name: 'Select version Version 01' }).check();
-    await card(page, 'Pipeline 01').getByRole('button', { name: 'Next page', exact: true }).click();
-    await versionsTable.getByRole('link', { name: 'Version 11', exact: true }).waitFor();
-    assert.equal(fixture.lists.at(-1).pipelineId, specialPipelineId);
     await screenshot(page, 'pipelines-expanded-light');
     await darkTheme(page);
     await screenshot(page, 'pipelines-expanded-dark');
+    await preview.getByRole('link', { name: 'View all versions', exact: true }).click();
+    await page.waitForURL('**?tab=versions');
+    const versionsTable = page.getByRole('table', { name: 'Pipeline versions', exact: true });
+    await versionsTable.getByRole('link', { name: 'Version 01', exact: true }).waitFor();
+    await versionsTable.getByRole('checkbox', { name: 'Select version Version 01' }).check();
+    await page.getByRole('button', { name: 'Next page', exact: true }).click();
+    await versionsTable.getByRole('link', { name: 'Version 11', exact: true }).waitFor();
+    assert.equal(fixture.lists.at(-1).pipelineId, specialPipelineId);
   });
 });
 

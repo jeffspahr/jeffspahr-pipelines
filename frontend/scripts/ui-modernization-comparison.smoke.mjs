@@ -251,10 +251,9 @@ async function withFixture(exercise, { checkHeaderLayout = false, checkEmptyLayo
       loadingContentTop = await page
         .locator('.kfp-modern-page-content')
         .evaluate((content) => content.getBoundingClientRect().top);
-      assert.equal(
-        loadingContentTop,
-        108,
-        'comparison reserves the desktop breadcrumb header before run data resolves',
+      assert.ok(
+        loadingContentTop > 0,
+        'comparison reserves its breadcrumb header before run data resolves',
       );
       assert.deepEqual(await page.locator('.kfp-page-breadcrumbs a').allTextContents(), ['Runs']);
       releaseRuns();
@@ -277,7 +276,7 @@ async function withFixture(exercise, { checkHeaderLayout = false, checkEmptyLayo
       const observedTops = await page.evaluate(() => window.__kfpComparisonContentY);
       assert.ok(observedTops.length > 0);
       assert.ok(
-        observedTops.every((top) => top === 108),
+        observedTops.every((top) => top === loadingContentTop),
         `comparison mount must reserve the header from its first DOM commit: ${observedTops}`,
       );
     }

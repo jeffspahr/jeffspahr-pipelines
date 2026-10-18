@@ -495,7 +495,7 @@ function assertRunBody(body, name, versionId = 'version-a', experimentId = 'expe
 }
 
 // The sample is deliberately seven runs for one experiment and two for another: labels must
-// describe the fetched sample, while expanding still loads the complete nested page.
+// describe the fetched sample; full selection and management live on the detail page.
 test('Experiments: bounded recent-run samples, expansion, archive navigation, namespace and themes', async () => {
   await withFixture({ namespace: 'team-a' }, async (page, fixture) => {
     await page.goto(`${origin}/#/experiments`);
@@ -513,16 +513,28 @@ test('Experiments: bounded recent-run samples, expansion, archive navigation, na
     });
     await expand.focus();
     await page.keyboard.press('Enter');
+    const preview = page.getByRole('region', { name: 'Recent runs preview', exact: true });
+    await preview.waitFor();
+    assert.equal(await preview.getByRole('listitem').count(), 5);
+    assert.equal(await preview.getByRole('checkbox').count(), 0);
+    assert.equal(await page.getByRole('table', { name: 'Runs', exact: true }).count(), 0);
+    assert.match(page.url(), /#\/experiments$/);
+    await theme(page, 'dark');
+    await screenshot(page, 'experiments-dark-expanded');
+    await preview.getByRole('link', { name: 'View all runs', exact: true }).click();
+    await page.waitForURL(/#\/experiments\/details\/experiment-a$/);
     await tableReady(page, 'Runs');
     assert.equal(await page.getByTestId('run-name-link').count(), 7);
     await page.getByRole('checkbox', { name: 'Select run Training 1', exact: true }).check();
     assert.equal(
-      await page.getByRole('button', { name: 'Archive', exact: true }).isEnabled(),
+      await page
+        .getByRole('button', { name: 'Archive', exact: true })
+        .and(page.locator('[aria-description="Archive selected run(s)"]'))
+        .isEnabled(),
       true,
     );
-    assert.match(page.url(), /#\/experiments$/);
-    await theme(page, 'dark');
-    await screenshot(page, 'experiments-dark-expanded');
+    await page.goto(`${origin}/#/experiments`);
+    await tableReady(page, 'Experiments');
     await page.getByRole('group', { name: 'Experiment scope' }).getByRole('button', { name: 'Archived', exact: true }).click();
     await tableReady(page, 'Archived experiments');
     await page.getByRole('link', { name: 'Archived experiment', exact: true }).waitFor();
@@ -542,7 +554,11 @@ test('Experiments: bounded recent-run samples, expansion, archive navigation, na
         (r) => r.path === '/apis/v2beta1/experiments' && r.query.namespace === 'team-b',
       ),
     );
-    assert.equal(fixture.mutations.length, 0, 'selecting a nested run must not mutate it');
+    assert.equal(
+      fixture.mutations.length,
+      0,
+      'preview navigation and selecting a run must not mutate it',
+    );
   });
 });
 
@@ -597,19 +613,20 @@ test('Recurring workflows: keyboard toggle failure/recovery, detail navigation a
     assert.equal(mutation(fixture, action).length, 1);
     held.release();
     fixture.held.delete(`POST ${action}`);
-    await page.getByRole('alert').filter({ hasText: 'Unable to update schedule' }).waitFor();
+    const notification = page.getByRole('alert').filter({ hasText: 'Could not update schedule' });
+    await notification.waitFor();
     assert.equal(await control.isChecked(), true);
-    await control.focus();
-    await page.keyboard.press('Space');
+    assert.equal(await control.isDisabled(), false);
+    await notification.getByRole('button', { name: 'Retry', exact: true }).click();
     await page.waitForFunction(
-      () => document.querySelector('[role="switch"]')?.getAttribute('aria-checked') === 'false',
+      () =>
+        document
+          .querySelector('[role="switch"][aria-label="Enable schedule Nightly training"]')
+          ?.getAttribute('aria-checked') === 'false',
     );
     await tableReady(page, 'Recurring runs');
     assert.equal(mutation(fixture, action).length, 2);
-    assert.equal(
-      await page.getByRole('alert').filter({ hasText: 'Unable to update schedule' }).count(),
-      0,
-    );
+    await notification.waitFor({ state: 'hidden' });
     const uncheckedThumbPosition = await assertForcedColorSwitch(control);
     assert.notEqual(uncheckedThumbPosition, checkedThumbPosition);
     await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'no-preference' });

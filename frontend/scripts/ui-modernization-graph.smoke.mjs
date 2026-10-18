@@ -349,29 +349,20 @@ function sameGeometry(a, b) {
 }
 async function graphControlTargets(page) {
   const targets = await page.evaluate(() => ({
-    attribution: document
-      .querySelector('.react-flow__attribution a')
-      .getBoundingClientRect()
-      .toJSON(),
+    attributionCount: document.querySelectorAll('.react-flow__attribution').length,
     controls: [...document.querySelectorAll('.react-flow__controls-button')].map((button) => ({
       label: button.getAttribute('aria-label'),
       box: button.getBoundingClientRect().toJSON(),
     })),
   }));
-  assert.ok(targets.attribution.height >= 24 && targets.attribution.width >= 24);
+  assert.equal(targets.attributionCount, 0, 'attribution is covered by shared third-party notices');
   assert.deepEqual(
     targets.controls.map(({ label }) => label),
-    ['Expand all', 'Collapse all', 'Zoom in', 'Zoom out', 'Fit view', 'Unlock graph'],
+    ['Zoom in', 'Zoom out', 'Fit view', 'Unlock graph'],
+    'flat graphs do not expose inapplicable group controls',
   );
   for (const { label, box } of targets.controls) {
     assert.ok(box.height >= 30 && box.width >= 30, `${label} retains its 30px target`);
-    assert.ok(
-      box.right <= targets.attribution.left ||
-        box.left >= targets.attribution.right ||
-        box.bottom <= targets.attribution.top ||
-        box.top >= targets.attribution.bottom,
-      `${label} and attribution targets must not overlap`,
-    );
   }
 }
 

@@ -34,6 +34,10 @@
 .kfp-comparison-overview {
   min-width: 0;
 }
+/* Keep the loading row within the reserved comparison overview height. */
+.kfp-theme .kfp-comparison-overview .kfp-runs-table td.kfp-runs-empty {
+  padding: 16px 24px;
+}
 .kfp-comparison-placeholder {
   display: flex;
   align-items: center;
