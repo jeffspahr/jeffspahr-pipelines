@@ -72,7 +72,7 @@
   position: relative;
   display: flex;
   flex: 1;
-  flex-direction: column;
+  flex-direction: row;
   min-height: 380px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -365,4 +365,9 @@
   .kfp-theme .kfp-run-summary {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.kfp-theme .kfp-inspector-slot {
+  position: relative;
+  flex: none;
 }

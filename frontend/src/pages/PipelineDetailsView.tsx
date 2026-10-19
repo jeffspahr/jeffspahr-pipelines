@@ -111,23 +111,21 @@ function PipelineDetailsView({
               onElementClick={(_event, selection) => setSelection(selection)}
             ></DagCanvas>
             {templateString && (
-              <div className='z-20'>
-                <InspectionPanel
-                  isOpen={!!selection}
-                  title={getNodeName(selection?.element ?? null)}
-                  onClose={() => setSelection(null)}
-                >
-                  <div className='kfp-pipeline-node-details'>
-                    <div>
-                      <StaticNodeDetails
-                        templateString={templateString}
-                        layers={selection?.layers ?? layers}
-                        element={selection?.element ?? null}
-                      />
-                    </div>
+              <InspectionPanel
+                isOpen={!!selection}
+                title={getNodeName(selection?.element ?? null)}
+                onClose={() => setSelection(null)}
+              >
+                <div className='kfp-pipeline-node-details'>
+                  <div>
+                    <StaticNodeDetails
+                      templateString={templateString}
+                      layers={selection?.layers ?? layers}
+                      element={selection?.element ?? null}
+                    />
                   </div>
-                </InspectionPanel>
-              </div>
+                </div>
+              </InspectionPanel>
             )}
           </div>
         )}

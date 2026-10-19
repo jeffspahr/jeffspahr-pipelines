@@ -1062,3 +1062,42 @@ test('Run Details exposes semantic values and restores navigation after closing 
     await page.getByRole('link', { name: 'Runs', exact: true }).click({ trial: true });
   });
 });
+
+
+test('Inspector resize preserves manual zoom and selected-node visibility', async () => {
+  await withFixture({}, async (page) => {
+    await page.goto(`${origin}/#/runs/details/${runId}`);
+    await node(page, 'prepare').waitFor();
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+    const measure = () => page.evaluate(() => {
+      const canvas = document.querySelector('[data-testid="DagCanvas"]').getBoundingClientRect();
+      const matrix = new DOMMatrixReadOnly(document.querySelector('.react-flow__viewport').style.transform);
+      const selected = document.querySelector('.react-flow__node.selected')?.getBoundingClientRect();
+      return { width: canvas.width, zoom: matrix.a, x: matrix.e,
+        visible: !selected || (selected.left >= canvas.left && selected.right <= canvas.right && selected.top >= canvas.top && selected.bottom <= canvas.bottom) };
+    });
+    const before = await measure();
+    await node(page, 'prepare').locator('button').first().click();
+    const inspector = page.getByRole('dialog');
+    await inspector.waitFor();
+    await page.waitForFunction(width => document.querySelector('[data-testid="DagCanvas"]').clientWidth < width, before.width);
+    const opened = await measure();
+    assert.equal(opened.zoom, before.zoom);
+    assert.ok(opened.visible);
+    const resize = inspector.getByRole('separator', { name: 'Resize node details' });
+    await resize.focus();
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(width => document.querySelector('[data-testid="DagCanvas"]').clientWidth < width, opened.width);
+    const resized = await measure();
+    assert.equal(resized.zoom, before.zoom);
+    assert.ok(resized.visible);
+    assert.notEqual(resized.x, opened.x);
+    await inspector.getByRole('button', { name: 'close', exact: true }).click();
+    await inspector.waitFor({ state: 'hidden' });
+    await page.waitForFunction(width => document.querySelector('[data-testid="DagCanvas"]').clientWidth === width, before.width);
+    const closed = await measure();
+    assert.equal(closed.zoom, before.zoom);
+    assert.equal(closed.width, before.width);
+    assert.notEqual(closed.x, resized.x);
+  });
+});

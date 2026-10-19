@@ -91,6 +91,7 @@ function DagCanvasView({
   graphId,
 }: DagCanvasProps) {
   const reactFlowInstance = useRef<ReactFlowInstance<PipelineNode, Edge> | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const lastFocusedNodeId = useRef<string | null>(null);
   const [locked, setLocked] = useState(true);
   const [hoveredNodeId, setHoveredNodeId] = useState<string>();
@@ -291,8 +292,50 @@ function DagCanvasView({
     }
   }, [fitCurrentView, focusedId]);
 
+  // External synchronization: React Flow keeps its translation when its DOM viewport
+  // shrinks. Move the existing view to the new center without changing user zoom.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let previous = { width: canvas.clientWidth, height: canvas.clientHeight };
+    const observer = new ResizeObserver(() => {
+      const next = { width: canvas.clientWidth, height: canvas.clientHeight };
+      const instance = reactFlowInstance.current;
+      if (
+        instance &&
+        previous.width > 0 &&
+        next.width > 0 &&
+        next.height > 0 &&
+        (next.width !== previous.width || next.height !== previous.height)
+      ) {
+        const viewport = instance.getViewport();
+        let x = viewport.x + (next.width - previous.width) / 2;
+        let y = viewport.y + (next.height - previous.height) / 2;
+        const selected = instance.getNodes().find((node) => node.selected);
+        if (selected) {
+          const bounds = instance.getNodesBounds([selected]);
+          const keepVisible = (offset: number, start: number, size: number, available: number) => {
+            const extent = size * viewport.zoom;
+            if (extent > available - 32) return (available - extent) / 2 - start * viewport.zoom;
+            return (
+              Math.min(available - 16 - extent, Math.max(16, start * viewport.zoom + offset)) -
+              start * viewport.zoom
+            );
+          };
+          x = keepVisible(x, bounds.x, bounds.width, next.width);
+          y = keepVisible(y, bounds.y, bounds.height, next.height);
+        }
+        void instance.setViewport({ ...viewport, x, y });
+      }
+      previous = next;
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
+      ref={canvasRef}
       data-testid='DagCanvas'
       role='region'
       aria-label='Pipeline graph'

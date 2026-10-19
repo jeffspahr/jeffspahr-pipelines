@@ -16,7 +16,7 @@
 
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
-import { useCallback, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { Resizable } from 're-resizable';
 import { Button } from '../ui/button';
@@ -63,11 +63,23 @@ export function InspectionPanel({ isOpen, title, onClose, children }: Inspection
     getViewportWidth,
     () => 1024,
   );
+  const [workspaceWidth, setWorkspaceWidth] = useState(viewportWidth);
+  // External synchronization: leave a usable graph viewport beside the inspector.
+  useEffect(() => {
+    const workspace = portalContainer.current?.parentElement;
+    if (!workspace) return;
+    const observer = new ResizeObserver(() => setWorkspaceWidth(workspace.clientWidth));
+    observer.observe(workspace);
+    return () => observer.disconnect();
+  }, []);
   const panelId = useId();
   const [preferredWidth, setPreferredWidth] = useState(380);
   const resizeStartWidth = useRef(380);
   const minWidth = 300;
-  const maxWidth = Math.max(minWidth, Math.floor(viewportWidth * 0.9));
+  const maxWidth = Math.max(
+    minWidth,
+    Math.min(Math.floor(viewportWidth * 0.9), workspaceWidth - 240),
+  );
   const width = Math.min(preferredWidth, maxWidth);
 
   function resizeFromKeyboard(event: KeyboardEvent<HTMLDivElement>) {
@@ -103,7 +115,11 @@ export function InspectionPanel({ isOpen, title, onClose, children }: Inspection
         if (!open) onClose();
       }}
     >
-      <div ref={portalContainer}>
+      <div
+        ref={portalContainer}
+        className='kfp-inspector-slot'
+        style={{ width: isOpen && !narrow ? width : 0 }}
+      >
         <Dialog.Portal container={portalContainer}>
           {narrow && <Dialog.Backdrop className='kfp-inspector-backdrop' />}
           <Dialog.Popup
