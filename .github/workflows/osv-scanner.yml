@@ -1,168 +1,71 @@
-name: OSV-Scanner Vulnerability Scan
-
+name: Release artifact CVE audit
 on:
-  push:
-    branches:
-      - master
-  schedule:
-    # Every Friday at 19:39
-    - cron: '39 19 * * 5'
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  scan-source:
-    name: Scan repository dependencies
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        with:
-          persist-credentials: false
-
-      - name: Install OSV-Scanner
-        env:
-          OSV_SCANNER_VERSION: '2.5.0'
-          OSV_SCANNER_SHA256: 'edcfc41d257db36148f065055655fe3fcfc434b0b423ea67468a84c207524e0c'
-        run: |
-          curl -fsSL --retry 5 --retry-all-errors \
-            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
-            --output osv-scanner
-          echo "${OSV_SCANNER_SHA256}  osv-scanner" | sha256sum --check --strict
-          chmod +x osv-scanner
-          ./osv-scanner --version
-
-      - name: Scan dependency manifests and lockfiles
-        run: |
-          scan_exit_code=0
-          ./osv-scanner scan source \
-            --recursive \
-            --no-resolve \
-            --experimental-exclude backend/api/v1beta1/python_http_client \
-            --experimental-exclude backend/api/v2beta1/python_http_client \
-            --format sarif \
-            --output-file osv-results.sarif \
-            . || scan_exit_code=$?
-
-          # Exit code 1 means vulnerabilities were found. Findings are reported
-          # through SARIF and do not make this reporting workflow fail.
-          if [[ "${scan_exit_code}" -ne 0 && "${scan_exit_code}" -ne 1 ]]; then
-            echo "::error::OSV-Scanner failed with exit code ${scan_exit_code}"
-            exit "${scan_exit_code}"
-          fi
-
-      - name: Remove exact duplicate source results
-        if: always() && hashFiles('osv-results.sarif') != ''
-        run: |
-          python3 .github/resources/scripts/deduplicate_sarif.py \
-            --input osv-results.sarif \
-            --output osv-results-deduplicated.sarif
-
-      - name: Upload OSV-Scanner results to GitHub Security
-        if: always() && hashFiles('osv-results-deduplicated.sarif') != ''
-        uses: github/codeql-action/upload-sarif@256d634097be96e792d6764f9edaefc4320557b1 # v4
-        with:
-          sarif_file: osv-results-deduplicated.sarif
-          category: kubeflow-pipelines-osv-scanner
-
-  discover-images:
-    name: Discover deployed images
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    outputs:
-      matrix: ${{ steps.images.outputs.matrix }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        with:
-          persist-credentials: false
-
-      - name: Install Kustomize
-        env:
-          KUSTOMIZE_VERSION: '5.8.1'
-          KUSTOMIZE_SHA256: '029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d'
-        run: |
-          kustomize_archive="kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
-          curl -fsSL --retry 5 --retry-all-errors \
-            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/${kustomize_archive}" \
-            --output "${RUNNER_TEMP}/${kustomize_archive}"
-          echo "${KUSTOMIZE_SHA256}  ${RUNNER_TEMP}/${kustomize_archive}" | \
-            sha256sum --check --strict
-          tar -xzf "${RUNNER_TEMP}/${kustomize_archive}" -C "${RUNNER_TEMP}"
-          chmod +x "${RUNNER_TEMP}/kustomize"
-
-      - name: Render manifests and collect images
-        id: images
-        run: |
-          image_matrix=$(python3 .github/resources/scripts/osv_manifest_images.py \
-            --kustomize "${RUNNER_TEMP}/kustomize" \
-            --overlay manifests/kustomize/env/platform-agnostic \
-            --overlay manifests/kustomize/env/platform-agnostic-multi-user)
-          echo "matrix=${image_matrix}" >> "${GITHUB_OUTPUT}"
-
-  scan-images:
-    name: Scan image (${{ matrix.image }})
-    needs: discover-images
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      security-events: write
+  images:
     strategy:
       fail-fast: false
-      max-parallel: 4
-      matrix: ${{ fromJSON(needs.discover-images.outputs.matrix) }}
+      max-parallel: 6
+      matrix:
+        include:
+          - {name: api-server, dockerfile: backend/Dockerfile, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: api-server, dockerfile: backend/Dockerfile, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: frontend, dockerfile: frontend/Dockerfile, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: frontend, dockerfile: frontend/Dockerfile, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: persistence-agent, dockerfile: backend/Dockerfile.persistenceagent, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: persistence-agent, dockerfile: backend/Dockerfile.persistenceagent, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: scheduled-workflow, dockerfile: backend/Dockerfile.scheduledworkflow, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: scheduled-workflow, dockerfile: backend/Dockerfile.scheduledworkflow, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: viewer, dockerfile: backend/Dockerfile.viewercontroller, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: viewer, dockerfile: backend/Dockerfile.viewercontroller, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: visualization, dockerfile: backend/Dockerfile.visualization, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: visualization, dockerfile: backend/Dockerfile.visualization, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: launcher, dockerfile: backend/Dockerfile.launcher, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: launcher, dockerfile: backend/Dockerfile.launcher, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: driver, dockerfile: backend/Dockerfile.driver, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: driver, dockerfile: backend/Dockerfile.driver, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: cache-deployer, dockerfile: backend/src/cache/deployer/Dockerfile, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: cache-deployer, dockerfile: backend/src/cache/deployer/Dockerfile, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: cache-server, dockerfile: backend/Dockerfile.cacheserver, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: cache-server, dockerfile: backend/Dockerfile.cacheserver, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: metadata-envoy, dockerfile: third_party/metadata_envoy/Dockerfile, context: ., arch: amd64, runner: ubuntu-24.04}
+          - {name: metadata-envoy, dockerfile: third_party/metadata_envoy/Dockerfile, context: ., arch: arm64, runner: ubuntu-24.04-arm}
+          - {name: metadata-writer, dockerfile: backend/metadata_writer/Dockerfile, context: ., arch: amd64, runner: ubuntu-24.04}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      - name: Install OSV-Scanner
-        env:
-          OSV_SCANNER_VERSION: '2.5.0'
-          OSV_SCANNER_SHA256: 'edcfc41d257db36148f065055655fe3fcfc434b0b423ea67468a84c207524e0c'
+      - name: Install scanner
         run: |
-          curl -fsSL --retry 5 --retry-all-errors \
-            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
-            --output osv-scanner
-          echo "${OSV_SCANNER_SHA256}  osv-scanner" | sha256sum --check --strict
-          chmod +x osv-scanner
-          ./osv-scanner --version
-
-      - name: Scan deployed container image
-        env:
-          IMAGE: ${{ matrix.image }}
-        run: |
-          bash .github/resources/scripts/docker-pull-with-retry.sh "${IMAGE}"
-
-          scan_exit_code=0
-          ./osv-scanner scan image "${IMAGE}" \
-            --format sarif \
-            --output-file osv-image-results.sarif \
-            || scan_exit_code=$?
-
-          if [[ "${scan_exit_code}" -ne 0 && "${scan_exit_code}" -ne 1 ]]; then
-            echo "::error::OSV-Scanner failed with exit code ${scan_exit_code} for ${IMAGE}"
-            exit "${scan_exit_code}"
+          if [ "$(uname -m)" = aarch64 ]; then
+            arch=ARM64
+            checksum=a1ee9f6ffb7d112b64ff726a2a0717c21175c1114361391f4a132956751a13b3
+          else
+            arch=64bit
+            checksum=c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f
           fi
-
-      - name: Remove exact duplicate image results
-        if: always() && hashFiles('osv-image-results.sarif') != ''
+          curl -fsSL --retry 3 "https://github.com/aquasecurity/trivy/releases/download/v0.75.0/trivy_0.75.0_Linux-${arch}.tar.gz" -o /tmp/trivy.tar.gz
+          echo "${checksum}  /tmp/trivy.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/trivy.tar.gz -C /tmp trivy
+      - name: Build release artifact
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          CONTEXT: ${{ matrix.context }}
         run: |
-          python3 .github/resources/scripts/deduplicate_sarif.py \
-            --input osv-image-results.sarif \
-            --output osv-image-results-deduplicated.sarif
-
-      - name: Upload image results to GitHub Security
-        if: always() && hashFiles('osv-image-results-deduplicated.sarif') != ''
-        uses: github/codeql-action/upload-sarif@256d634097be96e792d6764f9edaefc4320557b1 # v4
+          docker build --pull --build-arg NODE_VERSION="$(tr -d 'v\n' < frontend/.nvmrc)" --build-arg COMMIT_SHA="$GITHUB_SHA" --build-arg COMMIT_HASH="$GITHUB_SHA" --build-arg TAG_NAME=2.18-cve-audit -f "$DOCKERFILE" -t kfp-audit:local "$CONTEXT"
+          docker image inspect kfp-audit:local > image-inspect.json
+      - name: Scan all severities including unfixed advisories
+        run: |
+          /tmp/trivy image --scanners vuln --format json --output trivy.json --exit-code 0 kfp-audit:local
+      - name: Retain evidence
+        if: always()
+        uses: ./.github/actions/upload-artifact-with-retry
         with:
-          sarif_file: osv-image-results-deduplicated.sarif
-          category: kubeflow-pipelines-osv-image-${{ matrix.category }}
+          name: cve-${{ matrix.name }}-${{ matrix.arch }}
+          path: |
+            trivy.json
+            image-inspect.json
