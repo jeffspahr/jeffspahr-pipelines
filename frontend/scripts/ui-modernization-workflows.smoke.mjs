@@ -794,14 +794,17 @@ test('Recurring creation: periodic bounds, concurrency validation, catchup and l
       .check();
     await page.getByRole('combobox', { name: 'Interval unit', exact: true }).selectOption('Hour');
     await page.getByRole('spinbutton', { name: 'Interval', exact: true }).fill('2');
+    await page.getByText('Advanced execution settings', { exact: true }).click();
     await page.getByRole('textbox', { name: 'Maximum concurrent runs', exact: true }).fill('0');
     assert.equal(await page.locator('#startNewRunBtn').isDisabled(), true);
     await page.getByRole('textbox', { name: 'Maximum concurrent runs', exact: true }).fill('3');
-    await page.getByRole('checkbox', { name: 'Catchup', exact: true }).uncheck();
-    await page.getByRole('checkbox', { name: 'Has start date', exact: true }).check();
+    await page
+      .getByRole('checkbox', { name: 'Run missed schedules when resumed', exact: true })
+      .uncheck();
+    await page.getByRole('combobox', { name: 'Starts', exact: true }).selectOption('date');
     await page.getByLabel('Start date', { exact: true }).fill('2026-10-01');
     await page.getByLabel('Start time', { exact: true }).fill('08:30');
-    await page.getByRole('checkbox', { name: 'Has end date', exact: true }).check();
+    await page.getByRole('combobox', { name: 'Ends', exact: true }).selectOption('date');
     await page.getByLabel('End date', { exact: true }).fill('2026-10-31');
     await page.getByLabel('End time', { exact: true }).fill('18:45');
     await theme(page, 'dark');
@@ -851,18 +854,13 @@ test('Inline experiment and cron creation preserve selected pipeline, typed para
     await page
       .getByRole('textbox', { name: 'Recurring run config name', exact: true })
       .fill('Cron browser schedule');
-    await page
-      .getByRole('combobox', { name: 'Trigger type', exact: true })
-      .selectOption({ label: 'Cron' });
-    await page.getByRole('combobox', { name: 'Interval unit', exact: true }).selectOption('Week');
+    await page.getByRole('combobox', { name: 'Repeat', exact: true }).selectOption('weekly');
     const monday = page.getByRole('button', { name: 'Monday', exact: true });
     await monday.focus();
     await page.keyboard.press('Space');
     assert.equal(await monday.getAttribute('aria-pressed'), 'false');
-    await page
-      .getByRole('checkbox', { name: 'Allow editing cron expression.', exact: true })
-      .check();
-    await page.getByLabel('cron expression', { exact: true }).fill('0 15 8 ? * 1-5');
+    await page.getByRole('combobox', { name: 'Repeat', exact: true }).selectOption('custom');
+    await page.getByLabel('Cron expression', { exact: true }).fill('0 15 8 ? * 1-5');
     await submit(page, '/apis/v2beta1/recurringruns');
     await page.waitForURL(/#\/recurringrun\/details\/schedule-created$/);
     const body = mutation(fixture, '/apis/v2beta1/recurringruns')[0].body;

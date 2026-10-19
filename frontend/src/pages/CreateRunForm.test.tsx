@@ -390,7 +390,10 @@ describe('NewRunV2', () => {
 
     renderCreateRunForm();
 
-    const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+    const startButton = await screen.findByRole('button', {
+      name: /^(Start|Create recurring run)$/,
+      exact: true,
+    });
     expect(startButton.closest('button')?.disabled).toEqual(false);
   });
 
@@ -508,7 +511,10 @@ describe('NewRunV2', () => {
   it('disables start button when pipeline version is selected but template is unavailable', async () => {
     renderCreateRunForm({ templateString: undefined });
 
-    const startButton = screen.getByRole('button', { name: 'Start', exact: true });
+    const startButton = screen.getByRole('button', {
+      name: /^(Start|Create recurring run)$/,
+      exact: true,
+    });
     expect(startButton.closest('button')?.disabled).toEqual(true);
   });
 
@@ -556,7 +562,10 @@ describe('NewRunV2', () => {
       );
       fireEvent.change(runNameInput, { target: { value: '' } });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       expect(startButton.closest('button')?.disabled).toEqual(true);
       expect(await screen.findByText('Run name cannot be empty.'));
     });
@@ -571,7 +580,10 @@ describe('NewRunV2', () => {
 
       renderCreateRunForm();
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       fireEvent.click(startButton);
 
       await waitFor(() => {
@@ -601,7 +613,10 @@ describe('NewRunV2', () => {
       const messageInput = await screen.findByLabelText('message - string');
       fireEvent.change(messageInput, { target: { value: 'hello world' } });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
       });
@@ -1012,9 +1027,12 @@ describe('NewRunV2', () => {
 
       const recurringSwitcher = screen.getByLabelText('Recurring');
       fireEvent.click(recurringSwitcher);
-      screen.getByText('Run trigger');
+      screen.getByRole('combobox', { name: 'Repeat' });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       // Because start button is set false by default
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
@@ -1062,7 +1080,10 @@ describe('NewRunV2', () => {
         target: { value: 'Minute' },
       });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       // Because start button is set false by default
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
@@ -1093,7 +1114,10 @@ describe('NewRunV2', () => {
       const maxConcurrenyParam = screen.getByDisplayValue('10');
       fireEvent.change(maxConcurrenyParam, { target: { value: '10a' } });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(true);
       });
@@ -1108,7 +1132,10 @@ describe('NewRunV2', () => {
       const maxConcurrenyParam = screen.getByDisplayValue('10');
       fireEvent.change(maxConcurrenyParam, { target: { value: '-10' } });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(true);
       });
@@ -1133,7 +1160,10 @@ describe('NewRunV2', () => {
         existingRun: API_UI_CREATED_NEW_RUN_DETAILS,
       });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       // Because start button is set false by default
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
@@ -1168,7 +1198,10 @@ describe('NewRunV2', () => {
         existingRun: API_SDK_CREATED_NEW_RUN_DETAILS,
       });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       // Because start button is set false by default
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
@@ -1202,7 +1235,10 @@ describe('NewRunV2', () => {
         existingRecurringRun: API_UI_CREATED_NEW_RECURRING_RUN_DETAILS,
       });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       // Because start button is set false by default
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
@@ -1247,7 +1283,10 @@ describe('NewRunV2', () => {
         existingRecurringRun: API_SDK_CREATED_NEW_RECURRING_RUN_DETAILS,
       });
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       // Because start button is set false by default
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
@@ -1296,7 +1335,10 @@ describe('NewRunV2', () => {
       const recurringSwitcher = screen.getByLabelText('Recurring');
       fireEvent.click(recurringSwitcher);
 
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
       });
@@ -1475,7 +1517,10 @@ describe('NewRunV2', () => {
       fireEvent.click(checkbox);
 
       // Click start button
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       fireEvent.click(startButton);
 
       // Verify API call contains only pipeline_id
@@ -1522,7 +1567,10 @@ describe('NewRunV2', () => {
       expect(checkbox).not.toBeChecked();
 
       // Click start button
-      const startButton = await screen.findByRole('button', { name: 'Start', exact: true });
+      const startButton = await screen.findByRole('button', {
+        name: /^(Start|Create recurring run)$/,
+        exact: true,
+      });
       await waitFor(() => {
         expect(startButton.closest('button')?.disabled).toEqual(false);
       });

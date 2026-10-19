@@ -34,6 +34,7 @@ import { Description } from 'src/components/Description';
 import RunParametersForm from 'src/components/RunParametersForm';
 import { getSafeReturnPath, QUERY_PARAMS, RoutePage, RouteParams } from 'src/components/Router';
 import Trigger from 'src/components/Trigger';
+import { scheduleDescription } from 'src/lib/ScheduleDisplay';
 import { loadYaml } from 'src/lib/YamlLoad';
 import { Apis, ExperimentSortKeys, PipelineSortKeys, PipelineVersionSortKeys } from 'src/lib/Apis';
 import { useKeyedState } from 'src/hooks/useKeyedState';
@@ -346,7 +347,11 @@ function CreateRunForm(props: CreateRunFormProps) {
     isTemplatePullSuccess,
   );
   const isStartButtonEnabled =
-    !!templateString && !validationErrorMessage && isParameterValid && isMaxConcurrentRunValid;
+    !!templateString &&
+    !validationErrorMessage &&
+    isParameterValid &&
+    isMaxConcurrentRunValid &&
+    (!isRecurringRun || !!trigger);
 
   const titleVerb = cloneOrigin.isClone ? 'Clone' : 'Start';
   const titleAdjective = cloneOrigin.isClone ? '' : 'new';
@@ -687,30 +692,6 @@ function CreateRunForm(props: CreateRunFormProps) {
           )}
         </fieldset>
 
-        {/* Recurring run controls */}
-        {isRecurringRun && (
-          <>
-            <h3>Run trigger</h3>
-            <div>Choose a method by which new runs will be triggered</div>
-
-            <Trigger
-              initialProps={{
-                trigger: trigger,
-                maxConcurrentRuns: maxConcurrentRuns,
-                catchup: needCatchup,
-              }}
-              onChange={({ trigger, maxConcurrentRuns, catchup }) => {
-                setTrigger(trigger);
-                setMaxConcurrentRuns(maxConcurrentRuns!);
-                setIsMaxConcurrentRunValid(
-                  Number.isInteger(Number(maxConcurrentRuns)) && Number(maxConcurrentRuns) > 0,
-                );
-                setNeedCatchup(catchup);
-              }}
-            />
-          </>
-        )}
-
         {/* PipelineRoot and Run Parameters */}
         <RunParametersForm
           key={parameterStateKey}
@@ -729,6 +710,28 @@ function CreateRunForm(props: CreateRunFormProps) {
           handleParameterChange={handleParameterChange}
           setIsValidInput={handleParameterValidityChange}
         />
+        {/* Recurring run controls */}
+        {isRecurringRun && (
+          <>
+            <Trigger
+              initialProps={{
+                trigger: trigger,
+                maxConcurrentRuns: maxConcurrentRuns,
+                catchup: needCatchup,
+              }}
+              onChange={({ trigger, maxConcurrentRuns, catchup }) => {
+                setTrigger(trigger);
+                setMaxConcurrentRuns(maxConcurrentRuns!);
+                setIsMaxConcurrentRunValid(
+                  Number.isInteger(Number(maxConcurrentRuns)) &&
+                    Number(maxConcurrentRuns) > 0 &&
+                    Number(maxConcurrentRuns) <= 10,
+                );
+                setNeedCatchup(catchup);
+              }}
+            />
+          </>
+        )}
       </section>
       <aside className='kfp-run-form-summary' aria-labelledby='run-summary-heading'>
         <h2 id='run-summary-heading'>Summary</h2>
@@ -760,6 +763,12 @@ function CreateRunForm(props: CreateRunFormProps) {
             <dt>Parameters</dt>
             <dd>{Object.keys(specParameters).length}</dd>
           </div>
+          {isRecurringRun && (
+            <div>
+              <dt>Schedule</dt>
+              <dd>{trigger ? scheduleDescription(trigger) : 'Complete the schedule below'}</dd>
+            </div>
+          )}
         </dl>
         {/* Create/Cancel buttons */}
         <div className='kfp-run-form-actions'>
@@ -770,7 +779,7 @@ function CreateRunForm(props: CreateRunFormProps) {
             onClick={startRun}
           >
             {isStartingNewRun && <LoaderCircle className='kfp-page-spinner' aria-hidden='true' />}
-            Start
+            {isRecurringRun ? 'Create recurring run' : 'Start'}
           </Button>
           <Button
             id='exitNewRunPageBtn'

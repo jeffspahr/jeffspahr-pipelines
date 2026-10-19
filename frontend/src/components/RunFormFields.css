@@ -115,3 +115,27 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.kfp-theme .kfp-schedule-frequency,
+.kfp-theme .kfp-schedule-windows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.kfp-theme .kfp-schedule-frequency .kfp-schedule-interval { margin-top: 0; }
+.kfp-theme .kfp-schedule-summary {
+  padding: 14px 16px;
+  border-left: 3px solid var(--primary);
+  background: var(--muted);
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+}
+.kfp-theme .kfp-schedule-summary p { margin: 6px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.kfp-theme .kfp-schedule-advanced { border-top: 1px solid var(--border); padding-top: 16px; }
+.kfp-theme .kfp-schedule-advanced summary { cursor: pointer; font-size: 13px; font-weight: 500; }
+.kfp-theme .kfp-schedule-advanced > div { margin-top: 16px; }
+@media (max-width: 600px) {
+  .kfp-theme .kfp-schedule-frequency,
+  .kfp-theme .kfp-schedule-windows { grid-template-columns: minmax(0, 1fr); }
+}
