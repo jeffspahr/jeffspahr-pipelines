@@ -5,7 +5,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { V2beta1Run, V2beta1RuntimeState } from '../src/apisv2beta1/run';
-import { sampleRunPipelineSpec, sampleRunTasks } from '../mock-backend/sample-run-tasks';
+import {
+  sampleDriverLogs,
+  sampleRunPipelineSpec,
+  sampleRunTasks,
+} from '../mock-backend/sample-run-tasks';
 import { getRunTaskTiming } from '../src/lib/v2/RunTaskTiming';
 
 const samples: V2beta1Run[] = Object.values(V2beta1RuntimeState)
@@ -34,6 +38,17 @@ describe('review sample timelines', () => {
     const children = tasks.filter((task) => task.type === 'RUNTIME');
     for (const task of children) {
       expect(task.run_id).toBe(run.run_id);
+      if (task.state === 'SKIPPED') {
+        expect(task.status_metadata?.custom_properties?.driver_logs_uri).toBeUndefined();
+      } else {
+        expect(task.status_metadata?.custom_properties?.driver_logs_uri).toBe(
+          `s3://mlpipeline/review-driver-logs/${task.task_id}`,
+        );
+        expect(sampleDriverLogs(task, 'kubeflow')).toContain(
+          `Creating task ${task.name} in pod kubeflow`,
+        );
+        expect(sampleDriverLogs(task, 'kubeflow')).toContain(task.create_time!.toISOString());
+      }
       expect(task.parent_task_id).toBe(root.task_id);
       expect(sampleRunPipelineSpec.root.dag.tasks).toHaveProperty(task.name!);
       expect(task.scope_path).toBe(`root.${task.name}`);

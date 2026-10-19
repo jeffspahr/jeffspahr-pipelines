@@ -58,7 +58,7 @@ import {
   RunSortKeys,
 } from '../src/lib/Apis';
 import { data as fixedData } from './fixed-data';
-import { sampleRunTasks } from './sample-run-tasks';
+import { sampleDriverLogs, sampleRunTasks } from './sample-run-tasks';
 import registerTensorboardProxy from './tensorboard-proxy';
 
 const rocMetadataJsonPath = './eval-output/metadata.json';
@@ -725,6 +725,23 @@ export default (app: express.Application) => {
   app.get('/artifacts/get', (req, res) => {
     const key = getRequiredDecodedQueryString(res, req.query.key, 'key');
     if (!key) {
+      return;
+    }
+    if (key.startsWith('review-driver-logs/')) {
+      for (const run of fixedData.runs) {
+        const task = sampleRunTasks(run).find(
+          (task) =>
+            task.task_id === key.slice('review-driver-logs/'.length) &&
+            !!task.status_metadata?.custom_properties?.driver_logs_uri,
+        );
+        if (task) {
+          res.type('text/plain').send(sampleDriverLogs(task, run.namespace || 'kubeflow'));
+          return;
+        }
+      }
+      res
+        .status(404)
+        .send('Driver log fixture not found. Select a task with available driver logs.');
       return;
     }
     res.header('Content-Type', 'application/json');

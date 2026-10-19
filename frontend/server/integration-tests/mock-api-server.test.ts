@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import requests from 'supertest';
 import { createMockApiApp } from '../../mock-backend/mock-api-app.ts';
 import { setupMockBackendTest } from './test-helper.js';
@@ -20,6 +20,23 @@ import { setupMockBackendTest } from './test-helper.js';
 setupMockBackendTest();
 
 describe('standalone mock API server', () => {
+  it('serves driver logs linked from sample task metadata', async () => {
+    const request = requests(createMockApiApp());
+    const { body } = await request
+      .get('/apis/v2beta1/runs/sample-run-training-failed/tasks')
+      .expect(200);
+    const task = body.tasks.find((task: { name: string }) => task.name === 'train-model');
+    const uri = new URL(task.status_metadata.custom_properties.driver_logs_uri);
+    const response = await request
+      .get('/artifacts/get')
+      .query({ source: 's3', bucket: uri.hostname, key: uri.pathname.slice(1) })
+      .expect(200);
+    expect(response.headers['content-type']).toContain('text/plain');
+    expect(response.text).toContain('Cache disabled globally at the server level.');
+    expect(response.text).toContain('Creating task train-model in pod ');
+    await request.get('/artifacts/get').query({ key: 'review-driver-logs/missing' }).expect(404);
+  });
+
   it('constructs the app with the mock backend dependency graph', async () => {
     const request = requests(createMockApiApp());
 

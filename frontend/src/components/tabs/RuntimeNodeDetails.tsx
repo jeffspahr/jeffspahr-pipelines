@@ -61,8 +61,8 @@ export const LOGS_BANNER_MESSAGE = 'logs_banner_message';
 export const LOGS_BANNER_ADDITIONAL_INFO = 'logs_banner_additional_info';
 export const K8S_PLATFORM_KEY = 'kubernetes';
 
-const SYSTEM_LOGS_UNAVAILABLE: ReadonlyMap<string, string> = new Map([
-  [LOGS_BANNER_MESSAGE, 'System logs are not available yet.'],
+const DRIVER_LOGS_UNAVAILABLE: ReadonlyMap<string, string> = new Map([
+  [LOGS_BANNER_MESSAGE, 'Driver logs are not available yet.'],
 ]);
 
 const NODE_INFO_UNKNOWN = (
@@ -253,12 +253,12 @@ function TaskNodeDetail({
     (logsQueryFailed ? 'Failed to retrieve pod logs.' : undefined);
   const logsBannerAdditionalInfo =
     logsInfo?.get(LOGS_BANNER_ADDITIONAL_INFO) || logsQueryError?.message;
-  const systemLogsInfo = driverLogUri ? driverLogsInfo : SYSTEM_LOGS_UNAVAILABLE;
+  const driverLogsState = driverLogUri ? driverLogsInfo : DRIVER_LOGS_UNAVAILABLE;
 
   return (
     <div className='kfp-inspection-column'>
       <InspectionTabs
-        tabs={['Input/Output', 'Task Details', 'Logs', 'System Logs']}
+        tabs={['Input/Output', 'Task Details', 'Logs', 'Driver logs']}
         selectedTab={selectedTab}
         onSwitch={setSelectedTab}
         ariaLabel='Task inspection'
@@ -306,12 +306,17 @@ function TaskNodeDetail({
               )}
             </div>
           )}
+          {selectedTab === 3 && !driverLogsState && (
+            <p className='kfp-inspection-empty' role='status'>
+              Loading driver logs…
+            </p>
+          )}
           {selectedTab === 3 && (
             <LogsTabPanel
-              details={systemLogsInfo?.get(LOGS_DETAILS)}
-              bannerMessage={systemLogsInfo?.get(LOGS_BANNER_MESSAGE)}
-              bannerAdditionalInfo={systemLogsInfo?.get(LOGS_BANNER_ADDITIONAL_INFO)}
-              bannerMode={driverLogUri ? 'error' : 'info'}
+              details={driverLogsState?.get(LOGS_DETAILS)}
+              bannerMessage={driverLogsState?.get(LOGS_BANNER_MESSAGE)}
+              bannerAdditionalInfo={driverLogsState?.get(LOGS_BANNER_ADDITIONAL_INFO)}
+              bannerMode={driverLogsState?.has(LOGS_BANNER_ADDITIONAL_INFO) ? 'error' : 'info'}
               onRefresh={driverLogUri ? () => void refetchDriverLogs() : undefined}
             />
           )}
@@ -534,9 +539,14 @@ export async function getDriverLogsInfo(
 ): Promise<Map<string, string>> {
   const logsInfo = new Map<string, string>();
   try {
-    logsInfo.set(LOGS_DETAILS, await readArtifactFile({ uri: driverLogUri }, namespace));
+    const details = await readArtifactFile({ uri: driverLogUri }, namespace);
+    if (details.trim()) {
+      logsInfo.set(LOGS_DETAILS, details);
+    } else {
+      logsInfo.set(LOGS_BANNER_MESSAGE, 'Driver logs are not available yet.');
+    }
   } catch (error) {
-    logsInfo.set(LOGS_BANNER_MESSAGE, 'Failed to retrieve system logs.');
+    logsInfo.set(LOGS_BANNER_MESSAGE, 'Failed to retrieve driver logs.');
     logsInfo.set(LOGS_BANNER_ADDITIONAL_INFO, `Error response: ${await errorToMessage(error)}`);
   }
   return logsInfo;

@@ -122,6 +122,17 @@ export function sampleRunTasks(run: V2beta1Run): V2beta1PipelineTask[] {
       state,
       create_time: created,
       end_time: ended,
+      ...(!skipped
+        ? {
+            status_metadata: {
+              custom_properties: {
+                // OpenAPI models protobuf Value as object; its JSON representation is scalar.
+                driver_logs_uri:
+                  `s3://mlpipeline/review-driver-logs/${taskId}` as unknown as object,
+              },
+            },
+          }
+        : {}),
       state_history: [
         ...(!skipped ? [{ state: 'RUNNING' as const, update_time: created }] : []),
         ...(ended
@@ -148,4 +159,16 @@ export function sampleRunTasks(run: V2beta1Run): V2beta1PipelineTask[] {
     });
   }
   return tasks;
+}
+
+// Verbatim INFO message templates from backend/src/v2/driver/container.go.
+// These fixtures model cache-disabled driver setup, not component execution:
+// a component may fail later even though its driver completed successfully.
+export function sampleDriverLogs(task: V2beta1PipelineTask, namespace: string): string {
+  const time = task.create_time!.toISOString();
+  return [
+    `time="${time}" level=info msg="Cache disabled globally at the server level."`,
+    `time="${time}" level=info msg="Creating task ${task.name} in pod ${namespace}"`,
+    '',
+  ].join('\n');
 }

@@ -120,7 +120,7 @@ describe('RuntimeNodeDetails', () => {
     return render(taskView(task, extraProps));
   }
 
-  describe('System Logs', () => {
+  describe('Driver logs', () => {
     const driverLogUri = 's3://pipeline-root/driver-logs.txt';
 
     beforeEach(() => {
@@ -147,7 +147,7 @@ describe('RuntimeNodeDetails', () => {
       expect(getDriverLogUri(undefined)).toBeUndefined();
     });
 
-    it('reports system logs with the same keys as pod logs', async () => {
+    it('reports driver logs with the same keys as pod logs', async () => {
       const readFileSpy = vi
         .spyOn(Apis, 'readFile')
         .mockResolvedValueOnce('driver logs')
@@ -158,7 +158,7 @@ describe('RuntimeNodeDetails', () => {
       );
       expect(await getDriverLogsInfo(driverLogUri, TEST_NAMESPACE)).toEqual(
         new Map([
-          [LOGS_BANNER_MESSAGE, 'Failed to retrieve system logs.'],
+          [LOGS_BANNER_MESSAGE, 'Failed to retrieve driver logs.'],
           [LOGS_BANNER_ADDITIONAL_INFO, 'Error response: storage temporarily unavailable'],
         ]),
       );
@@ -189,7 +189,7 @@ describe('RuntimeNodeDetails', () => {
         expect(await screen.findByText('executor output')).toBeVisible();
         expect(readFileSpy).not.toHaveBeenCalled();
 
-        fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
 
         expect(await screen.findByText('driver initialization')).toBeVisible();
         expect(screen.getByText('finished')).toBeVisible();
@@ -220,25 +220,49 @@ describe('RuntimeNodeDetails', () => {
       const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('unused');
       renderTask(uri === undefined ? createTask() : createSystemLogsTask(uri));
 
-      fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
 
-      expect(await screen.findByText('System logs are not available yet.')).toBeVisible();
+      expect(await screen.findByText('Driver logs are not available yet.')).toBeVisible();
       expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
       expect(readFileSpy).not.toHaveBeenCalled();
       expect(getPodLogsSpy).not.toHaveBeenCalled();
     });
 
-    it('shows artifact-fetch error details and recovers on Refresh without leaving System Logs', async () => {
+    it('shows loading until the driver log artifact arrives', async () => {
+      let resolveLogs!: (value: string) => void;
+      vi.spyOn(Apis, 'readFile').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveLogs = resolve;
+          }),
+      );
+      renderTask(createSystemLogsTask());
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      expect(await screen.findByText('Loading driver logs…')).toBeVisible();
+      await act(async () => resolveLogs('Creating task train-model in pod kubeflow'));
+      expect(await screen.findByText('Creating task train-model in pod kubeflow')).toBeVisible();
+      expect(screen.queryByText('Loading driver logs…')).not.toBeInTheDocument();
+    });
+
+    it.each(['', '  \n'])('shows an unavailable state for an empty artifact', async (contents) => {
+      vi.spyOn(Apis, 'readFile').mockResolvedValue(contents);
+      renderTask(createSystemLogsTask());
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      expect(await screen.findByText('Driver logs are not available yet.')).toBeVisible();
+      expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
+    });
+
+    it('shows artifact-fetch error details and recovers on Refresh without leaving Driver logs', async () => {
       const readFileSpy = vi
         .spyOn(Apis, 'readFile')
         .mockRejectedValueOnce(new Error('storage temporarily unavailable'))
-        .mockResolvedValueOnce('recovered system logs');
+        .mockResolvedValueOnce('recovered driver logs');
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       renderTask(createSystemLogsTask());
 
-      fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
 
-      expect(await screen.findByText('Failed to retrieve system logs.')).toBeVisible();
+      expect(await screen.findByText('Failed to retrieve driver logs.')).toBeVisible();
       expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Details', exact: true }));
       const dialog = await screen.findByRole('dialog');
@@ -248,8 +272,8 @@ describe('RuntimeNodeDetails', () => {
       fireEvent.click(within(dialog).getByRole('button', { name: 'Dismiss' }));
       fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }));
 
-      expect(await screen.findByText('recovered system logs')).toBeVisible();
-      expect(screen.queryByText('Failed to retrieve system logs.')).not.toBeInTheDocument();
+      expect(await screen.findByText('recovered driver logs')).toBeVisible();
+      expect(screen.queryByText('Failed to retrieve driver logs.')).not.toBeInTheDocument();
       expect(readFileSpy).toHaveBeenCalledTimes(2);
       expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
@@ -259,18 +283,18 @@ describe('RuntimeNodeDetails', () => {
       const readFileSpy = vi
         .spyOn(Apis, 'readFile')
         .mockRejectedValueOnce(new Error('artifact upload in progress'))
-        .mockResolvedValue('live system logs');
+        .mockResolvedValue('live driver logs');
       renderTask(createSystemLogsTask(driverLogUri, { state: PipelineTaskTaskState.RUNNING }));
 
       await act(async () => vi.advanceTimersByTimeAsync(20_000));
       expect(readFileSpy).not.toHaveBeenCalled();
-      fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
       await act(async () => vi.advanceTimersByTimeAsync(1));
-      expect(screen.getByText('Failed to retrieve system logs.')).toBeVisible();
+      expect(screen.getByText('Failed to retrieve driver logs.')).toBeVisible();
 
       await act(async () => vi.advanceTimersByTimeAsync(10_000));
-      expect(screen.getByText('live system logs')).toBeVisible();
-      expect(screen.queryByText('Failed to retrieve system logs.')).not.toBeInTheDocument();
+      expect(screen.getByText('live driver logs')).toBeVisible();
+      expect(screen.queryByText('Failed to retrieve driver logs.')).not.toBeInTheDocument();
       expect(readFileSpy).toHaveBeenCalledTimes(2);
 
       fireEvent.click(screen.getByRole('tab', { name: 'Task Details', exact: true }));
@@ -279,7 +303,7 @@ describe('RuntimeNodeDetails', () => {
     });
 
     it.each(['task', 'URI', 'namespace'])(
-      'does not retain stale system logs when the %s changes',
+      'does not retain stale driver logs when the %s changes',
       async (changedSource) => {
         let resolveNextLogs!: (logs: string) => void;
         const nextLogs = new Promise<string>((resolve) => {
@@ -287,11 +311,11 @@ describe('RuntimeNodeDetails', () => {
         });
         const readFileSpy = vi
           .spyOn(Apis, 'readFile')
-          .mockResolvedValueOnce('previous system logs')
+          .mockResolvedValueOnce('previous driver logs')
           .mockReturnValueOnce(nextLogs);
         const view = renderTask(createSystemLogsTask());
-        fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
-        expect(await screen.findByText('previous system logs')).toBeVisible();
+        fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+        expect(await screen.findByText('previous driver logs')).toBeVisible();
 
         view.rerender(
           taskView(
@@ -304,10 +328,10 @@ describe('RuntimeNodeDetails', () => {
         );
 
         await waitFor(() => expect(readFileSpy).toHaveBeenCalledTimes(2));
-        expect(screen.queryByText('previous system logs')).not.toBeInTheDocument();
+        expect(screen.queryByText('previous driver logs')).not.toBeInTheDocument();
         expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
-        await act(async () => resolveNextLogs('current system logs'));
-        expect(await screen.findByText('current system logs')).toBeVisible();
+        await act(async () => resolveNextLogs('current driver logs'));
+        expect(await screen.findByText('current driver logs')).toBeVisible();
       },
     );
 
@@ -319,48 +343,48 @@ describe('RuntimeNodeDetails', () => {
       const readFileSpy = vi
         .spyOn(Apis, 'readFile')
         .mockReturnValueOnce(previousLogs)
-        .mockResolvedValueOnce('current task system logs');
+        .mockResolvedValueOnce('current task driver logs');
       const view = renderTask(createSystemLogsTask());
-      fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
       await waitFor(() => expect(readFileSpy).toHaveBeenCalledTimes(1));
 
       view.rerender(taskView(createSystemLogsTask(driverLogUri, { task_id: 'second-task-id' })));
-      expect(await screen.findByText('current task system logs')).toBeVisible();
-      await act(async () => resolvePreviousLogs('previous task system logs'));
+      expect(await screen.findByText('current task driver logs')).toBeVisible();
+      await act(async () => resolvePreviousLogs('previous task driver logs'));
 
-      expect(screen.getByText('current task system logs')).toBeVisible();
-      expect(screen.queryByText('previous task system logs')).not.toBeInTheDocument();
+      expect(screen.getByText('current task driver logs')).toBeVisible();
+      expect(screen.queryByText('previous task driver logs')).not.toBeInTheDocument();
     });
 
     it('retrieves a newly available URI on task refresh without resetting the selected tab', async () => {
-      const readFileSpy = vi.spyOn(Apis, 'readFile').mockResolvedValue('new system logs');
+      const readFileSpy = vi.spyOn(Apis, 'readFile').mockResolvedValue('new driver logs');
       const view = renderTask(createTask());
-      fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
-      expect(await screen.findByText('System logs are not available yet.')).toBeVisible();
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      expect(await screen.findByText('Driver logs are not available yet.')).toBeVisible();
       expect(readFileSpy).not.toHaveBeenCalled();
 
       view.rerender(taskView(createSystemLogsTask()));
 
-      expect(await screen.findByText('new system logs')).toBeVisible();
-      expect(screen.queryByText('System logs are not available yet.')).not.toBeInTheDocument();
+      expect(await screen.findByText('new driver logs')).toBeVisible();
+      expect(screen.queryByText('Driver logs are not available yet.')).not.toBeInTheDocument();
       expect(readFileSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('fetches final system logs when the parent run finishes and stops polling', async () => {
+    it('fetches final driver logs when the parent run finishes and stops polling', async () => {
       vi.useFakeTimers();
       const readFileSpy = vi
         .spyOn(Apis, 'readFile')
-        .mockResolvedValueOnce('live system logs')
-        .mockResolvedValue('final system logs');
+        .mockResolvedValueOnce('live driver logs')
+        .mockResolvedValue('final driver logs');
       const task = createSystemLogsTask(driverLogUri, { state: PipelineTaskTaskState.RUNNING });
       const view = renderTask(task, { sourceFinished: false });
-      fireEvent.click(screen.getByRole('tab', { name: 'System Logs', exact: true }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
       await act(async () => vi.advanceTimersByTimeAsync(1));
-      expect(screen.getByText('live system logs')).toBeVisible();
+      expect(screen.getByText('live driver logs')).toBeVisible();
 
       view.rerender(taskView(task, { sourceFinished: true }));
       await act(async () => vi.advanceTimersByTimeAsync(1));
-      expect(screen.getByText('final system logs')).toBeVisible();
+      expect(screen.getByText('final driver logs')).toBeVisible();
       expect(readFileSpy).toHaveBeenCalledTimes(2);
       await act(async () => vi.advanceTimersByTimeAsync(20_000));
       expect(readFileSpy).toHaveBeenCalledTimes(2);
