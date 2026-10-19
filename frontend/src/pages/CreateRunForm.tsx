@@ -505,7 +505,7 @@ function CreateRunForm(props: CreateRunFormProps) {
                     existingRecurringRunId,
                   )}
                 >
-                  [View pipeline]
+                  Inline definition
                 </Link>
               )}
             </div>

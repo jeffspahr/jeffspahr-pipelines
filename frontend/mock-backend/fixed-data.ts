@@ -59,6 +59,30 @@ versions.push({
     ),
   ),
 });
+const taxiPipelineId = 'sample-taxi-pipeline';
+pipelines.push({
+  pipeline_id: taxiPipelineId,
+  name: 'taxi-fare-training',
+  display_name: 'Taxi fare training',
+  description: 'Taxi training workflow with parallel training and validation.',
+  created_at: new Date('2026-01-01'),
+});
+for (const version of ['v1.0', 'v1.1']) {
+  versions.push({
+    pipeline_id: taxiPipelineId,
+    pipeline_version_id: `sample-taxi-${version}`,
+    display_name: version,
+    created_at: new Date(version === 'v1.0' ? '2026-01-01' : '2026-02-01'),
+    pipeline_spec: {
+      ...sampleRunPipelineSpec,
+      pipelineInfo: {
+        ...sampleRunPipelineSpec.pipelineInfo,
+        description: `Taxi training ${version}`,
+      },
+    },
+  });
+}
+
 const experiments: V2beta1Experiment[] = [
   {
     experiment_id: '275ea11d-ac63-4ce3-bc33-ec81981ed56b',
@@ -139,7 +163,20 @@ function reviewRuns(): V2beta1Run[] {
       run_id: `sample-run-${sample.id}`,
       display_name: sample.name,
       experiment_id: experiments[0].experiment_id,
-      pipeline_spec: sampleRunPipelineSpec,
+      // Keep both submission styles represented; referenced runs also carry their resolved IR.
+      ...(['sweep-canceled', 'import-failed'].includes(sample.id)
+        ? { pipeline_spec: sampleRunPipelineSpec }
+        : {
+            pipeline_version_reference: {
+              pipeline_id: taxiPipelineId,
+              pipeline_version_id: `sample-taxi-${sample.daysAgo >= 24 ? 'v1.0' : 'v1.1'}`,
+            },
+            pipeline_spec: versions.find(
+              (version) =>
+                version.pipeline_version_id ===
+                `sample-taxi-${sample.daysAgo >= 24 ? 'v1.0' : 'v1.1'}`,
+            )!.pipeline_spec,
+          }),
       created_at: createdAt,
       finished_at: terminal ? new Date(createdAt.getTime() + 12 * 60_000) : undefined,
       state: sample.state,

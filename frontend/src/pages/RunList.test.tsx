@@ -824,7 +824,7 @@ describe('RunList', () => {
         value: { displayName: 'test pipeline', pipelineId: 'pipeline-id', usePlaceholder: true },
       }),
     );
-    const link = screen.getByText('[View pipeline]');
+    const link = screen.getByText('Inline definition');
     expect(link).toHaveAttribute('href', expect.stringContaining('/pipelines/details/'));
   });
 
@@ -836,7 +836,7 @@ describe('RunList', () => {
         value: { /* no displayName */ usePlaceholder: true },
       }),
     );
-    const link = screen.getByText('[View pipeline]');
+    const link = screen.getByText('Inline definition');
     expect(link).toHaveAttribute('href', expect.stringContaining('/pipelines/details/'));
   });
 

@@ -338,7 +338,7 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
     if (props.value.usePlaceholder) {
       return (
         <Link className='kfp-runs-resource-link' onClick={(e) => e.stopPropagation()} to={url}>
-          [View pipeline]
+          Inline definition
         </Link>
       );
     } else {

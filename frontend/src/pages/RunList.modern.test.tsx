@@ -164,7 +164,7 @@ it('retains embedded pipeline and recurring-run links alongside named state and 
     'href',
     '/recurringrun/details/schedule',
   );
-  expect(screen.getByRole('link', { name: '[View pipeline]' }).getAttribute('href')).toContain(
+  expect(screen.getByRole('link', { name: 'Inline definition' }).getAttribute('href')).toContain(
     'fromRecurringRun=schedule',
   );
   expect(screen.getByRole('searchbox', { name: 'Search runs' })).toBeVisible();

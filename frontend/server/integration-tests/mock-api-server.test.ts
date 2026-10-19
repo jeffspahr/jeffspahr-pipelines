@@ -37,6 +37,28 @@ describe('standalone mock API server', () => {
     await request.get('/artifacts/get').query({ key: 'review-driver-logs/missing' }).expect(404);
   });
 
+  it('resolves saved sample versions while retaining inline submissions', async () => {
+    const request = requests(createMockApiApp());
+    for (const [id, versionName] of [
+      ['training-running', 'v1.1'],
+      ['monthly-success', 'v1.0'],
+    ]) {
+      const { body: run } = await request.get(`/apis/v2beta1/runs/sample-run-${id}`).expect(200);
+      const ref = run.pipeline_version_reference;
+      const { body: version } = await request
+        .get(`/apis/v2beta1/pipelines/${ref.pipeline_id}/versions/${ref.pipeline_version_id}`)
+        .expect(200);
+      expect(version.display_name).toBe(versionName);
+      expect(version.pipeline_spec).toEqual(run.pipeline_spec);
+      await request.get(`/apis/v2beta1/pipelines/${ref.pipeline_id}`).expect(200);
+    }
+    for (const id of ['sweep-canceled', 'import-failed']) {
+      const { body: run } = await request.get(`/apis/v2beta1/runs/sample-run-${id}`).expect(200);
+      expect(run.pipeline_version_reference).toBeUndefined();
+      expect(run.pipeline_spec.root.dag.tasks).toHaveProperty('train-model');
+    }
+  });
+
   it('constructs the app with the mock backend dependency graph', async () => {
     const request = requests(createMockApiApp());
 
