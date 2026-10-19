@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { scheduleDescription } from '../lib/ScheduleDisplay';
 import { NavigationProps } from 'src/lib/Navigation';
 import * as React from 'react';
 import { ResourceTable } from 'src/components/tables/ResourceTable';
@@ -120,7 +121,7 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
         sortKey: JobSortKeys.NAME,
       },
       { customRenderer: this._statusCustomRenderer, label: 'Status', flex: 0.5, width: 120 },
-      { customRenderer: this._triggerCustomRenderer, label: 'Trigger', flex: 1, width: 160 },
+      { customRenderer: this._triggerCustomRenderer, label: 'Schedule', flex: 1.5, width: 260 },
       { label: 'Start time', flex: 1, width: 190 },
       { label: 'End time', flex: 1, width: 190 },
       {
@@ -261,30 +262,15 @@ class RecurringRunList extends React.PureComponent<RecurringRunListProps, Recurr
   public _triggerCustomRenderer: React.FC<CustomRendererProps<V2beta1Trigger>> = (
     props: CustomRendererProps<V2beta1Trigger>,
   ) => {
-    if (props.value?.cron_schedule) {
-      return (
-        <div title={`Cron: ${props.value.cron_schedule.cron}`}>
-          Cron: {props.value.cron_schedule.cron}
-        </div>
-      );
-    }
-    if (props.value?.periodic_schedule?.interval_second) {
-      const interval_in_seconds = parseInt(props.value.periodic_schedule.interval_second, 10);
-      if (interval_in_seconds % 86400 === 0) {
-        // days
-        return <div>Every {interval_in_seconds / 86400} days</div>;
-      }
-      if (interval_in_seconds % 3600 === 0) {
-        // hours
-        return <div>Every {interval_in_seconds / 3600} hours</div>;
-      }
-      if (interval_in_seconds % 60 === 0) {
-        // minutes
-        return <div>Every {interval_in_seconds / 60} minutes</div>;
-      }
-      return <div>Every {interval_in_seconds} seconds</div>;
-    }
-    return <div>-</div>;
+    return (
+      <div
+        title={
+          props.value?.cron_schedule?.cron ? `Cron: ${props.value.cron_schedule.cron}` : undefined
+        }
+      >
+        {scheduleDescription(props.value)}
+      </div>
+    );
   };
 
   public _statusCustomRenderer: React.FC<CustomRendererProps<V2beta1RecurringRunStatus>> = (

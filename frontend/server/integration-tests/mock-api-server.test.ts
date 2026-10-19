@@ -20,6 +20,35 @@ import { setupMockBackendTest } from './test-helper.js';
 setupMockBackendTest();
 
 describe('standalone mock API server', () => {
+  it('serves varied recurring schedules with detail lookups', async () => {
+    const request = requests(createMockApiApp());
+    const { body } = await request.get('/apis/v2beta1/recurringruns').expect(200);
+    const samples = body.recurringRuns.filter((run: { recurring_run_id: string }) =>
+      run.recurring_run_id.startsWith('sample-recurring-'),
+    );
+    expect(samples).toHaveLength(5);
+    expect(
+      samples.filter((run: { trigger: { cron_schedule?: unknown } }) => run.trigger.cron_schedule),
+    ).toHaveLength(2);
+    expect(samples.some((run: { status: string }) => run.status === 'DISABLED')).toBe(true);
+    for (const sample of samples) {
+      const detail = await request
+        .get(`/apis/v2beta1/recurringruns/${sample.recurring_run_id}`)
+        .expect(200);
+      expect(detail.body.trigger).toEqual(sample.trigger);
+    }
+    const upcoming = samples.find((run: { display_name: string }) =>
+      run.display_name.startsWith('Upcoming'),
+    );
+    const expired = samples.find((run: { display_name: string }) =>
+      run.display_name.startsWith('Completed'),
+    );
+    expect(new Date(upcoming.trigger.periodic_schedule.start_time).getTime()).toBeGreaterThan(
+      Date.now(),
+    );
+    expect(new Date(expired.trigger.periodic_schedule.end_time).getTime()).toBeLessThan(Date.now());
+  });
+
   it('serves driver logs linked from sample task metadata', async () => {
     const request = requests(createMockApiApp());
     const { body } = await request

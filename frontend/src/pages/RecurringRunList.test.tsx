@@ -402,7 +402,7 @@ describe('RecurringRunList', () => {
         id: 'recurring run-id',
       }),
     );
-    expect(getByText('Every 1 days')).toBeInTheDocument();
+    expect(getByText('Every day')).toBeInTheDocument();
   });
 
   it('renders recurring run trigger as cron', () => {
@@ -413,7 +413,7 @@ describe('RecurringRunList', () => {
         id: 'recurring run-id',
       }),
     );
-    expect(getByText('Cron: 0 * * * * ?')).toBeInTheDocument();
+    expect(getByText('Every minute (scheduler time)')).toBeInTheDocument();
   });
 
   it.each([

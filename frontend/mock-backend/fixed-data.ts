@@ -116,6 +116,59 @@ const recurringRuns: V2beta1RecurringRun[] = [0, 1].map((i) => ({
   status: 'ENABLED',
   trigger: { periodic_schedule: { interval_second: '3600' } },
 }));
+// Relative windows keep review examples visibly scheduled/expired over time.
+function reviewSchedules(): V2beta1RecurringRun[] {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const offset = (days: number) => new Date(today.getTime() + days * 86_400_000);
+  const schedules: Pick<V2beta1RecurringRun, 'display_name' | 'status' | 'trigger'>[] = [
+    {
+      display_name: 'Daily taxi training',
+      status: 'ENABLED',
+      trigger: { cron_schedule: { cron: '0 0 9 * * *' } },
+    },
+    {
+      display_name: 'Weekday validation',
+      status: 'ENABLED',
+      trigger: { cron_schedule: { cron: '0 30 8 * * MON-FRI' } },
+    },
+    {
+      display_name: 'Paused data refresh',
+      status: 'DISABLED',
+      trigger: { periodic_schedule: { interval_second: '900' } },
+    },
+    {
+      display_name: 'Upcoming daily training',
+      status: 'ENABLED',
+      trigger: {
+        periodic_schedule: {
+          interval_second: '86400',
+          start_time: offset(7),
+          end_time: offset(37),
+        },
+      },
+    },
+    {
+      display_name: 'Completed evaluation schedule',
+      status: 'ENABLED',
+      trigger: {
+        periodic_schedule: {
+          interval_second: '7200',
+          start_time: offset(-30),
+          end_time: offset(-1),
+        },
+      },
+    },
+  ];
+  return schedules.map((schedule, index) => ({
+    ...schedule,
+    recurring_run_id: `sample-recurring-${index}`,
+    created_at: offset(-30),
+    experiment_id: experiments[1].experiment_id,
+    pipeline_spec: sampleRunPipelineSpec,
+  }));
+}
+
 const sampleRuns: {
   id: string;
   name: string;
@@ -192,5 +245,7 @@ export const data = {
   get runs() {
     return [...runs, ...reviewRuns()];
   },
-  recurringRuns,
+  get recurringRuns() {
+    return [...recurringRuns, ...reviewSchedules()];
+  },
 };
