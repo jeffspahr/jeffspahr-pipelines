@@ -50,6 +50,41 @@ describe('standalone mock API server', () => {
       .expect(404);
   });
 
+  it('exposes distinct failed automatic retry archives and pod logs', async () => {
+    const request = requests(createMockApiApp());
+    const { body } = await request
+      .get('/apis/v2beta1/runs/sample-run-import-failed/tasks')
+      .expect(200);
+    const task = body.tasks.find((task: { name: string }) => task.name === 'train-model');
+    expect(task.state).toBe('FAILED');
+    expect(task.pods).toHaveLength(2);
+    const archives = task.outputs.artifacts[0].artifacts;
+    expect(archives).toHaveLength(2);
+    for (const [index, expected] of [
+      'TimeoutError: Timed out reading the training dataset',
+      'ValueError: Training data contains invalid feature values.',
+    ].entries()) {
+      const uri = new URL(archives[index].uri);
+      const archived = await request
+        .get('/artifacts/get')
+        .query({
+          source: 's3',
+          bucket: uri.hostname,
+          key: uri.pathname.slice(1),
+          namespace: 'kubeflow',
+        })
+        .expect(200);
+      const pod = await request
+        .get('/k8s/pod/logs')
+        .query({ podname: task.pods[index].name })
+        .expect(200);
+      expect(archived.text).toContain(expected);
+      expect(archived.text).toEqual(pod.text);
+      expect(archived.text).not.toContain('Component completed successfully');
+    }
+    await request.get('/artifacts/get').query({ key: 'review-executor-logs/missing' }).expect(404);
+  });
+
   it('serves varied recurring schedules with detail lookups', async () => {
     const request = requests(createMockApiApp());
     const { body } = await request.get('/apis/v2beta1/recurringruns').expect(200);

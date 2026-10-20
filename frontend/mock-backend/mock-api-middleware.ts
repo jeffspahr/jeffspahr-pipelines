@@ -58,7 +58,12 @@ import {
   RunSortKeys,
 } from '../src/lib/Apis';
 import { data as fixedData } from './fixed-data';
-import { sampleDriverLogs, sampleRunTasks, sampleTaskLogs } from './sample-run-tasks';
+import {
+  sampleDriverLogs,
+  sampleRunTasks,
+  sampleTaskLogs,
+  sampleRetryTaskLogs,
+} from './sample-run-tasks';
 import registerTensorboardProxy from './tensorboard-proxy';
 
 const rocMetadataJsonPath = './eval-output/metadata.json';
@@ -727,6 +732,22 @@ export default (app: express.Application) => {
     if (!key) {
       return;
     }
+    if (key.startsWith('review-executor-logs/')) {
+      for (const run of fixedData.runs) {
+        for (const task of sampleRunTasks(run)) {
+          const archive = task.outputs?.artifacts
+            ?.flatMap((group) => group.artifacts || [])
+            .find((artifact) => artifact.uri === `s3://mlpipeline/${key}`);
+          if (archive) {
+            const attempt = Number(key.match(/executor-logs-(\d+)$/)![1]);
+            res.type('text/plain').send(sampleRetryTaskLogs(task, run, attempt));
+            return;
+          }
+        }
+      }
+      res.status(404).send('Executor log archive not found. Select an available log source.');
+      return;
+    }
     if (key.startsWith('review-driver-logs/')) {
       for (const run of fixedData.runs) {
         const task = sampleRunTasks(run).find(
@@ -800,7 +821,13 @@ export default (app: express.Application) => {
         task.pods?.some((pod) => pod.type === 'EXECUTOR' && pod.name === podName),
       );
       if (task) {
-        res.type('text/plain').send(sampleTaskLogs(task, run));
+        res
+          .type('text/plain')
+          .send(
+            podName === `${task.task_id}-executor-attempt-0`
+              ? sampleRetryTaskLogs(task, run, 0)
+              : sampleTaskLogs(task, run),
+          );
         return;
       }
     }

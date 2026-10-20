@@ -29,6 +29,7 @@ import {
   getDriverLogUri,
   getTaskDetailsFields,
   getLogsInfo,
+  getTaskLogSources,
   LOGS_BANNER_ADDITIONAL_INFO,
   LOGS_BANNER_MESSAGE,
   LOGS_DETAILS,
@@ -536,6 +537,189 @@ describe('RuntimeNodeDetails', () => {
 
     expect(logsInfo.get(LOGS_DETAILS)).toBe('test-logs-details');
     expect(getPodLogsSpy).toHaveBeenCalledWith(TEST_RUN_ID, TEST_POD_NAME, '', '2026-08-11');
+  });
+
+  it('collapses task logs independently and preserves that choice on refresh', async () => {
+    vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('task output');
+    const task = createTask();
+    const view = renderTask(task);
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeEnabled(),
+    );
+    const toggle = screen.getByRole('button', { name: 'Task logs', exact: true });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
+    view.rerender(taskView({ ...task }));
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(screen.getByTestId(TEST_LOG_VIEW_ID)).toBeInTheDocument();
+    view.rerender(taskView(createTask({ task_id: 'another-task' })));
+    expect(screen.getByRole('button', { name: 'Task logs', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  function retryTask() {
+    return createTask({
+      pods: [
+        { name: 'earlier-pod', type: PipelineTaskTaskPodType.EXECUTOR },
+        { name: TEST_POD_NAME, type: PipelineTaskTaskPodType.EXECUTOR },
+      ],
+      outputs: {
+        artifacts: [
+          {
+            artifact_key: 'executor-logs',
+            artifacts: [
+              { artifact_id: 'second', uri: 's3://pipeline-root/executor-logs-1' },
+              { artifact_id: 'first', uri: 's3://pipeline-root/executor-logs-0' },
+            ],
+          },
+        ],
+      },
+    });
+  }
+
+  it('selects archived attempts without mixing in latest logs, preserves selection, and copies the selected output', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const podRead = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('latest pod output');
+    let resolveArchive: (value: string) => void = () => {};
+    vi.spyOn(Apis, 'readFile').mockReturnValue(
+      new Promise<string>((resolve) => {
+        resolveArchive = resolve;
+      }),
+    );
+    const task = retryTask();
+    const view = renderTask(task);
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeEnabled(),
+    );
+    const select = screen.getByRole('combobox', { name: 'Available task logs' });
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([
+      'Latest available',
+      'Attempt 2 · archived',
+      'Attempt 1 · archived',
+      'Pod · earlier-pod',
+    ]);
+    fireEvent.change(select, { target: { value: 'artifact:first' } });
+    expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeDisabled();
+    expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
+    await act(async () => resolveArchive('first attempt failed\nfull output\n'));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy task logs' }));
+    await waitFor(() =>
+      expect(writeText).toHaveBeenLastCalledWith('first attempt failed\nfull output\n'),
+    );
+    view.rerender(taskView({ ...task }));
+    expect(select).toHaveValue('artifact:first');
+    expect(podRead).toHaveBeenCalledTimes(1);
+    fireEvent.change(select, { target: { value: 'pod:earlier-pod' } });
+    await waitFor(() =>
+      expect(podRead).toHaveBeenLastCalledWith(
+        TEST_RUN_ID,
+        'earlier-pod',
+        TEST_NAMESPACE,
+        '2026-08-11',
+      ),
+    );
+  });
+
+  it('reports a selected archive failure without falling back to a different attempt', async () => {
+    const task = retryTask();
+    const podRead = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('wrong latest output');
+    vi.spyOn(Apis, 'readFile').mockRejectedValue(new Error('Archived object removed'));
+    const selected = getTaskLogSources(task).find((source) => source.key === 'artifact:first')!;
+    const result = await getLogsInfo(task, TEST_RUN_ID, TEST_NAMESPACE, selected);
+    expect(result.get(LOGS_DETAILS)).toBeUndefined();
+    expect(result.get(LOGS_BANNER_ADDITIONAL_INFO)).toContain('Archived object removed');
+    expect(podRead).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates archives by URI and does not invent retry indices for named pods or driver archives', () => {
+    const task = retryTask();
+    task.outputs!.artifacts!.push(
+      {
+        artifact_key: 'executor-logs',
+        artifacts: [{ artifact_id: 'duplicate', uri: 's3://pipeline-root/executor-logs-0' }],
+      },
+      {
+        artifact_key: 'driver-logs',
+        artifacts: [
+          {
+            artifact_id: 'driver-history',
+            uri: 's3://pipeline-root/driver-logs',
+            created_at: new Date('2026-08-11T12:00:00Z'),
+          },
+        ],
+      },
+    );
+    expect(getTaskLogSources(task)).toHaveLength(3);
+    const drivers = getTaskLogSources(task, PipelineTaskTaskPodType.DRIVER);
+    expect(drivers).toHaveLength(1);
+    expect(drivers[0].label).not.toContain('Attempt');
+  });
+
+  it('uses an available driver archive when status metadata has no current URI', async () => {
+    const task = createTask({
+      outputs: {
+        artifacts: [
+          {
+            artifact_key: 'driver-logs',
+            artifacts: [
+              {
+                artifact_id: 'older',
+                uri: 's3://pipeline-root/older-driver',
+                created_at: new Date('2026-08-10'),
+              },
+              {
+                artifact_id: 'newer',
+                uri: 's3://pipeline-root/newer-driver',
+                created_at: new Date('2026-08-11'),
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const readFile = vi.spyOn(Apis, 'readFile').mockResolvedValue('available driver output');
+    const result = await getTaskDriverLogsInfo(task, TEST_RUN_ID, TEST_NAMESPACE);
+    expect(result.get(LOGS_DETAILS)).toBe('available driver output');
+    expect(JSON.stringify(readFile.mock.calls)).toContain('newer-driver');
+    expect(JSON.stringify(readFile.mock.calls)).not.toContain('older-driver');
+  });
+
+  it('reads selected archived driver logs independently of the current driver URI', async () => {
+    const task = createTask({
+      status_metadata: {
+        custom_properties: {
+          driver_logs_uri: 's3://pipeline-root/current-driver' as unknown as object,
+        },
+      },
+      outputs: {
+        artifacts: [
+          {
+            artifact_key: 'driver-logs',
+            artifacts: [{ artifact_id: 'driver-history', uri: 's3://pipeline-root/older-driver' }],
+          },
+        ],
+      },
+    });
+    const readFile = vi.spyOn(Apis, 'readFile').mockResolvedValue('older driver output');
+    const selected = getTaskLogSources(task, PipelineTaskTaskPodType.DRIVER)[0];
+    const result = await getTaskDriverLogsInfo(task, TEST_RUN_ID, TEST_NAMESPACE, selected);
+    expect(result.get(LOGS_DETAILS)).toBe('older driver output');
+    expect(JSON.stringify(readFile.mock.calls)).toContain('older-driver');
+    expect(JSON.stringify(readFile.mock.calls)).not.toContain('current-driver');
   });
 
   it('copies each complete raw log source and reports clipboard failures', async () => {

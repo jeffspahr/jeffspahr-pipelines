@@ -24,6 +24,7 @@ import {
   PipelineTaskTaskPodType,
   PipelineTaskTaskState,
   V2beta1PipelineTask,
+  V2beta1Artifact,
 } from 'src/apisv2beta1/run';
 import { InspectionTabs } from '../inspection/InspectionTabs';
 import { buildRuntimeArtifactRows, RuntimeArtifactValue } from 'src/components/RuntimeArtifactRows';
@@ -50,6 +51,7 @@ import {
   getArtifactDisplayName,
   getArtifactTypeName,
   getOutputArtifactByName,
+  getExecutorLogsRetryIndex,
   isTaskFinished,
 } from 'src/lib/v2/RuntimeArtifactUtils';
 import { NodeRuntimeInfo } from 'src/lib/v2/DynamicFlow';
@@ -173,6 +175,89 @@ function getLatestTaskPod(
   return undefined;
 }
 
+interface TaskLogSource {
+  key: string;
+  label: string;
+  artifact?: V2beta1Artifact;
+  pod?: PipelineTaskTaskPod;
+}
+
+export function getTaskLogSources(
+  task: V2beta1PipelineTask | undefined,
+  type: PipelineTaskTaskPodType = PipelineTaskTaskPodType.EXECUTOR,
+): TaskLogSource[] {
+  const key =
+    type === PipelineTaskTaskPodType.EXECUTOR ? EXECUTOR_LOGS_ARTIFACT_KEY : 'driver-logs';
+  const seen = new Set<string>();
+  const artifacts = flattenArtifactGroups(task?.outputs?.artifacts)
+    .filter(({ artifact, artifactKey }) => {
+      if (!artifact.uri || (artifactKey !== key && artifact.name !== key) || seen.has(artifact.uri))
+        return false;
+      seen.add(artifact.uri);
+      return true;
+    })
+    .map(({ artifact }) => artifact)
+    .sort(
+      (a, b) =>
+        (getExecutorLogsRetryIndex(b) ?? -1) - (getExecutorLogsRetryIndex(a) ?? -1) ||
+        (b.created_at?.getTime() || 0) - (a.created_at?.getTime() || 0),
+    );
+  const sources: TaskLogSource[] = artifacts.map((artifact) => {
+    const retry =
+      type === PipelineTaskTaskPodType.EXECUTOR ? getExecutorLogsRetryIndex(artifact) : undefined;
+    const identity = artifact.artifact_id || artifact.uri!;
+    // Retry indices are local to an execution, not a lifetime counter across manual retries.
+    const ambiguous =
+      retry !== undefined &&
+      artifacts.filter((other) => getExecutorLogsRetryIndex(other) === retry).length > 1;
+    return {
+      key: `artifact:${identity}`,
+      label:
+        retry === undefined
+          ? `Archived · ${artifact.created_at ? formatDateString(artifact.created_at) : identity}`
+          : `Attempt ${retry + 1} · archived${ambiguous ? ` · ${identity}` : ''}`,
+      artifact,
+    };
+  });
+  const pods = task?.pods?.filter((pod) => pod.type === type && pod.name) || [];
+  // The API does not associate pods with artifact attempt indices. Keep pod identities explicit.
+  for (const pod of pods.slice(0, -1)) {
+    const key = `pod:${pod.uid || pod.name}`;
+    if (!sources.some((source) => source.key === key))
+      sources.push({ key, label: `Pod · ${pod.name}`, pod });
+  }
+  return sources;
+}
+
+function LogSourceSelect({
+  sources,
+  selected,
+  onChange,
+  label,
+}: {
+  sources: TaskLogSource[];
+  selected?: TaskLogSource;
+  onChange: (key: string) => void;
+  label: string;
+}) {
+  if (!sources.length) return null;
+  return (
+    <select
+      className='kfp-node-logs-source'
+      aria-label={label}
+      value={selected?.key || ''}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      <option value=''>Latest available</option>
+      {sources.map((source) => (
+        <option key={source.key} value={source.key}>
+          {source.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function TaskNodeDetail({
   pipelineJobString,
   runId,
@@ -189,6 +274,22 @@ function TaskNodeDetail({
   const requestedTab = selectedTaskTab ?? localTab;
   const selectedTab = requestedTab === 3 ? 2 : requestedTab;
   const driverContentId = useId();
+  const taskContentId = useId();
+  const [taskChoice, setTaskChoice] = useState<{ taskId?: string; expanded: boolean }>();
+  const taskExpanded =
+    taskChoice && taskChoice.taskId === task?.task_id ? taskChoice.expanded : true;
+  const [logChoice, setLogChoice] = useState<{ taskId?: string; key: string }>();
+  const logSources = getTaskLogSources(task);
+  const selectedSource =
+    logChoice && logChoice.taskId === task?.task_id
+      ? logSources.find((source) => source.key === logChoice.key)
+      : undefined;
+  const [driverSourceChoice, setDriverSourceChoice] = useState<{ taskId?: string; key: string }>();
+  const driverSources = getTaskLogSources(task, PipelineTaskTaskPodType.DRIVER);
+  const selectedDriverSource =
+    driverSourceChoice && driverSourceChoice.taskId === task?.task_id
+      ? driverSources.find((source) => source.key === driverSourceChoice.key)
+      : undefined;
   const [driverChoice, setDriverChoice] = useState<{ taskId?: string; expanded: boolean }>();
   const setSelectedTab = onTaskTabChange ?? setLocalTab;
   const executorPod = getLatestTaskPod(task, PipelineTaskTaskPodType.EXECUTOR);
@@ -197,6 +298,8 @@ function TaskNodeDetail({
     ? getOutputArtifactByName(task, EXECUTOR_LOGS_ARTIFACT_KEY)
     : undefined;
   const logsSourceIdentity = [
+    selectedSource?.key,
+    selectedSource?.artifact?.uri,
     executorPod?.name,
     executorLogsArtifact?.artifact_id,
     executorLogsArtifact?.uri,
@@ -217,19 +320,28 @@ function TaskNodeDetail({
       if (!task) {
         throw new Error('No task is found.');
       }
-      return getLogsInfo(task, runId, namespace);
+      return getLogsInfo(task, runId, namespace, selectedSource);
     },
     // Experiment metadata may still be resolving the namespace used by pod and artifact reads.
-    enabled: !!task && selectedTab === 2 && !namespacePending,
+    enabled: !!task && selectedTab === 2 && taskExpanded && !namespacePending,
     // Pod/artifact identity changes identify a new attempt or a newly available log source. Keep
     // the last readable output visible while that source is fetched instead of blanking the tab.
     placeholderData: (previousLogs, previousQuery) => {
       const previousTaskId = (previousQuery?.queryKey[1] as { taskId?: string } | undefined)
         ?.taskId;
-      return task?.task_id && previousTaskId === task.task_id ? previousLogs : undefined;
+      const previousSource = (previousQuery?.queryKey[1] as { sourceIdentity?: string } | undefined)
+        ?.sourceIdentity;
+      return !selectedSource &&
+        !previousSource?.startsWith('artifact:') &&
+        !previousSource?.startsWith('pod:') &&
+        task?.task_id &&
+        previousTaskId === task.task_id
+        ? previousLogs
+        : undefined;
     },
     // Live logs and transient "not available yet" responses must recover while the task runs.
-    refetchInterval: task && !sourceFinished && !isTaskFinished(task.state) ? 10000 : false,
+    refetchInterval:
+      taskExpanded && task && !sourceFinished && !isTaskFinished(task.state) ? 10000 : false,
   });
 
   const logsDetails = logsInfo?.get(LOGS_DETAILS);
@@ -246,17 +358,23 @@ function TaskNodeDetail({
     driverChoice?.taskId === task?.task_id && driverChoice !== undefined
       ? driverChoice.expanded
       : taskLogsUnavailable || requestedTab === 3;
-  const driverLogUri = getDriverLogUri(task);
-  const hasDriverSource = !!driverLogUri || !!(runId && driverPod?.name);
+  const driverLogUri = getDriverLogUri(task) || driverSources[0]?.artifact?.uri;
+  const hasDriverSource = !!selectedDriverSource || !!driverLogUri || !!(runId && driverPod?.name);
   const { data: driverLogsInfo, refetch: refetchDriverLogs } = useQuery({
     queryKey: queryKeys.driverLogs(
       task?.task_id,
       task?.state,
       namespace,
-      [driverLogUri, driverPod?.name, runId].join(':'),
+      [
+        selectedDriverSource?.key,
+        selectedDriverSource?.artifact?.uri,
+        driverLogUri,
+        driverPod?.name,
+        runId,
+      ].join(':'),
       sourceFinished,
     ),
-    queryFn: () => getTaskDriverLogsInfo(task!, runId, namespace),
+    queryFn: () => getTaskDriverLogsInfo(task!, runId, namespace, selectedDriverSource),
     enabled: !!task && hasDriverSource && selectedTab === 2 && driverExpanded && !namespacePending,
     refetchInterval: task && !sourceFinished && !isTaskFinished(task.state) ? 10000 : false,
   });
@@ -308,8 +426,14 @@ function TaskNodeDetail({
                     {driverExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     Driver logs
                   </button>
+                  <LogSourceSelect
+                    sources={driverSources}
+                    selected={selectedDriverSource}
+                    label='Available driver logs'
+                    onChange={(key) => setDriverSourceChoice({ taskId: task?.task_id, key })}
+                  />
                   <CopyLogsButton
-                    key={`driver-${task?.task_id}`}
+                    key={`driver-${task?.task_id}-${selectedDriverSource?.key || 'latest'}`}
                     label='Driver logs'
                     text={driverLogsState?.get(LOGS_DETAILS)}
                   />
@@ -340,27 +464,48 @@ function TaskNodeDetail({
               </section>
               <section aria-label='Task logs' className='kfp-node-logs-task'>
                 <div className='kfp-node-logs-heading'>
-                  <h3>Task logs</h3>
+                  <button
+                    type='button'
+                    className='kfp-node-logs-toggle'
+                    aria-expanded={taskExpanded}
+                    aria-controls={taskContentId}
+                    onClick={() =>
+                      setTaskChoice({ taskId: task?.task_id, expanded: !taskExpanded })
+                    }
+                  >
+                    {taskExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    Task logs
+                  </button>
+                  <LogSourceSelect
+                    sources={logSources}
+                    selected={selectedSource}
+                    label='Available task logs'
+                    onChange={(key) => setLogChoice({ taskId: task?.task_id, key })}
+                  />
                   <CopyLogsButton
-                    key={`task-${task?.task_id}`}
+                    key={`task-${task?.task_id}-${selectedSource?.key || 'latest'}`}
                     label='Task logs'
                     text={logsDetails}
                   />
                 </div>
-                {namespacePending ? (
-                  <p role='status'>Loading experiment namespace…</p>
-                ) : !task ? (
-                  <p role='status'>Task logs are not available yet.</p>
-                ) : !logsInfo && !logsQueryFailed ? (
-                  <p role='status'>Loading task logs…</p>
-                ) : (
-                  <LogsTabPanel
-                    label='Task logs'
-                    details={logsDetails}
-                    bannerMessage={logsBannerMessage}
-                    bannerAdditionalInfo={logsBannerAdditionalInfo}
-                    bannerMode={logsBannerAdditionalInfo ? 'error' : 'info'}
-                  />
+                {taskExpanded && (
+                  <div id={taskContentId}>
+                    {namespacePending ? (
+                      <p role='status'>Loading experiment namespace…</p>
+                    ) : !task ? (
+                      <p role='status'>Task logs are not available yet.</p>
+                    ) : !logsInfo && !logsQueryFailed ? (
+                      <p role='status'>Loading task logs…</p>
+                    ) : (
+                      <LogsTabPanel
+                        label='Task logs'
+                        details={logsDetails}
+                        bannerMessage={logsBannerMessage}
+                        bannerAdditionalInfo={logsBannerAdditionalInfo}
+                        bannerMode={logsBannerAdditionalInfo ? 'error' : 'info'}
+                      />
+                    )}
+                  </div>
                 )}
               </section>
             </div>
@@ -655,11 +800,15 @@ export async function getTaskDriverLogsInfo(
   task: V2beta1PipelineTask,
   runId?: string,
   namespace?: string,
+  source?: TaskLogSource,
 ): Promise<Map<string, string>> {
-  const uri = getDriverLogUri(task);
+  const uri = source
+    ? source.artifact?.uri
+    : getDriverLogUri(task) ||
+      getTaskLogSources(task, PipelineTaskTaskPodType.DRIVER)[0]?.artifact?.uri;
   const artifactResult = uri ? await getDriverLogsInfo(uri, namespace) : undefined;
   if (artifactResult?.has(LOGS_DETAILS)) return artifactResult;
-  const pod = getLatestTaskPod(task, PipelineTaskTaskPodType.DRIVER);
+  const pod = source ? source.pod : getLatestTaskPod(task, PipelineTaskTaskPodType.DRIVER);
   if (!runId || !pod?.name) return artifactResult ?? new Map(DRIVER_LOGS_UNAVAILABLE);
   try {
     const createdAt =
@@ -690,14 +839,17 @@ export async function getLogsInfo(
   task: V2beta1PipelineTask,
   runId?: string,
   namespace?: string,
+  source?: TaskLogSource,
 ): Promise<Map<string, string>> {
   const logsInfo = new Map<string, string>();
-  if (task.state === PipelineTaskTaskState.CACHED) {
+  if (!source && task.state === PipelineTaskTaskState.CACHED) {
     logsInfo.set(LOGS_DETAILS, 'This step output is taken from cache.');
     return logsInfo;
   }
 
-  const executorPod = getLatestTaskPod(task, PipelineTaskTaskPodType.EXECUTOR);
+  const executorPod = source
+    ? source.pod
+    : getLatestTaskPod(task, PipelineTaskTaskPodType.EXECUTOR);
   const taskCreatedAt = task.create_time;
   const createdAt =
     taskCreatedAt && !Number.isNaN(taskCreatedAt.getTime())
@@ -716,7 +868,9 @@ export async function getLogsInfo(
     }
   }
 
-  const executorLogsArtifact = getOutputArtifactByName(task, EXECUTOR_LOGS_ARTIFACT_KEY);
+  const executorLogsArtifact = source
+    ? source.artifact
+    : getOutputArtifactByName(task, EXECUTOR_LOGS_ARTIFACT_KEY);
   let artifactLogsError: unknown;
   if (executorLogsArtifact?.uri) {
     try {

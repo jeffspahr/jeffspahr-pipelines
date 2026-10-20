@@ -129,6 +129,7 @@ async function withFixture(options, exercise) {
       ['train-pod', 'executor attempt one\ntraining complete'],
       ['prepare-driver', 'driver initialization output'],
     ]),
+    artifactLogs: new Map([['preprocess.log', 'artifact executor output\npreprocessing complete']]),
     requests: [],
     errors: [],
     failRunReads: !!options.failRunReads,
@@ -286,11 +287,11 @@ async function withFixture(options, exercise) {
         assert.equal(request.method(), 'GET');
         assert.equal(url.searchParams.get('source'), 's3');
         assert.equal(url.searchParams.get('bucket'), 'fixture-bucket');
-        assert.equal(url.searchParams.get('key'), 'preprocess.log');
+        assert.ok(fixture.artifactLogs.has(url.searchParams.get('key')), 'known log artifact');
         assert.equal(url.searchParams.get('namespace'), options.namespace || 'team-a');
         return route.fulfill({
           contentType: 'text/plain',
-          body: 'artifact executor output\npreprocessing complete',
+          body: fixture.artifactLogs.get(url.searchParams.get('key')),
         });
       }
       throw new Error(`Unexpected fixture request: ${request.method()} ${path}`);
@@ -750,6 +751,72 @@ test('one Logs tab separates collapsible driver output from task output', async 
       .getByTestId('logs-view-window')
       .getByText('executor attempt one', { exact: true })
       .waitFor();
+  });
+});
+
+test('task log attempts stay independent, collapsible, and on one heading row', async () => {
+  await withFixture({}, async (page, fixture) => {
+    const train = fixture.tasks.find((task) => task.name === 'train');
+    train.outputs = {
+      artifacts: [
+        {
+          artifact_key: 'executor-logs',
+          artifacts: [
+            { artifact_id: 'attempt-zero', uri: 's3://fixture-bucket/executor-logs-0' },
+            { artifact_id: 'attempt-one', uri: 's3://fixture-bucket/executor-logs-1' },
+          ],
+        },
+      ],
+    };
+    fixture.artifactLogs.set('executor-logs-0', 'first attempt failed');
+    fixture.artifactLogs.set('executor-logs-1', 'second attempt failed');
+    await openTask(page);
+    await logs(page, 'executor attempt one');
+    const select = page.getByRole('combobox', { name: 'Available task logs' });
+    await select.selectOption({ label: 'Attempt 1 · archived' });
+    await page
+      .getByTestId('logs-view-window')
+      .getByText('first attempt failed', { exact: true })
+      .waitFor();
+    assert.equal(await page.getByText('executor attempt one', { exact: true }).count(), 0);
+    const toggle = page.getByRole('button', { name: 'Task logs', exact: true });
+    await toggle.click();
+    assert.equal(await page.getByTestId('logs-view-window').count(), 0);
+    assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+    await toggle.click();
+    assert.equal(await select.inputValue(), 'artifact:attempt-zero');
+    await page
+      .getByTestId('logs-view-window')
+      .getByText('first attempt failed', { exact: true })
+      .waitFor();
+    const geometry = await page.evaluate(() => {
+      const heading = document.querySelector('.kfp-node-logs-task .kfp-node-logs-heading');
+      const toggle = heading.querySelector('button').getBoundingClientRect();
+      const select = heading.querySelector('select').getBoundingClientRect();
+      const copy = heading.querySelector('.kfp-node-logs-copy').getBoundingClientRect();
+      return {
+        height: heading.getBoundingClientRect().height,
+        toggle: toggle.top + toggle.height / 2,
+        select: select.top + select.height / 2,
+        copy: copy.top + copy.height / 2,
+      };
+    });
+    assert.ok(
+      geometry.height <= 28 &&
+        Math.abs(geometry.toggle - geometry.select) < 1 &&
+        Math.abs(geometry.copy - geometry.select) < 1,
+    );
+    await select.selectOption({ label: 'Attempt 2 · archived' });
+    await page
+      .getByTestId('logs-view-window')
+      .getByText('second attempt failed', { exact: true })
+      .waitFor();
+    await select.selectOption('');
+    await page
+      .getByTestId('logs-view-window')
+      .getByText('executor attempt one', { exact: true })
+      .waitFor();
+    await screenshot(page, 'run-details-log-attempts');
   });
 });
 

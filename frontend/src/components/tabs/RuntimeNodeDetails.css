@@ -79,3 +79,20 @@
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
+
+.kfp-node-logs-source {
+  margin-left: auto;
+  min-width: 0;
+  max-width: 50%;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+}
+.kfp-node-logs-source:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

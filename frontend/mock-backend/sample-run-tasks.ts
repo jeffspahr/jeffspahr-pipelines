@@ -161,6 +161,33 @@ export function sampleRunTasks(run: V2beta1Run): V2beta1PipelineTask[] {
       pods: skipped ? [] : [{ name: `${taskId}-executor`, uid: `${taskId}-pod`, type: 'EXECUTOR' }],
     });
   }
+  // Automatic retries keep earlier executor pods and distinct log artifacts on the task.
+  const retried =
+    run.run_id === 'sample-run-import-failed'
+      ? tasks.find((task) => task.name === 'train-model')
+      : undefined;
+  if (retried) {
+    retried.pods!.unshift({
+      name: `${retried.task_id}-executor-attempt-0`,
+      uid: `${retried.task_id}-pod-attempt-0`,
+      type: 'EXECUTOR',
+    });
+    retried.outputs = {
+      artifacts: [
+        {
+          artifact_key: 'executor-logs',
+          type: 'OUTPUT',
+          artifacts: [0, 1].map((attempt) => ({
+            artifact_id: `${retried.task_id}-logs-${attempt}`,
+            name: 'executor-logs',
+            type: 'Artifact',
+            uri: `s3://mlpipeline/review-executor-logs/${retried.task_id}/executor-logs-${attempt}`,
+            created_at: at(attempt === 0 ? 200 : 540),
+          })),
+        },
+      ],
+    };
+  }
   return tasks;
 }
 
@@ -265,4 +292,24 @@ export function sampleTaskLogs(task: V2beta1PipelineTask, run: V2beta1Run): stri
     );
   }
   return lines.join('\n') + '\n';
+}
+
+// Earlier automatic attempt fails before training; the latest attempt reaches feature validation.
+export function sampleRetryTaskLogs(
+  task: V2beta1PipelineTask,
+  run: V2beta1Run,
+  attempt: number,
+): string {
+  if (attempt !== 0) return sampleTaskLogs(task, run);
+  return [
+    `${task.create_time!.toISOString()} INFO Synthetic preview output for ${task.name}`,
+    'INFO Loading training dataset from object storage',
+    'ERROR Dataset download failed after the read timeout',
+    'Traceback (most recent call last):',
+    '  File "/app/train.py", line 36, in train_model',
+    '    features = download_training_dataset(dataset_uri)',
+    'TimeoutError: Timed out reading the training dataset from object storage',
+    'ERROR Component exited with code 1; no model artifact produced',
+    '',
+  ].join('\n');
 }
