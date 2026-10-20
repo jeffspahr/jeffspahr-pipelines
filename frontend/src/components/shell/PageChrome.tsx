@@ -18,13 +18,15 @@ import type { SnackbarProps, ToolbarProps, BannerProps } from 'src/lib/PageChrom
 import { useEffect, useEffectEvent, useId, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, ChevronRight, LoaderCircle, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LoaderCircle, MoreHorizontal, X } from 'lucide-react';
+import { Menu } from '@base-ui/react/menu';
 import type { DialogProps } from '../Router';
 import { Button } from '../ui/button';
 import { ModalDialog } from '../ui/dialog';
 import { NoticeDetails } from '../ui/notice-details';
 import { useTheme } from './ThemeProvider';
 import './PageChrome.css';
+import { WorkspaceMenu } from './WorkspaceMenu';
 
 export interface PageChromeProps {
   children: ReactNode;
@@ -36,6 +38,7 @@ export interface PageChromeProps {
   onSnackbarClose: () => void;
   navigationNotice?: ReactNode;
   showThemeControl?: boolean;
+  showWorkspaceControl?: boolean;
   reserveBreadcrumbHeader?: boolean;
 }
 
@@ -61,20 +64,52 @@ function ThemeControl() {
   );
 }
 
+function ToolbarOverflow({ actions }: { actions: ToolbarProps['actions'] }) {
+  const { themeClassName } = useTheme();
+  return (
+    <Menu.Root>
+      <Menu.Trigger render={<Button variant='ghost' size='icon' aria-label='More actions' />}>
+        <MoreHorizontal size={18} aria-hidden='true' />
+      </Menu.Trigger>
+      <Menu.Portal className={themeClassName}>
+        <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>
+          <Menu.Popup className='kfp-density-menu'>
+            {Object.entries(actions)
+              .filter(([, action]) => action.overflow)
+              .map(([key, action]) => (
+                <Menu.Item
+                  key={key}
+                  disabled={action.disabled || action.busy}
+                  onClick={action.action}
+                  className='kfp-density-option'
+                >
+                  {action.title}
+                </Menu.Item>
+              ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
+}
+
 function PageToolbar({
   toolbar,
   showThemeControl,
+  showWorkspaceControl,
   reserveBreadcrumbHeader = false,
 }: {
   toolbar: ToolbarProps;
   showThemeControl?: boolean;
+  showWorkspaceControl?: boolean;
   reserveBreadcrumbHeader?: boolean;
 }) {
   const empty =
     !Object.keys(toolbar.actions).length &&
     !toolbar.breadcrumbs.length &&
     !toolbar.pageTitle &&
-    !showThemeControl;
+    !showThemeControl &&
+    !showWorkspaceControl;
   const reserveSpace = reserveBreadcrumbHeader && toolbar.topLevelToolbar !== false;
   if (empty && !reserveSpace) return null;
   const Heading = toolbar.topLevelToolbar === false ? 'h2' : 'h1';
@@ -113,34 +148,41 @@ function PageToolbar({
               {toolbar.pageTitle}
             </Heading>
           )}
+          {toolbar.titleAccessory}
         </div>
       </div>
       <div className='kfp-page-actions'>
+        {showWorkspaceControl && <WorkspaceMenu />}
         {showThemeControl && <ThemeControl />}
-        {Object.entries(toolbar.actions).map(([key, action]) => {
-          const Icon = action.icon;
-          const explanation =
-            action.disabled && action.disabledTitle ? action.disabledTitle : action.tooltip;
-          return (
-            <span key={key} title={explanation} style={action.style}>
-              <Button
-                id={action.id}
-                variant={action.variant || 'secondary'}
-                disabled={action.disabled || action.busy}
-                aria-busy={action.busy || undefined}
-                aria-description={explanation}
-                onClick={action.action}
-              >
-                {action.busy ? (
-                  <LoaderCircle size={16} className='kfp-page-spinner' aria-hidden='true' />
-                ) : (
-                  Icon && <Icon size={16} aria-hidden='true' />
-                )}
-                {action.title}
-              </Button>
-            </span>
-          );
-        })}
+        {Object.entries(toolbar.actions)
+          .filter(([, action]) => !action.overflow)
+          .map(([key, action]) => {
+            const Icon = action.icon;
+            const explanation =
+              action.disabled && action.disabledTitle ? action.disabledTitle : action.tooltip;
+            return (
+              <span key={key} title={explanation} style={action.style}>
+                <Button
+                  id={action.id}
+                  variant={action.variant || 'secondary'}
+                  disabled={action.disabled || action.busy}
+                  aria-busy={action.busy || undefined}
+                  aria-description={explanation}
+                  onClick={action.action}
+                >
+                  {action.busy ? (
+                    <LoaderCircle size={16} className='kfp-page-spinner' aria-hidden='true' />
+                  ) : (
+                    Icon && <Icon size={16} aria-hidden='true' />
+                  )}
+                  {action.title}
+                </Button>
+              </span>
+            );
+          })}
+        {Object.values(toolbar.actions).some((action) => action.overflow) && (
+          <ToolbarOverflow actions={toolbar.actions} />
+        )}
       </div>
     </header>
   );
@@ -247,6 +289,7 @@ export function PageChrome({
   onSnackbarClose,
   navigationNotice,
   showThemeControl,
+  showWorkspaceControl,
   reserveBreadcrumbHeader,
 }: PageChromeProps) {
   return (
@@ -254,6 +297,7 @@ export function PageChrome({
       <PageToolbar
         toolbar={toolbarProps}
         showThemeControl={showThemeControl}
+        showWorkspaceControl={showWorkspaceControl}
         reserveBreadcrumbHeader={reserveBreadcrumbHeader}
       />
       {navigationNotice}

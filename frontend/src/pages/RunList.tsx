@@ -236,7 +236,11 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
                     )
                   }
                   reservedRowCount={this.props.runIdListMask?.length}
-                  onOpenRun={(id) => this.props.navigate(RoutePageFactory.runDetails(id))}
+                  onOpenRun={(id) =>
+                    this.props.navigate(RoutePageFactory.runDetails(id), {
+                      state: { fromExperimentId: this.props.experimentIdMask },
+                    })
+                  }
                 />
               )}
               columns={columns}
@@ -306,6 +310,7 @@ class RunList extends React.PureComponent<RunListProps, RunListState> {
           title={props.value ? `${props.value} · ${props.id}` : props.id}
           onClick={(event) => event.stopPropagation()}
           to={RoutePageFactory.runDetails(props.id)}
+          state={{ fromExperimentId: this.props.experimentIdMask }}
         >
           {props.value || props.id}
         </Link>

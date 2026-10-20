@@ -33,6 +33,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { WorkspaceMenu } from './WorkspaceMenu';
 import { LocalStorage } from 'src/lib/LocalStorage';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
@@ -200,6 +201,8 @@ export function AppShell({
               {namespace && <span className='kfp-shell-namespace'>{namespace}</span>}
             </div>
           </div>
+
+          <WorkspaceMenu collapsed={collapsed} sidebar />
 
           {onSearch && (
             <div className='kfp-shell-search-container'>

@@ -14,37 +14,27 @@
  * limitations under the License.
  */
 
-import { produce as immerProduce } from 'immer';
 import * as React from 'react';
 import { Link } from 'react-router';
 import { V2beta1Pipeline, V2beta1ListPipelinesResponse } from 'src/apisv2beta1/pipeline';
-import CustomTable, {
-  Column,
-  CustomRendererProps,
-  ExpandState,
-  Row,
-} from 'src/components/CustomTable';
+import CustomTable, { Column, CustomRendererProps, Row } from 'src/components/CustomTable';
 import { Description } from 'src/components/Description';
-import { RoutePage, RoutePageFactory } from 'src/components/Router';
+import { RoutePageFactory } from 'src/components/Router';
 import { ToolbarProps } from 'src/lib/PageChromeTypes';
 import { errorToMessage, formatDateString } from 'src/lib/Utils';
 import { Apis, ListRequest, PipelineSortKeys } from 'src/lib/Apis';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
 import { Page } from './Page';
-import { PipelineVersionsPreview } from 'src/components/pipelines/PipelineVersionsPreview';
+import { LatestPipelineVersion } from 'src/components/pipelines/LatestPipelineVersion';
 import { PipelineCollection } from 'src/components/pipelines/PipelineCollection';
-import { Menu } from '@base-ui/react/menu';
 import { Button } from 'src/components/ui/button';
 import {
   UploadedDateFilter,
-  UploadedDateOptions,
   uploadedDatePredicates,
   type UploadedPeriod,
 } from 'src/components/pipelines/UploadedDateFilter';
 
-interface DisplayPipeline extends V2beta1Pipeline {
-  expandState?: ExpandState;
-}
+type DisplayPipeline = V2beta1Pipeline;
 
 interface PipelineListState {
   uploadedPeriod: UploadedPeriod;
@@ -102,17 +92,22 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
         sortKey: PipelineSortKeys.DISPLAY_NAME,
       },
       { label: 'Description', width: '35%', flex: 3, customRenderer: descriptionCustomRenderer },
+      {
+        label: 'Latest version',
+        width: 180,
+        customRenderer: (props) => <LatestPipelineVersion {...props} />,
+      },
       { label: 'Uploaded on', width: 190, sortKey: PipelineSortKeys.CREATED_AT, flex: 1 },
     ];
 
     const rows: Row[] = this.state.displayPipelines.map((p) => {
       return {
-        expandState: p.expandState,
         id: p.pipeline_id!,
         error: p.error?.message,
         otherFields: [
           { display_name: p.display_name, name: p.name },
           p.description!,
+          p.pipeline_id!,
           formatDateString(p.created_at!),
         ] as any,
       };
@@ -126,20 +121,6 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
           renderTable={(table) => (
             <PipelineCollection
               table={table}
-              actions={
-                <Menu.Item
-                  render={<Link to={RoutePage.METADATA_TRANSFER} />}
-                  className='kfp-density-option'
-                >
-                  Import / export namespace data…
-                </Menu.Item>
-              }
-              filters={
-                <UploadedDateOptions
-                  value={this.state.uploadedPeriod}
-                  onChange={this._setUploadedPeriod}
-                />
-              }
               dateFilter={
                 <UploadedDateFilter
                   value={this.state.uploadedPeriod}
@@ -169,8 +150,6 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
           updateSelection={this._selectionChanged.bind(this)}
           selectedIds={this.state.selectedIds}
           reload={this._reload.bind(this)}
-          toggleExpansion={this._toggleRowExpand.bind(this)}
-          getExpandComponent={this._getExpandedPipelineComponent.bind(this)}
           filterLabel='Search pipelines'
           emptyMessage={
             this.state.uploadedPeriod === 'all'
@@ -198,24 +177,6 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
     }
   }
 
-  private _toggleRowExpand(rowIndex: number): void {
-    const displayPipelines = immerProduce(this.state.displayPipelines, (draft) => {
-      draft[rowIndex].expandState =
-        draft[rowIndex].expandState === ExpandState.COLLAPSED
-          ? ExpandState.EXPANDED
-          : ExpandState.COLLAPSED;
-    });
-
-    this.setState({ displayPipelines });
-  }
-
-  private _getExpandedPipelineComponent(rowIndex: number): React.JSX.Element {
-    const pipeline = this.state.displayPipelines[rowIndex];
-    return (
-      <PipelineVersionsPreview key={pipeline.pipeline_id} pipelineId={pipeline.pipeline_id!} />
-    );
-  }
-
   private async _reload(request: ListRequest): Promise<string> {
     const generation = ++this._loadGeneration;
     try {
@@ -228,10 +189,7 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
       );
       if (!this._isMounted || generation !== this._loadGeneration) return '';
       this.setStateSafe({
-        displayPipelines: (response.pipelines || []).map((pipeline) => ({
-          ...pipeline,
-          expandState: ExpandState.COLLAPSED,
-        })),
+        displayPipelines: response.pipelines || [],
         loadError: false,
       });
       this.clearBanner();

@@ -1,20 +1,26 @@
 // Copyright 2026 The Kubeflow Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect, useRef } from 'react';
 import type { ReactFlowInstance, ReactFlowProps } from '@xyflow/react';
 import DagCanvas from './DagCanvas';
 import { mockResizeObserver } from 'src/TestUtils';
 
+const readiness = vi.hoisted(() => ({ nodes: false, viewport: false, instance: false }));
 const viewport = vi.hoisted(() => ({
   getViewport: vi.fn(() => ({ x: 10, y: 20, zoom: 2 })),
   setViewport: vi.fn(),
   fitView: vi.fn(),
+  zoomIn: vi.fn(),
+  zoomOut: vi.fn(),
 }));
 
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@xyflow/react')>()),
+  useReactFlow: () => ({ ...viewport, viewportInitialized: readiness.instance }),
+  useNodesInitialized: () => readiness.nodes,
+  useStore: () => readiness.viewport,
   MiniMap: () => null,
   Background: () => null,
   ReactFlow: ({ onInit, children, nodesFocusable, fitViewOptions, maxZoom }: ReactFlowProps) => {
@@ -44,6 +50,9 @@ vi.mock('@xyflow/react', async (importOriginal) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  readiness.nodes = false;
+  readiness.viewport = false;
+  readiness.instance = false;
   mockResizeObserver();
 });
 const canvas = () => <DagCanvas elements={[]} layers={['root']} onElementClick={vi.fn()} />;
@@ -130,13 +139,51 @@ it('enables keyboard node movement only while unlocked', () => {
   expect(node).toHaveAttribute('data-focusable', 'false');
 });
 
-it('caps initial fitting without restricting manual zoom or refitting on refresh', () => {
+it('waits for measured nodes and viewport before fitting once at 100%', async () => {
   const { rerender } = render(canvas());
-  expect(screen.getByTestId('flow')).toHaveAttribute('data-fit-max', '1');
   expect(screen.getByTestId('flow')).toHaveAttribute('data-max-zoom', '2');
-  expect(viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 });
+  expect(viewport.fitView).not.toHaveBeenCalled();
+  readiness.nodes = true;
+  rerender(canvas());
+  expect(viewport.fitView).not.toHaveBeenCalled();
+  readiness.viewport = true;
+  rerender(canvas());
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  expect(viewport.fitView).not.toHaveBeenCalled();
+  readiness.instance = true;
+  rerender(canvas());
+  await waitFor(() => expect(viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 }));
   viewport.fitView.mockClear();
   rerender(canvas());
   expect(viewport.fitView).not.toHaveBeenCalled();
   expect(viewport.setViewport).not.toHaveBeenCalled();
 });
+
+it('preserves a manual pan made while the graph is still initializing', async () => {
+  const { rerender } = render(canvas());
+  fireEvent.keyDown(screen.getByRole('region', { name: 'Pipeline graph' }), { key: 'ArrowLeft' });
+  readiness.nodes = true;
+  readiness.viewport = true;
+  readiness.instance = true;
+  rerender(canvas());
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  expect(viewport.fitView).not.toHaveBeenCalled();
+  expect(viewport.setViewport).toHaveBeenCalledExactlyOnceWith({ x: 50, y: 20, zoom: 2 });
+});
+
+it.each(['Zoom in', 'Zoom out', 'Fit view'])(
+  'preserves an early %s control action',
+  async (label) => {
+    const { rerender } = render(canvas());
+    fireEvent.click(screen.getByRole('button', { name: label }));
+    const calls = viewport.fitView.mock.calls.length;
+    readiness.nodes = true;
+    readiness.viewport = true;
+    readiness.instance = true;
+    rerender(canvas());
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(viewport.fitView).toHaveBeenCalledTimes(calls);
+    if (label === 'Zoom in') expect(viewport.zoomIn).toHaveBeenCalledOnce();
+    if (label === 'Zoom out') expect(viewport.zoomOut).toHaveBeenCalledOnce();
+  },
+);

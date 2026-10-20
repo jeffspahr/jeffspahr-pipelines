@@ -261,6 +261,14 @@ export function sampleTaskLogs(task: V2beta1PipelineTask, run: V2beta1Run): stri
     `${timestamp(0)} INFO Synthetic preview output for ${name}`,
     `${timestamp(0.05)} INFO ${operation[0]}`,
   ];
+  const dataset = task.inputs?.parameters?.find(
+    (parameter) => parameter.parameter_key === 'dataset_uri',
+  );
+  if (dataset) lines.push(`${timestamp(0.1)} INFO Input dataset: ${String(dataset.value)}`);
+  const rowCount = task.outputs?.parameters?.find(
+    (parameter) => parameter.parameter_key === 'row_count',
+  );
+  if (rowCount) lines.push(`${timestamp(0.9)} INFO Processed ${String(rowCount.value)} rows`);
   if (task.state === 'FAILED') {
     const error =
       [...(task.state_history || [])].reverse().find((entry) => entry.error)?.error?.message ||

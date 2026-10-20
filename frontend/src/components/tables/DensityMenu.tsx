@@ -15,27 +15,43 @@
  */
 
 import { Menu } from '@base-ui/react/menu';
-import { Check, SlidersHorizontal } from 'lucide-react';
+import { Check, SlidersHorizontal, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useTheme } from '../shell/ThemeProvider';
 import { useDensity } from './DensityProvider';
 
-export function DensityMenu() {
+export function DensityMenu({ compact = false }: { compact?: boolean }) {
   const preference = useDensity();
-  return preference ? <DensityMenuContent preference={preference} /> : null;
+  return preference ? <DensityMenuContent preference={preference} compact={compact} /> : null;
 }
 
 function DensityMenuContent({
   preference,
+  compact,
 }: {
+  compact: boolean;
   preference: NonNullable<ReturnType<typeof useDensity>>;
 }) {
   const { themeClassName } = useTheme();
   return (
     <Menu.Root>
-      <Menu.Trigger render={<Button variant='secondary' size='sm' aria-label='Display options' />}>
-        <SlidersHorizontal size={16} aria-hidden='true' />
-        Display
+      <Menu.Trigger
+        render={
+          <Button
+            variant={compact ? 'ghost' : 'secondary'}
+            size={compact ? 'icon' : 'sm'}
+            aria-label={compact ? 'Table options' : 'Display options'}
+          />
+        }
+      >
+        {compact ? (
+          <MoreHorizontal size={16} aria-hidden='true' />
+        ) : (
+          <>
+            <SlidersHorizontal size={16} aria-hidden='true' />
+            Display
+          </>
+        )}
       </Menu.Trigger>
       <Menu.Portal className={themeClassName}>
         <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>

@@ -102,72 +102,22 @@ describe('PipelineDetailsV2', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Details', exact: true }));
   });
 
-  it('shows selected version in the persistent selector', async () => {
+  it('keeps the version selector out of the content area and offers a Versions tab', () => {
     render(
       <CommonTestWrapper>
         <PipelineDetailsView
           pipelineFlowElements={[]}
           pipeline={testV2Pipeline}
           selectedVersion={testV2PipelineVersion}
-          versions={[testV2PipelineVersion, newTestV2PipelineVersion, thirdPipelineVersion]}
-          handleVersionSelected={function (versionId: string): Promise<void> {
-            return Promise.resolve();
-          }}
-        ></PipelineDetailsView>
+          versions={[testV2PipelineVersion]}
+          handleVersionSelected={async () => {}}
+          manageVersionsHref='/pipelines/details/pipeline?tab=versions'
+        />
       </CommonTestWrapper>,
     );
-    await userEvent.click(screen.getByRole('tab', { name: 'Details', exact: true }));
-    expect(screen.getByRole('combobox', { name: 'Version' })).toHaveValue(
-      testV2PipelineVersion.pipeline_version_id,
-    );
-    expect(screen.getByRole('region', { name: 'Version details' })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: 'Pipeline spec', exact: true }));
-    expect(screen.getByTestId('spec-ir')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Version' })).toHaveValue(
-      testV2PipelineVersion.pipeline_version_id,
-    );
-  });
-
-  it('requests version selection when switching to another v2 version', async () => {
-    const onVersionSelected = vi.fn().mockResolvedValue(undefined);
-    render(
-      <CommonTestWrapper>
-        <PipelineDetailsView
-          pipelineFlowElements={[]}
-          pipeline={testV2Pipeline}
-          selectedVersion={testV2PipelineVersion}
-          versions={[testV2PipelineVersion, newTestV2PipelineVersion, thirdPipelineVersion]}
-          handleVersionSelected={onVersionSelected}
-        ></PipelineDetailsView>
-      </CommonTestWrapper>,
-    );
-
-    await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Version' }),
-      newTestV2PipelineVersion.pipeline_version_id!,
-    );
-    expect(onVersionSelected).toHaveBeenCalledWith(newTestV2PipelineVersion.pipeline_version_id);
-  });
-
-  it('requests version selection when switching to third version', async () => {
-    const onVersionSelected = vi.fn().mockResolvedValue(undefined);
-    render(
-      <CommonTestWrapper>
-        <PipelineDetailsView
-          pipelineFlowElements={[]}
-          pipeline={testV2Pipeline}
-          selectedVersion={testV2PipelineVersion}
-          versions={[testV2PipelineVersion, newTestV2PipelineVersion, thirdPipelineVersion]}
-          handleVersionSelected={onVersionSelected}
-        ></PipelineDetailsView>
-      </CommonTestWrapper>,
-    );
-
-    await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Version' }),
-      thirdPipelineVersion.pipeline_version_id!,
-    );
-    expect(onVersionSelected).toHaveBeenCalledWith(thirdPipelineVersion.pipeline_version_id);
+    expect(screen.queryByRole('combobox', { name: 'Version' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Versions' })).toBeVisible();
+    expect(screen.queryByText('Manage versions')).not.toBeInTheDocument();
   });
 
   it('Render Execution node', async () => {

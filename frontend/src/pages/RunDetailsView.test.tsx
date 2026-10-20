@@ -1087,45 +1087,51 @@ describe('RunDetailsV2', () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows run title and experiments' links", async () => {
-    const getRunSpy = vi.spyOn(Apis.runServiceApiV2, 'getRun');
-    getRunSpy.mockResolvedValue(TEST_RUN);
-    const getExperimentSpy = vi.spyOn(Apis.experimentServiceApiV2, 'getExperiment');
-    getExperimentSpy.mockResolvedValue(TEST_EXPERIMENT);
+  it.each([false, true])(
+    'uses navigation origin for breadcrumbs (from experiment: %s)',
+    async (fromExperiment) => {
+      const getRunSpy = vi.spyOn(Apis.runServiceApiV2, 'getRun');
+      getRunSpy.mockResolvedValue(TEST_RUN);
+      const getExperimentSpy = vi.spyOn(Apis.experimentServiceApiV2, 'getExperiment');
+      getExperimentSpy.mockResolvedValue(TEST_EXPERIMENT);
 
-    await act(async () => {
-      render(
-        <CommonTestWrapper>
-          <RunDetailsView
-            pipeline_job={v2YamlTemplateString}
-            run={TEST_RUN}
-            {...generateProps()}
-          ></RunDetailsView>
-        </CommonTestWrapper>,
+      await act(async () => {
+        render(
+          <CommonTestWrapper>
+            <RunDetailsView
+              pipeline_job={v2YamlTemplateString}
+              run={TEST_RUN}
+              {...generateProps()}
+              location={{
+                ...generateProps().location,
+                state: fromExperiment ? { fromExperimentId: TEST_EXPERIMENT.experiment_id } : null,
+              }}
+            ></RunDetailsView>
+          </CommonTestWrapper>,
+        );
+      });
+
+      await waitFor(() =>
+        expect(updateToolbarSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            pageTitleTooltip: 'test run',
+          }),
+        ),
       );
-    });
-
-    await waitFor(() =>
-      expect(updateToolbarSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pageTitleTooltip: 'test run',
-        }),
-      ),
-    );
-    await waitFor(() =>
-      expect(updateToolbarSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          breadcrumbs: [
-            { displayName: 'Experiments', href: RoutePage.EXPERIMENTS },
-            {
-              displayName: 'Default',
-              href: `/experiments/details/some-experiment-id`,
-            },
-          ],
-        }),
-      ),
-    );
-  });
+      await waitFor(() =>
+        expect(updateToolbarSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            breadcrumbs: fromExperiment
+              ? [
+                  { displayName: 'Experiments', href: RoutePage.EXPERIMENTS },
+                  { displayName: 'Default', href: '/experiments/details/some-experiment-id' },
+                ]
+              : [{ displayName: 'Runs', href: RoutePage.RUNS }],
+          }),
+        ),
+      );
+    },
+  );
 
   it('keeps metadata in Detail and the run name before status in the compact header', async () => {
     renderRoutedRunDetails();

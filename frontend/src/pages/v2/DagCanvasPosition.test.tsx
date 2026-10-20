@@ -190,7 +190,7 @@ it('preserves nested task drag positions across data refreshes', () => {
   expect(screen.getByTestId(id)).toHaveTextContent('{"x":77,"y":88}');
 });
 
-it('keeps dependencies neutral and highlights connections for hovered or selected tasks', () => {
+it('keeps dependencies neutral when hovering or inspecting tasks', () => {
   const resolve = (layers: string[]) => convertSubDagToFlowElements(nestedArtifactSpec, layers);
   const elements = resolve(['root']);
   const options = {
@@ -212,11 +212,11 @@ it('keeps dependencies neutral and highlights connections for hovered or selecte
         (edge) => edge.dataset.source === 'task.deploy' || edge.dataset.target === 'task.deploy',
       );
   expect(connected().length).toBeGreaterThan(0);
-  connected().forEach((edge) => expect(edge).toHaveClass('kfp-graph-edge-highlighted'));
+  connected().forEach((edge) => expect(edge).not.toHaveClass('kfp-graph-edge-highlighted'));
   fireEvent.mouseLeave(task);
   connected().forEach((edge) => expect(edge).not.toHaveClass('kfp-graph-edge-highlighted'));
   const element = elements.find((element) => element.id === 'task.deploy')!;
   rerender(<DagCanvas {...options} selectedElement={{ element, layers: ['root'] }} />);
-  connected().forEach((edge) => expect(edge).toHaveClass('kfp-graph-edge-highlighted'));
+  connected().forEach((edge) => expect(edge).not.toHaveClass('kfp-graph-edge-highlighted'));
   expect(screen.getByTestId('flow')).toHaveAttribute('data-hide-attribution', 'true');
 });

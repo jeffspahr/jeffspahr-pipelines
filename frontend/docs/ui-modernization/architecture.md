@@ -9,7 +9,7 @@
 | `components/navigation` | Command search and navigation controls.                                   |
 | `components/tables`     | Resource-table presentation, pagination controls and Runs presentation.   |
 | `components/inspection` | Reusable inspection fields, sections and tabs.                            |
-| `components/pipelines`  | Pipeline cards and pipeline form/layout presentation.                     |
+| `components/pipelines`  | Pipeline collection and pipeline form/layout presentation.                     |
 | `components/runs`       | Run status, recent-run health and recurring-run controls.                 |
 
 Existing graph, viewer and task-tab components keep their established role directories. New components belong with their responsibility, not a migration phase. The residual `atoms` directory is retained compatibility code, not a second destination for new primitives. Storybook identifiers remain stable when source files move.
@@ -47,11 +47,11 @@ The two feature-flagged query-based alternative page implementations live in `pa
 
 Use a compact workbench layout across resource pages. `PageChrome` owns the title, primary actions, breadcrumbs and 16px page gutter. Align collection controls, tabs and content to that gutter; nested collections inherit the parent content width without adding another gutter.
 
-List pages place filters on the left and view/sort controls on the right in one wrapping control strip. Selection, rows and pagination share the same collection surface. Use a 52px minimum list header, 48px filter strip, and 48px comfortable / 40px compact minimum single-line rows; allow content and responsive wrapping to grow naturally. Keep pagination compact and stable during filtering. Validate density with same-viewport screenshots and the distance from the page top to the first data row, not just shared CSS. Pipeline cards remain an optional remembered view; they use the same collection controls and footer as the table.
+List pages place filters on the left and view/sort controls on the right in one wrapping control strip. Selection, rows and pagination share the same collection surface. Use a 52px minimum list header, 48px filter strip, and 48px comfortable / 40px compact minimum single-line rows; allow content and responsive wrapping to grow naturally. Keep pagination compact and stable during filtering. Validate density with same-viewport screenshots and the distance from the page top to the first data row, not just shared CSS. Pipelines use a table with a linked latest-version column. Version management belongs on the pipeline detail page, not in an expanded list row.
 
 Detail pages use the same header and tab rhythm, with metadata grouped into readable sections. Graphs and timelines retain a large dedicated workspace and task inspectors; metadata views use responsive fields rather than narrow nested cards. Special-purpose content can differ, but spacing and control placement should not depend on the resource type.
 
-Collection density and view are independent preferences. The Display menu sets Comfortable (default) or Compact globally across lists and cards; the pipeline Table/Cards toggle retains its own remembered preference. Density changes cell and card padding without changing page headers, filtering, selection, content, or page size. Browser storage failures preserve the choice for the current session.
+Collection density is a remembered preference. Comfortable (default) and Compact apply globally; pipelines expose it in the compact Table options menu. Density changes cell padding without changing page headers, filtering, selection, content, or page size. Browser storage failures preserve the choice for the current session. Namespace-wide import/export belongs in the shell Workspace menu. Pipeline detail pages put the version selector beside the title and full version management in the Versions tab.
 
 
 ## Page layout contract

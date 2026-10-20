@@ -45,7 +45,7 @@ export abstract class Page<P, S> extends React.Component<P & PageProps, S> {
 
   constructor(props: any) {
     super(props);
-    this.props.updateToolbar(this.getInitialToolbarState());
+    this.props.updateToolbar({ titleAccessory: undefined, ...this.getInitialToolbarState() });
   }
 
   public abstract render(): React.JSX.Element;

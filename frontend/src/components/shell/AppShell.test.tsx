@@ -383,3 +383,10 @@ describe('AppShell', () => {
     expect(onSearch).toHaveBeenCalledTimes(2);
   });
 });
+
+it('places namespace import/export in the Workspace menu', async () => {
+  renderShell();
+  await userEvent.click(screen.getByRole('button', { name: 'Workspace', exact: true }));
+  const item = await screen.findByRole('menuitem', { name: 'Import / export namespace data…' });
+  expect(item).toHaveAttribute('href', '/export-import');
+});

@@ -15,7 +15,7 @@
  */
 
 import { ThemeProvider } from 'src/components/shell/ThemeProvider';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { PageProps } from './Page';
 import { Apis } from 'src/lib/Apis';
 import { V2beta1Pipeline, V2beta1ListPipelinesResponse } from 'src/apisv2beta1/pipeline';
@@ -24,6 +24,18 @@ import { BuildInfoContext } from 'src/lib/BuildInfo';
 import PipelinesPage, { PrivateAndSharedProps, PrivateAndSharedTab } from './PipelinesPage';
 import { MemoryRouter } from 'react-router';
 import { NamespaceContext } from 'src/lib/KubeflowClient';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactElement } from 'react';
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}
 
 function generateProps(): PrivateAndSharedProps {
   return {
@@ -77,6 +89,9 @@ afterEach(() => vi.unstubAllGlobals());
 describe('PrivateAndSharedPipelines', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(Apis.pipelineServiceApiV2, 'listPipelineVersions').mockResolvedValue({
+      pipeline_versions: [],
+    });
     let listPipelineSpy = vi.spyOn(Apis.pipelineServiceApiV2, 'listPipelines');
     listPipelineSpy.mockImplementation((...args) => {
       const response: V2beta1ListPipelinesResponse = {

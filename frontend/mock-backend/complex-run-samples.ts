@@ -88,13 +88,23 @@ export function complexPipelineSpec(sample: (typeof complexRunSamples)[number]) 
                     }
                   : {}),
               }
-            : { executorLabel: `exec-${step.name}` };
+            : {
+                executorLabel: `exec-${step.name}`,
+                inputDefinitions: { parameters: { dataset_uri: { parameterType: 'STRING' } } },
+                outputDefinitions: {
+                  parameters: { row_count: { parameterType: 'NUMBER_INTEGER' } },
+                },
+              };
           if (!step.children) {
             executors[`exec-${step.name}`] = {
               container: {
                 image: 'python:3.11-slim',
                 command: ['python', '-c'],
-                args: [`print('${step.name}')`],
+                args: [
+                  "import pathlib, sys; print('Processing dataset: ' + sys.argv[1]); output = pathlib.Path(sys.argv[2]); output.parent.mkdir(parents=True, exist_ok=True); output.write_text('12480'); print('Processed 12480 rows')",
+                  "{{$.inputs.parameters['dataset_uri']}}",
+                  "{{$.outputs.parameters['row_count'].output_file}}",
+                ],
               },
             };
           }
@@ -104,6 +114,19 @@ export function complexPipelineSpec(sample: (typeof complexRunSamples)[number]) 
               taskInfo: { name: step.name },
               componentRef: { name: component },
               dependentTasks: step.after || [],
+              ...(!step.children
+                ? {
+                    inputs: {
+                      parameters: {
+                        dataset_uri: {
+                          runtimeValue: {
+                            constant: `s3://mlpipeline/review-datasets/${step.name}.parquet`,
+                          },
+                        },
+                      },
+                    },
+                  }
+                : {}),
               ...(step.condition !== undefined
                 ? { triggerPolicy: { condition: String(step.condition) } }
                 : {}),
@@ -193,6 +216,17 @@ export function complexRunTasks(run: V2beta1Run): V2beta1PipelineTask[] | undefi
       } else if (step.children) {
         end = visit(step.children, task, start + 1);
       } else {
+        task.inputs = {
+          parameters: [
+            {
+              parameter_key: 'dataset_uri',
+              value: `s3://mlpipeline/review-datasets/${step.name}.parquet` as unknown as object,
+            },
+          ],
+        };
+        task.outputs = {
+          parameters: [{ parameter_key: 'row_count', value: 12480 as unknown as object }],
+        };
         task.pods = [
           { name: `${task.task_id}-executor`, uid: `${task.task_id}-pod`, type: 'EXECUTOR' },
         ];

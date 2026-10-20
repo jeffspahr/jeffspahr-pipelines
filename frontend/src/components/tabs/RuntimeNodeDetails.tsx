@@ -15,8 +15,8 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useId, useMemo, useState } from 'react';
-import { Check, Copy, TriangleAlert, ChevronDown, ChevronRight } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Check, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import './RuntimeNodeDetails.css';
 import {
   InputOutputsIOArtifact,
@@ -433,9 +433,13 @@ function TaskNodeDetail({
                     onChange={(key) => setDriverSourceChoice({ taskId: task?.task_id, key })}
                   />
                   <CopyLogsButton
-                    key={`driver-${task?.task_id}-${selectedDriverSource?.key || 'latest'}`}
+                    key={`driver-${task?.task_id}-${runId}-${namespace}-${selectedDriverSource?.key}-${selectedDriverSource?.artifact?.uri}-${driverLogUri}-${driverPod?.name}`}
                     label='Driver logs'
                     text={driverLogsState?.get(LOGS_DETAILS)}
+                    disabled={namespacePending || !task}
+                    load={() =>
+                      getTaskDriverLogsInfo(task!, runId, namespace, selectedDriverSource)
+                    }
                   />
                 </div>
                 {driverExpanded && (
@@ -483,9 +487,11 @@ function TaskNodeDetail({
                     onChange={(key) => setLogChoice({ taskId: task?.task_id, key })}
                   />
                   <CopyLogsButton
-                    key={`task-${task?.task_id}-${selectedSource?.key || 'latest'}`}
+                    key={`task-${task?.task_id}-${runId}-${namespace}-${logsSourceIdentity}`}
                     label='Task logs'
                     text={logsDetails}
+                    disabled={namespacePending || !task}
+                    load={() => getLogsInfo(task!, runId, namespace, selectedSource)}
                   />
                 </div>
                 {taskExpanded && (
@@ -686,42 +692,89 @@ function TaskVolumeMountsDetails({
   return <DetailsTable title='Volume Mounts' fields={fields} />;
 }
 
-function CopyLogsButton({ label, text }: { label: string; text?: string }) {
-  const [feedback, setFeedback] = useState<{ text: string; status: 'copied' | 'error' }>();
-  const status = feedback && feedback.text === text ? feedback.status : undefined;
-  const message =
-    status === 'copied'
-      ? `${label} copied.`
-      : status === 'error'
-        ? 'Could not copy. Select the log text and copy it manually.'
-        : '';
+function CopyLogsButton({
+  label,
+  text,
+  disabled,
+  load,
+}: {
+  label: string;
+  text?: string;
+  disabled?: boolean;
+  load: () => Promise<Map<string, string> | undefined>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [copied, setCopied] = useState(false);
+  const active = useRef(true);
+  // External synchronization: invalidate pending clipboard work when its source is unmounted.
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   return (
     <>
       <button
         type='button'
         className='kfp-node-logs-copy'
         aria-label={`Copy ${label.toLowerCase()}`}
-        title={
-          message || (text ? `Copy ${label.toLowerCase()}` : 'Logs must be loaded before copying')
-        }
-        disabled={!text}
+        aria-busy={busy}
+        title={message || `Copy ${label.toLowerCase()}`}
+        disabled={disabled || busy}
         onClick={async () => {
-          if (!text) return;
+          setBusy(true);
+          setCopied(false);
+          setMessage(`Loading ${label.toLowerCase()}…`);
+          let failureMessage = 'Could not copy. Select the log text and copy it manually.';
+          const getText = async () => {
+            let loaded: Map<string, string> | undefined;
+            try {
+              loaded = text === undefined ? await load() : undefined;
+            } catch {
+              failureMessage = `Could not load ${label.toLowerCase()}. Try copying again.`;
+              throw new Error(failureMessage);
+            }
+            if (!active.current) throw new Error('Log source changed.');
+            const output = text ?? loaded?.get(LOGS_DETAILS);
+            if (!output) {
+              failureMessage =
+                loaded?.get(LOGS_BANNER_ADDITIONAL_INFO) ||
+                loaded?.get(LOGS_BANNER_MESSAGE) ||
+                `${label} are not available yet.`;
+              throw new Error(failureMessage);
+            }
+            return output;
+          };
           try {
-            await navigator.clipboard.writeText(text);
-            setFeedback({ text, status: 'copied' });
+            if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+              // Safari needs write() during the click, before the network request resolves.
+              const content = getText().then(
+                (output) => new Blob([output], { type: 'text/plain' }),
+              );
+              // A synchronous clipboard denial may leave the content promise unconsumed.
+              void content.catch(() => {});
+              await navigator.clipboard.write([new ClipboardItem({ 'text/plain': content })]);
+            } else if (text) {
+              await navigator.clipboard.writeText(text);
+            } else {
+              const output = await getText();
+              if (!active.current) return;
+              await navigator.clipboard.writeText(output);
+            }
+            if (active.current) {
+              setCopied(true);
+              setMessage(`${label} copied.`);
+            }
           } catch {
-            setFeedback({ text, status: 'error' });
+            if (active.current) setMessage(failureMessage);
+          } finally {
+            if (active.current) setBusy(false);
           }
         }}
       >
-        {status === 'copied' ? (
-          <Check size={16} />
-        ) : status === 'error' ? (
-          <TriangleAlert size={16} />
-        ) : (
-          <Copy size={16} />
-        )}
+        {copied ? <Check size={16} /> : <Copy size={16} />}
       </button>
       <span className='sr-only' role='status'>
         {message}

@@ -670,6 +670,7 @@ describe('Router', () => {
     );
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
     expect(screen.getByText('Embedded runs content')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Workspace', exact: true })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Theme' })).toBeInTheDocument();
   });
 });

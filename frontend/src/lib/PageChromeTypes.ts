@@ -25,6 +25,7 @@ export interface ToolbarActionMap {
 export interface ToolbarActionConfig {
   action: () => void;
   busy?: boolean;
+  overflow?: boolean;
   disabled?: boolean;
   disabledTitle?: string;
   icon?: LucideIcon;
@@ -47,6 +48,7 @@ export interface ToolbarProps {
   navigate?: NavigateFunction;
   pageTitle: ReactNode;
   pageTitleTooltip?: string;
+  titleAccessory?: ReactNode;
   topLevelToolbar?: boolean;
 }
 

@@ -48,6 +48,10 @@ describe('complex review runs', () => {
         expect(task.end_time!.getTime()).toBeLessThanOrEqual(parent.end_time!.getTime());
       }
       if (task.type !== 'RUNTIME') continue;
+      expect(task.inputs?.parameters).toEqual([
+        { parameter_key: 'dataset_uri', value: expect.stringContaining(task.name!) },
+      ]);
+      expect(task.outputs?.parameters).toEqual([{ parameter_key: 'row_count', value: 12480 }]);
       const layers = getTaskRuntimeLayers(task, tasks)!;
       expect(layers).toBeDefined();
       expect(

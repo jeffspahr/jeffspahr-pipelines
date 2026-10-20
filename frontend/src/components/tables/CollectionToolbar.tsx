@@ -28,10 +28,12 @@ export function CollectionToolbar({
   table,
   filterLabel = table.filterLabel,
   children,
+  compactOptions = false,
 }: {
   table: CustomTableRenderModel;
   filterLabel?: string;
   children?: ReactNode;
+  compactOptions?: boolean;
 }) {
   const id = useId();
   return (
@@ -57,7 +59,7 @@ export function CollectionToolbar({
       {table.filterActions}
       <div className='kfp-collection-view-controls'>
         {children}
-        <DensityMenu />
+        <DensityMenu compact={compactOptions} />
       </div>
     </div>
   );

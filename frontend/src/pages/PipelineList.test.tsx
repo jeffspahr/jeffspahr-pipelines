@@ -26,7 +26,6 @@ import TestUtils, { flushPromisesInAct } from 'src/TestUtils';
 import { PageProps } from './Page';
 import PipelineList from './PipelineList';
 import { CommonTestWrapper } from 'src/TestWrapper';
-import { ExpandState } from 'src/components/CustomTable';
 import { vi } from 'vitest';
 
 beforeEach(() => {
@@ -233,46 +232,14 @@ describe('PipelineList', () => {
       expect(call[1]).toBe('');
     });
     const filter = listPipelinesSpy.mock.calls.at(-1)![4];
-    await userEvent.click(screen.getByRole('button', { name: 'Cards', exact: true }));
-    await userEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    expect(await screen.findByRole('menuitemradio', { name: 'Last 30 days' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
-    await userEvent.keyboard('{Escape}');
     expect(listPipelinesSpy.mock.calls.at(-1)![4]).toBe(filter);
     await userEvent.click(screen.getByRole('button', { name: 'Clear uploaded date filter' }));
     await waitFor(() => expect(listPipelinesSpy.mock.calls.at(-1)![4]).toBe(''));
-    await userEvent.click(screen.getByRole('button', { name: 'Table', exact: true }));
   });
 
-  it('opens namespace transfer from the accessible More actions menu', async () => {
+  it('does not place workspace actions beside search', async () => {
     await renderPipelineList();
-    const trigger = screen.getByRole('button', { name: 'More actions' });
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
-    await userEvent.click(trigger);
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'More actions' })).toHaveAttribute(
-        'aria-expanded',
-        'true',
-      ),
-    );
-    const item = screen.getByRole('menuitem', { name: 'Import / export namespace data…' });
-    expect(item).toHaveAttribute('href', RoutePage.METADATA_TRANSFER);
-    await userEvent.click(item);
-    await waitFor(() => expect(screen.queryByRole('menuitem')).not.toBeInTheDocument());
-  });
-
-  it('closes More actions with Escape and returns focus to its trigger', async () => {
-    await renderPipelineList();
-    const trigger = screen.getByRole('button', { name: 'More actions' });
-    await userEvent.click(trigger);
-    const menu = await screen.findByRole('menu', { name: 'More actions' });
-    await waitFor(() => expect(menu).toHaveFocus());
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('menuitem')).not.toBeInTheDocument());
-    expect(trigger).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'More actions' })).not.toBeInTheDocument();
   });
 
   it('renders an empty list with empty state message', async () => {
@@ -356,7 +323,7 @@ describe('PipelineList', () => {
     await waitForPipelinesLoad();
     expect(listPipelinesSpy).toHaveBeenLastCalledWith('test-ns', '', 20, 'created_at desc', '');
     expect(getPipelineListState()).toHaveProperty('displayPipelines', [
-      { expandState: ExpandState.COLLAPSED, display_name: 'pipeline1', name: 'pipeline1' },
+      { display_name: 'pipeline1', name: 'pipeline1' },
     ]);
   });
 
@@ -422,9 +389,6 @@ describe('PipelineList', () => {
         }),
     );
     await mountWithNPipelines(1);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Expand pipeline test pipeline name0' }),
-    );
     await waitFor(() => expect(listPipelineVersionsSpy).toHaveBeenCalled());
     listPipelinesSpy.mockRejectedValueOnce(new Error('list failed'));
     await act(async () => {
@@ -438,21 +402,13 @@ describe('PipelineList', () => {
     expect(updateBannerSpy).toHaveBeenLastCalledWith(errorBanner);
   });
 
-  it('keeps preview errors local and provides version management links', async () => {
-    await mountWithNPipelines(2);
+  it('keeps latest version errors local and allows retry', async () => {
     listPipelineVersionsSpy.mockRejectedValue(new Error('versions failed'));
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Expand pipeline test pipeline name0' }),
-    );
-    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load versions');
-    expect(screen.getByRole('link', { name: 'View all versions' })).toHaveAttribute(
-      'href',
-      '/pipelines/details/test-pipeline-id0?tab=versions',
-    );
-    expect(screen.queryByRole('checkbox', { name: /^Select version/ })).not.toBeInTheDocument();
+    await mountWithNPipelines(1);
+    expect(await screen.findByRole('button', { name: 'Retry version lookup' })).toBeInTheDocument();
     listPipelineVersionsSpy.mockResolvedValue({ pipeline_versions: [] });
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('No versions yet.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry version lookup' }));
+    expect(await screen.findByText('No versions')).toBeInTheDocument();
   });
 
   it('hides error banner when listing pipelines fails then succeeds', async () => {

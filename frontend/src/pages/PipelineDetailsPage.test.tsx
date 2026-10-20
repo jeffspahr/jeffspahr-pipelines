@@ -262,14 +262,26 @@ describe('PipelineDetails', () => {
     expect(tree.instance().state.selectedVersionIds).toEqual([]);
   });
 
+  it('puts the version selector beside the title and deletion in overflow', async () => {
+    tree = renderPipelineDetailsElement(
+      <PipelineDetailsPage {...generateProps(PIPELINE_VERSION_ID)} />,
+    );
+    await TestUtils.flushPromises();
+    const toolbar = tree.instance().getInitialToolbarState();
+    expect(toolbar.actions[ButtonKeys.DELETE_RUN].overflow).toBe(true);
+    render(<>{toolbar.titleAccessory}</>);
+    expect(screen.getByRole('combobox', { name: 'Version' })).toHaveValue(
+      originalTestV2PipelineVersion.pipeline_version_id,
+    );
+  });
+
   it('shows pipeline name in page name, and breadcrumb to go back to pipelines', async () => {
     tree = renderPipelineDetailsElement(<PipelineDetailsPage {...generateProps()} />);
     await TestUtils.flushPromises();
     expect(updateToolbarSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         breadcrumbs: [{ displayName: 'Pipelines', href: RoutePage.PIPELINES }],
-        pageTitle:
-          testV2Pipeline.display_name + ' (' + originalTestV2PipelineVersion.display_name + ')',
+        pageTitle: testV2Pipeline.display_name,
       }),
     );
   });
@@ -452,7 +464,7 @@ describe('PipelineDetails', () => {
     expect(updateToolbarSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         breadcrumbs: [{ displayName: 'Pipelines', href: RoutePage.PIPELINES }],
-        pageTitle: testV2Pipeline.display_name + ' (' + newTestV2PipelineVersion.display_name + ')',
+        pageTitle: testV2Pipeline.display_name,
       }),
     );
   });
@@ -638,12 +650,12 @@ describe('PipelineDetails', () => {
     );
   });
 
-  it('has a new experiment button if it has a pipeline reference', async () => {
+  it('does not offer create experiment from pipeline details', async () => {
     tree = renderPipelineDetailsElement(<PipelineDetailsPage {...generateProps()} />);
     await TestUtils.flushPromises();
     const instance = tree.instance() as PipelineDetailsPage;
     const newExperimentBtn = instance.getInitialToolbarState().actions[ButtonKeys.NEW_EXPERIMENT];
-    expect(newExperimentBtn).toBeDefined();
+    expect(newExperimentBtn).toBeUndefined();
   });
 
   it("has 'clone run' toolbar button if viewing an embedded pipeline", async () => {
@@ -716,7 +728,7 @@ describe('PipelineDetails', () => {
     await TestUtils.flushPromises();
     const instance = tree.instance() as PipelineDetailsPage;
     /* create run, create pipeline version, create experiment and delete run, so 4 */
-    expect(Object.keys(instance.getInitialToolbarState().actions)).toHaveLength(4);
+    expect(Object.keys(instance.getInitialToolbarState().actions)).toHaveLength(3);
     const newRunBtn =
       instance.getInitialToolbarState().actions[ButtonKeys.NEW_RUN_FROM_PIPELINE_VERSION];
     expect(newRunBtn).toBeDefined();
@@ -768,34 +780,6 @@ describe('PipelineDetails', () => {
       expect(navigateSpy).toHaveBeenLastCalledWith(
         RoutePage.NEW_RUN +
           `?${QUERY_PARAMS.pipelineId}=${testV2Pipeline.pipeline_id}&${QUERY_PARAMS.pipelineVersionId}=${PIPELINE_VERSION_ID}`,
-      );
-    },
-  );
-
-  it('clicking new experiment button navigates to new experiment page', async () => {
-    tree = renderPipelineDetailsElement(<PipelineDetailsPage {...generateProps()} />);
-    await TestUtils.flushPromises();
-    const instance = tree.instance() as PipelineDetailsPage;
-    const newExperimentBtn = instance.getInitialToolbarState().actions[ButtonKeys.NEW_EXPERIMENT];
-    await newExperimentBtn.action();
-    expect(navigateSpy).toHaveBeenCalledTimes(1);
-    expect(navigateSpy).toHaveBeenLastCalledWith(
-      RoutePage.NEW_EXPERIMENT + `?${QUERY_PARAMS.pipelineId}=${testV2Pipeline.pipeline_id}`,
-    );
-  });
-
-  it(
-    'clicking new experiment button when viewing half-loaded page navigates to ' +
-      'the new experiment page with the pipeline ID',
-    async () => {
-      tree = renderPipelineDetailsElement(<PipelineDetailsPage {...generateProps()} />);
-      // Intentionally don't wait until all network requests finish.
-      const instance = tree.instance() as PipelineDetailsPage;
-      const newExperimentBtn = instance.getInitialToolbarState().actions[ButtonKeys.NEW_EXPERIMENT];
-      await newExperimentBtn.action();
-      expect(navigateSpy).toHaveBeenCalledTimes(1);
-      expect(navigateSpy).toHaveBeenLastCalledWith(
-        RoutePage.NEW_EXPERIMENT + `?${QUERY_PARAMS.pipelineId}=${testV2Pipeline.pipeline_id}`,
       );
     },
   );

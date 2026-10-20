@@ -557,3 +557,12 @@ it('exposes a caller-provided refresh action for an informational banner', () =>
   fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Refresh' }));
   expect(refresh).toHaveBeenCalledOnce();
 });
+
+it('keeps namespace import/export available in the embedded header without a sidebar', async () => {
+  render(element({ showWorkspaceControl: true, showThemeControl: true }));
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Workspace', exact: true }));
+  expect(
+    await screen.findByRole('menuitem', { name: 'Import / export namespace data…' }),
+  ).toHaveAttribute('href', '/export-import');
+});

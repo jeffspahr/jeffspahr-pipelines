@@ -22,6 +22,7 @@ function props(): GraphControlsProps {
     onLockChange: vi.fn(),
     onExpandAll: vi.fn(),
     onCollapseAll: vi.fn(),
+    onViewportInteraction: vi.fn(),
   };
 }
 
@@ -55,6 +56,7 @@ it('orders the six graph controls and dispatches each action', () => {
   for (const button of buttons) fireEvent.click(button);
   expect(options.onExpandAll).toHaveBeenCalledOnce();
   expect(options.onCollapseAll).toHaveBeenCalledOnce();
+  expect(options.onViewportInteraction).toHaveBeenCalledTimes(3);
   expect(mocked.viewport.zoomIn).toHaveBeenCalledOnce();
   expect(mocked.viewport.zoomOut).toHaveBeenCalledOnce();
   expect(mocked.viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 });

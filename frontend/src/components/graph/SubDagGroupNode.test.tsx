@@ -91,3 +91,23 @@ it('explains how to open a deferred group without presenting it as empty', () =>
   );
   expect(screen.queryByText('No tasks in this scope')).not.toBeInTheDocument();
 });
+
+it('reserves the status slot before the collapse control even without runtime status', () => {
+  const group = (state?: PipelineTaskTaskState) => (
+    <ReactFlowProvider>
+      <SubDagGroupNode
+        id='group'
+        selected={false}
+        data={{ label: 'Training', state, expand: vi.fn() }}
+      />
+    </ReactFlowProvider>
+  );
+  const { rerender } = render(group());
+  const header = screen.getByTestId('subdag-header');
+  const slots = () => Array.from(header.children);
+  expect(slots()[2]).toBe(screen.getByTestId('subdag-status'));
+  expect(slots()[3]).toBe(screen.getByRole('button', { name: 'Collapse Training' }));
+  rerender(group(PipelineTaskTaskState.FAILED));
+  expect(slots()[2]).toHaveAttribute('aria-label', 'Failed');
+  expect(slots()[3]).toBe(screen.getByRole('button', { name: 'Collapse Training' }));
+});

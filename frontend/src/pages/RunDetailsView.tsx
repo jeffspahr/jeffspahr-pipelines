@@ -530,8 +530,8 @@ export function RunDetailsView(props: RunDetailsViewProps) {
 
   // Update page title and experiment information.
   useEffect(() => {
-    updateToolBar(run, experiment, updateToolbar);
-  }, [run, experiment, updateToolbar]);
+    updateToolBar(run, experiment, updateToolbar, props.location.state?.fromExperimentId);
+  }, [run, experiment, updateToolbar, props.location.state?.fromExperimentId]);
 
   // Update buttons for managing runs.
   const [buttons] = useState(new Buttons(props, () => forceUpdate));
@@ -724,7 +724,13 @@ export function RunDetailsView(props: RunDetailsViewProps) {
               </div>
             </dl>
             <div className='kfp-detail-sections'>
-              <DetailsTable title='Run details' fields={getDetailsFields(run)} />
+              <DetailsTable
+                title='Run details'
+                fields={[
+                  ...getDetailsFields(run),
+                  ['Experiment', experiment?.display_name || run?.experiment_id || '-'],
+                ]}
+              />
               {Object.keys(run.runtime_config?.parameters || {}).length > 0 && (
                 <DetailsTable
                   title='Run parameters'
@@ -769,6 +775,7 @@ function updateToolBar(
   run: V2beta1Run | undefined,
   experiment: V2beta1Experiment | undefined,
   updateToolBarCallback: (toolbarProps: Partial<ToolbarProps>) => void,
+  fromExperimentId?: string,
 ) {
   const runMetadata = run;
   if (runMetadata) {
@@ -786,7 +793,11 @@ function updateToolBar(
   }
 
   const breadcrumbs: Array<{ displayName: string; href: string }> = [];
-  if (experiment && experiment.experiment_id && experiment.display_name) {
+  if (
+    experiment?.experiment_id &&
+    experiment.experiment_id === fromExperimentId &&
+    experiment.display_name
+  ) {
     breadcrumbs.push(
       { displayName: 'Experiments', href: RoutePage.EXPERIMENTS },
       {
@@ -795,7 +806,7 @@ function updateToolBar(
       },
     );
   } else {
-    breadcrumbs.push({ displayName: 'All runs', href: RoutePage.RUNS });
+    breadcrumbs.push({ displayName: 'Runs', href: RoutePage.RUNS });
   }
   updateToolBarCallback({ breadcrumbs });
 }

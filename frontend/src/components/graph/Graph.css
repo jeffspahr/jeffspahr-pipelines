@@ -92,17 +92,15 @@
 }
 .kfp-graph-type-icon {
   flex: none;
-  color: var(--kfp-node-state-color);
+  color: var(--muted-foreground);
 }
-.kfp-graph-state-dot {
+.kfp-graph-state-icon {
   display: inline-block;
   flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--kfp-node-state-color);
+  color: var(--kfp-node-state-color);
+  vertical-align: -2px;
 }
-.kfp-graph-state-dot[data-state='RUNNING'] {
+.kfp-graph-state-icon[data-state='RUNNING'] {
   animation: kfp-graph-pulse 1.6s ease-in-out infinite;
 }
 .kfp-graph-group {
@@ -242,23 +240,16 @@
   gap: 6px;
   color: var(--muted-foreground);
 }
-.kfp-graph-legend .kfp-graph-state-dot {
-  width: 8px;
-  height: 8px;
-}
 .kfp-graph-edge .react-flow__edge-path {
   stroke: var(--border-strong);
 }
-.kfp-graph-edge-highlighted .react-flow__edge-path,
 .kfp-graph-edge:hover .react-flow__edge-path,
 .kfp-graph-edge:focus-visible .react-flow__edge-path,
 .kfp-graph-edge.selected .react-flow__edge-path {
   stroke: var(--primary);
   stroke-width: 2;
 }
-.kfp-graph-node-meta .kfp-graph-state-dot {
-  width: 8px;
-  height: 8px;
+.kfp-graph-node-meta .kfp-graph-state-icon {
   margin-right: 5px;
 }
 @keyframes kfp-graph-pulse {
@@ -267,7 +258,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kfp-graph-state-dot {
+  .kfp-graph-state-icon {
     animation: none;
   }
 }
@@ -302,15 +293,19 @@
   outline: 2px solid var(--primary);
 }
 .kfp-subdag-header {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 16px 30px;
+  gap: 10px;
+  align-items: center;
+  padding: 0 12px;
   background: var(--card);
   color: var(--foreground);
 }
 .kfp-subdag-status {
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0;
+  justify-content: center;
 }
 .kfp-subdag-box[data-tone='succeeded'] {
   --kfp-node-state-color: var(--status-succeeded);
@@ -332,4 +327,23 @@
   color: var(--foreground);
   box-shadow: var(--shadow-card);
   font-size: 12px;
+}
+
+.kfp-subdag-type {
+  display: flex;
+  align-items: center;
+}
+.kfp-subdag-label {
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+}
+.kfp-subdag-header .kfp-graph-expand {
+  margin: 0;
+}
+
+.kfp-subdag-label .truncate {
+  display: block;
 }

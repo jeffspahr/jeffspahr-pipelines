@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 
-import { Box } from 'lucide-react';
+import {
+  Box,
+  CircleCheck,
+  CircleX,
+  LoaderCircle,
+  SkipForward,
+  Database,
+  CircleHelp,
+} from 'lucide-react';
 import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
 import { ExecutionFlowElementData, GRAPH_NODE_HEIGHT, GRAPH_NODE_WIDTH } from './Constants';
 import { ReadOnlyNodeHandles } from './ReadOnlyNodeHandles';
@@ -27,9 +35,17 @@ export interface ExecutionNodeProps {
 }
 
 export function TaskStateIndicator({ state }: { state?: PipelineTaskTaskState }) {
-  return state === undefined ? null : (
-    <span className='kfp-graph-state-dot' data-state={state} aria-hidden='true' />
-  );
+  if (state === undefined) return null;
+  const Icon =
+    {
+      SUCCEEDED: CircleCheck,
+      FAILED: CircleX,
+      RUNNING: LoaderCircle,
+      SKIPPED: SkipForward,
+      CACHED: Database,
+      RUNTIME_STATE_UNSPECIFIED: CircleHelp,
+    }[state] || CircleHelp;
+  return <Icon className='kfp-graph-state-icon' data-state={state} size={12} aria-hidden='true' />;
 }
 
 export default function ExecutionNode({ id, data }: ExecutionNodeProps) {

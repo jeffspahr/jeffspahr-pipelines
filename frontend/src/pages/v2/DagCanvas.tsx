@@ -34,10 +34,14 @@ import {
   OnNodeDrag,
   OnNodesChange,
   ReactFlowInstance,
+  useNodesInitialized,
+  useReactFlow,
+  useStore,
 } from '@xyflow/react';
 import 'src/components/graph/Graph.css';
 import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
 import { getTaskStatus } from 'src/lib/StatusUtils';
+import { TaskStateIndicator } from 'src/components/graph/ExecutionNode';
 import GraphControls from 'src/components/graph/GraphControls';
 import { FlowElementDataBase, GRAPH_FIT_OPTIONS } from 'src/components/graph/Constants';
 import { NODE_TYPES } from 'src/components/graph/NodeTypes';
@@ -91,10 +95,11 @@ function DagCanvasView({
   graphId,
 }: DagCanvasProps) {
   const reactFlowInstance = useRef<ReactFlowInstance<PipelineNode, Edge> | null>(null);
+  const initialFitComplete = useRef(false);
+  const manuallyMoved = useRef(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const lastFocusedNodeId = useRef<string | null>(null);
   const [locked, setLocked] = useState(true);
-  const [hoveredNodeId, setHoveredNodeId] = useState<string>();
   const canDrag = nodesDraggable && !locked;
   const [expansion, setExpansion] = useState(() => loadGraphExpansion(graphId));
   // External synchronization: persist preferences after committed state changes.
@@ -189,14 +194,10 @@ function DagCanvasView({
     () =>
       grouped.edges.map((edge) => ({
         ...edge,
-        className: `${edge.className || ''} kfp-graph-edge${
-          [edge.source, edge.target].some((id) => id === selectedId || id === hoveredNodeId)
-            ? ' kfp-graph-edge-highlighted'
-            : ''
-        }`,
+        className: `${edge.className || ''} kfp-graph-edge`,
         style: { ...edge.style, strokeWidth: 1.5 },
       })),
-    [grouped.edges, selectedId, hoveredNodeId],
+    [grouped.edges],
   );
   const visibleStates = [
     ...new Set(
@@ -252,6 +253,7 @@ function DagCanvasView({
     )
       return;
     if (event.key === 'f' || event.key === 'F') {
+      manuallyMoved.current = true;
       event.preventDefault();
       event.stopPropagation();
       void instance.fitView(GRAPH_FIT_OPTIONS);
@@ -261,6 +263,7 @@ function DagCanvasView({
     if (!locked || !direction) return;
     event.preventDefault();
     event.stopPropagation();
+    manuallyMoved.current = true;
     const viewport = instance.getViewport();
     void instance.setViewport({
       ...viewport,
@@ -286,7 +289,11 @@ function DagCanvasView({
       lastFocusedNodeId.current = null;
       return;
     }
-    if (reactFlowInstance.current && lastFocusedNodeId.current !== focusedId) {
+    if (
+      initialFitComplete.current &&
+      reactFlowInstance.current &&
+      lastFocusedNodeId.current !== focusedId
+    ) {
       lastFocusedNodeId.current = focusedId;
       fitCurrentView(reactFlowInstance.current);
     }
@@ -370,25 +377,27 @@ function DagCanvasView({
           nodesFocusable={canDrag}
           onInit={(instance) => {
             reactFlowInstance.current = instance;
-            lastFocusedNodeId.current = focusedId || null;
-            fitCurrentView(instance);
           }}
-          fitView
-          fitViewOptions={{
-            ...GRAPH_FIT_OPTIONS,
-            ...(focusedId ? { nodes: [{ id: focusedId }] } : {}),
+          onMoveStart={(event) => {
+            if (event) manuallyMoved.current = true;
           }}
           minZoom={0.05}
           nodeTypes={NODE_TYPES}
           edgeTypes={{}}
           onNodeClick={handleElementClick}
-          onNodeMouseEnter={(_event, node) => setHoveredNodeId(node.id)}
-          onNodeMouseLeave={() => setHoveredNodeId(undefined)}
           onEdgeClick={handleElementClick}
           onNodesChange={onNodesChange}
           onNodeDragStop={canDrag ? onNodeDragStop : undefined}
           deleteKeyCode={null}
         >
+          <InitialGraphFit
+            onReady={(instance) => {
+              reactFlowInstance.current = instance;
+              lastFocusedNodeId.current = focusedId || null;
+              initialFitComplete.current = true;
+              if (!manuallyMoved.current) fitCurrentView(instance);
+            }}
+          />
           <MiniMap position='top-right' />
           <GraphControls
             showSubDagControls={!!getSubDagElements}
@@ -399,6 +408,9 @@ function DagCanvasView({
             )}
             locked={locked}
             onLockChange={setLocked}
+            onViewportInteraction={() => {
+              manuallyMoved.current = true;
+            }}
             onExpandAll={expandAll}
             onCollapseAll={collapseAll}
           />
@@ -410,7 +422,7 @@ function DagCanvasView({
                   const status = getTaskStatus(state);
                   return (
                     <li key={state} data-tone={status.tone}>
-                      <span className='kfp-graph-state-dot' aria-hidden='true' />
+                      <TaskStateIndicator state={state} />
                       {status.label}
                     </li>
                   );
@@ -422,4 +434,26 @@ function DagCanvasView({
       </ReactFlowProvider>
     </div>
   );
+}
+
+// External synchronization: wait for React Flow's measured nodes and viewport,
+// rather than fitting during onInit while its container is still being laid out.
+function InitialGraphFit({
+  onReady,
+}: {
+  onReady: (instance: ReactFlowInstance<PipelineNode, Edge>) => void;
+}) {
+  const instance = useReactFlow<PipelineNode, Edge>();
+  const nodesReady = useNodesInitialized();
+  const viewportReady = useStore((store) => store.width > 0 && store.height > 0);
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (!nodesReady || !viewportReady || !instance.viewportInitialized || fitted.current) return;
+    const frame = requestAnimationFrame(() => {
+      fitted.current = true;
+      onReady(instance);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [nodesReady, viewportReady, instance, onReady]);
+  return null;
 }

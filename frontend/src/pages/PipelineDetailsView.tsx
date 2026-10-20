@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 import 'src/pages/DetailLayouts.css';
-import { Link } from 'react-router';
-import { useCallback, useId, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import { useCallback, useMemo, useState } from 'react';
 import { V2beta1Pipeline, V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
 import { InspectionTabs } from 'src/components/inspection/InspectionTabs';
 import { PipelineVersionCard } from 'src/components/navigators/PipelineVersionCard';
@@ -58,12 +58,14 @@ function PipelineDetailsView({
   pipelineFlowElements,
   pipeline,
   selectedVersion,
-  versions,
-  handleVersionSelected,
 }: PipelineDetailsViewProps) {
-  const versionSelectorId = useId();
+  const navigate = useNavigate();
   const layers = ROOT_LAYERS;
-  const [selectedTab, setSelectedTab] = useState(0);
+  const location = useLocation();
+  const initialTab = new URLSearchParams(location.search).get('tab');
+  const [selectedTab, setSelectedTab] = useState(
+    initialTab === 'details' ? 1 : initialTab === 'spec' ? 2 : 0,
+  );
   const [selection, setSelection] = useState<LayerFlowElement | null>(null);
   const pipelineSpec = useMemo(
     () => (templateString ? tryConvertYamlToV2PipelineSpec(templateString) : undefined),
@@ -76,33 +78,13 @@ function PipelineDetailsView({
 
   return (
     <div className='kfp-detail-page kfp-pipeline-detail' data-testid='pipeline-detail-v2'>
-      {(versions.length > 0 || manageVersionsHref) && (
-        <div className='kfp-pipeline-version-control'>
-          {versions.length > 0 && (
-            <>
-              <label htmlFor={versionSelectorId}>Version</label>
-              <select
-                id={versionSelectorId}
-                data-testid='version_selector'
-                value={selectedVersion?.pipeline_version_id || ''}
-                onChange={(event) => handleVersionSelected(event.target.value)}
-              >
-                {!selectedVersion && <option value=''>Select a version</option>}
-                {versions.map((version) => (
-                  <option key={version.pipeline_version_id} value={version.pipeline_version_id}>
-                    {version.display_name || version.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-          {manageVersionsHref && <Link to={manageVersionsHref}>Manage versions</Link>}
-        </div>
-      )}
       <InspectionTabs
         selectedTab={selectedTab}
-        onSwitch={setSelectedTab}
-        tabs={TAB_NAMES}
+        onSwitch={(index) => {
+          if (index === 3 && manageVersionsHref) navigate(manageVersionsHref);
+          else setSelectedTab(index);
+        }}
+        tabs={manageVersionsHref ? [...TAB_NAMES, 'Versions'] : TAB_NAMES}
         ariaLabel='Pipeline details'
       >
         {selectedTab === 0 && (

@@ -1218,7 +1218,8 @@ test('Run Details exposes semantic values and restores navigation after closing 
       .waitFor();
     await inspector.getByRole('button', { name: 'close', exact: true }).click();
     await inspector.waitFor({ state: 'hidden' });
-    await page.getByRole('link', { name: 'Runs', exact: true }).click({ trial: true });
+    await page.getByLabel('Breadcrumbs').getByRole('link', { name: 'Runs', exact: true }).click({ trial: true });
+    await page.locator('#runsBtn').click({ trial: true });
   });
 });
 

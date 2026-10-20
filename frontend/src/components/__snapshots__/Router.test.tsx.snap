@@ -44,6 +44,35 @@ exports[`Router > initial render 1`] = `
             </span>
           </div>
         </div>
+        <button
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-label="Workspace"
+          class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border font-kfp-sans text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-wait [&_svg]:size-[18px] [&_svg]:shrink-0 border-transparent bg-transparent text-foreground-2 hover:bg-muted hover:text-foreground h-8 px-2.5 kfp-shell-workspace"
+          data-slot="button"
+          id="base-ui-_r_5_"
+          tabindex="0"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-chevron-down"
+            fill="none"
+            height="16"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="16"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="m6 9 6 6 6-6"
+            />
+          </svg>
+          Workspace
+        </button>
         <div
           class="kfp-shell-search-container"
         >
@@ -311,7 +340,7 @@ exports[`Router > initial render 1`] = `
                 aria-label="Dark mode"
                 class="kfp-switch"
                 data-unchecked=""
-                id="base-ui-_r_2_"
+                id="base-ui-_r_7_"
                 role="switch"
                 tabindex="0"
               >
@@ -322,7 +351,7 @@ exports[`Router > initial render 1`] = `
               </span>
               <input
                 aria-hidden="true"
-                id="base-ui-_r_3_"
+                id="base-ui-_r_8_"
                 style="clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"
                 tabindex="-1"
                 type="checkbox"
@@ -389,12 +418,12 @@ exports[`Router > initial render 1`] = `
               </svg>
             </div>
             <a
-              aria-describedby="_r_5_"
+              aria-describedby="_r_a_"
               aria-label="Documentation"
               class="kfp-shell-utility"
               data-base-ui-tooltip-trigger=""
               href="https://www.kubeflow.org/docs/pipelines/"
-              id="base-ui-_r_7_"
+              id="base-ui-_r_c_"
               rel="noopener noreferrer"
               target="_blank"
             >
@@ -420,12 +449,12 @@ exports[`Router > initial render 1`] = `
               </svg>
             </a>
             <a
-              aria-describedby="_r_8_"
+              aria-describedby="_r_d_"
               aria-label="GitHub"
               class="kfp-shell-utility"
               data-base-ui-tooltip-trigger=""
               href="https://github.com/kubeflow/pipelines"
-              id="base-ui-_r_a_"
+              id="base-ui-_r_f_"
               rel="noopener noreferrer"
               target="_blank"
             >
@@ -454,12 +483,12 @@ exports[`Router > initial render 1`] = `
               </svg>
             </a>
             <a
-              aria-describedby="_r_b_"
+              aria-describedby="_r_g_"
               aria-label="Report an issue"
               class="kfp-shell-utility"
               data-base-ui-tooltip-trigger=""
               href="https://github.com/kubeflow/pipelines/issues/new/choose"
-              id="base-ui-_r_d_"
+              id="base-ui-_r_i_"
               rel="noopener noreferrer"
               target="_blank"
             >
@@ -482,13 +511,13 @@ exports[`Router > initial render 1`] = `
               </svg>
             </a>
             <button
-              aria-describedby="_r_e_"
+              aria-describedby="_r_j_"
               aria-expanded="true"
               aria-label="Collapse navigation"
               class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border font-kfp-sans text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-wait [&_svg]:size-[18px] [&_svg]:shrink-0 border-transparent bg-transparent text-foreground-2 hover:bg-muted hover:text-foreground size-[34px] p-0 kfp-shell-utility kfp-shell-collapse"
               data-base-ui-tooltip-trigger=""
               data-slot="button"
-              id="base-ui-_r_g_"
+              id="base-ui-_r_l_"
               tabindex="0"
               type="button"
             >

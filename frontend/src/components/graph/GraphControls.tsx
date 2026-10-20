@@ -55,6 +55,7 @@ export interface GraphControlsProps {
   onLockChange: (locked: boolean) => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
+  onViewportInteraction?: () => void;
 }
 
 export default function GraphControls({
@@ -66,6 +67,7 @@ export default function GraphControls({
   onLockChange,
   onExpandAll,
   onCollapseAll,
+  onViewportInteraction,
 }: GraphControlsProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const maxZoomReached = useStore((state) => state.transform[2] >= state.maxZoom);
@@ -103,6 +105,7 @@ export default function GraphControls({
         className='react-flow__controls-zoomin'
         disabled={maxZoomReached}
         onClick={() => {
+          onViewportInteraction?.();
           void zoomIn();
         }}
       >
@@ -113,6 +116,7 @@ export default function GraphControls({
         className='react-flow__controls-zoomout'
         disabled={minZoomReached}
         onClick={() => {
+          onViewportInteraction?.();
           void zoomOut();
         }}
       >
@@ -124,6 +128,7 @@ export default function GraphControls({
         aria-keyshortcuts='F'
         className='react-flow__controls-fitview'
         onClick={() => {
+          onViewportInteraction?.();
           void fitView(GRAPH_FIT_OPTIONS);
         }}
       >

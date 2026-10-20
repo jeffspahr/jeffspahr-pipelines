@@ -36,15 +36,12 @@ export default function SubDagGroupNode({
           style={{ height: data.headerHeight ?? GROUP_HEADER_HEIGHT, pointerEvents: 'auto' }}
           title={data.expansionError}
         >
-          <div
-            data-testid='subdag-type'
-            className='w-8 pl-2 h-full flex items-center flex-shrink-0'
-          >
+          <div data-testid='subdag-type' className='kfp-subdag-type'>
             <SubDagTypeIcon kind={data.groupKind} />
           </div>
           <button
             type='button'
-            className='focus:outline-none focus:ring-0 px-3 flex flex-1 min-w-0 items-center justify-center text-sm'
+            className='kfp-subdag-label'
             title={data.label}
             style={{ background: 'transparent', border: 0, fontWeight: 400 }}
           >
@@ -52,6 +49,14 @@ export default function SubDagGroupNode({
               {data.label}
             </span>
           </button>
+          <div
+            title={data.state ? status.label : undefined}
+            aria-label={data.state ? status.label : undefined}
+            className='kfp-subdag-status'
+            data-testid='subdag-status'
+          >
+            <TaskStateIndicator state={data.state} />
+          </div>
           <button
             type='button'
             className={`nodrag kfp-graph-expand ${draggable ? 'nopan' : ''}`}
@@ -63,15 +68,10 @@ export default function SubDagGroupNode({
               event.stopPropagation();
               data.expand(id);
             }}
-            style={{ background: 'transparent', border: 0, padding: 0, width: '2rem' }}
+            style={{ background: 'transparent', border: 0, padding: 0 }}
           >
             {collapsed ? <UnfoldMoreIcon size={16} /> : <UnfoldLessIcon size={16} />}
           </button>
-          {data.state && (
-            <div title={status.label} className='kfp-subdag-status' data-testid='subdag-status'>
-              <TaskStateIndicator state={data.state} />
-            </div>
-          )}
         </div>
         {!collapsed && (data.expansionError || data.empty) && (
           <div

@@ -97,6 +97,7 @@ export function ExperimentRunPreview({ experimentId, archived = false, runs, err
               <Link
                 title={run.display_name || run.run_id}
                 to={RoutePageFactory.runDetails(run.run_id!)}
+                state={{ fromExperimentId: experimentId }}
               >
                 {run.display_name || run.run_id}
               </Link>

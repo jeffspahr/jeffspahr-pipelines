@@ -582,6 +582,114 @@ describe('RuntimeNodeDetails', () => {
     });
   }
 
+  it.each([false, true])(
+    'cancels pending copy when the selected attempt changes (ClipboardItem: %s)',
+    async (modernClipboard) => {
+      let resolveLogs!: (value: string) => void;
+      const pending = new Promise<string>((resolve) => {
+        resolveLogs = resolve;
+      });
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      const consume = vi.fn();
+      const write = vi.fn(async (items: Array<{ content: Record<string, Promise<Blob>> }>) => {
+        const blob = await items[0].content['text/plain'];
+        consume(blob);
+      });
+      vi.stubGlobal(
+        'ClipboardItem',
+        modernClipboard
+          ? class {
+              constructor(public content: Record<string, Promise<Blob>>) {}
+            }
+          : undefined,
+      );
+      vi.stubGlobal('navigator', {
+        ...navigator,
+        clipboard: { writeText, ...(modernClipboard ? { write } : {}) },
+      });
+      vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('latest output');
+      vi.spyOn(Apis, 'readFile').mockImplementation((request) =>
+        request.peek ? Promise.resolve('preview') : pending,
+      );
+      renderTask({ ...retryTask(), task_id: `pending-copy-${modernClipboard}` });
+      fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Task logs', exact: true }));
+      const select = screen.getByRole('combobox', { name: 'Available task logs' });
+      fireEvent.change(select, { target: { value: 'artifact:first' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Copy task logs' }));
+      if (modernClipboard) expect(write).toHaveBeenCalledTimes(1);
+      fireEvent.change(select, { target: { value: 'artifact:second' } });
+      await act(async () => {
+        resolveLogs('old attempt output');
+        await pending;
+      });
+      expect(writeText).not.toHaveBeenCalled();
+      expect(consume).not.toHaveBeenCalled();
+      expect(screen.queryByText('Task logs copied.')).not.toBeInTheDocument();
+    },
+  );
+
+  it('starts ClipboardItem write during the click and supplies the fetched log as a Blob', async () => {
+    let resolveLogs!: (value: string) => void;
+    const pending = new Promise<string>((resolve) => {
+      resolveLogs = resolve;
+    });
+    const consume = vi.fn();
+    const write = vi.fn(async (items: Array<{ content: Record<string, Promise<Blob>> }>) => {
+      consume(await items[0].content['text/plain']);
+    });
+    vi.stubGlobal(
+      'ClipboardItem',
+      class {
+        constructor(public content: Record<string, Promise<Blob>>) {}
+      },
+    );
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { write } });
+    vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('latest output');
+    vi.spyOn(Apis, 'readFile').mockImplementation((request) =>
+      request.peek ? Promise.resolve('preview') : pending,
+    );
+    renderTask({ ...retryTask(), task_id: 'activation-copy' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Task logs', exact: true }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Available task logs' }), {
+      target: { value: 'artifact:first' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Copy task logs' }));
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(consume).not.toHaveBeenCalled();
+    await act(async () => {
+      resolveLogs('selected attempt output');
+      await pending;
+    });
+    await waitFor(() => expect(consume).toHaveBeenCalledWith(expect.any(Blob)));
+    const blob = consume.mock.calls[0][0] as Blob;
+    expect(blob.type).toBe('text/plain');
+    expect(blob.size).toBe('selected attempt output'.length);
+    expect(await screen.findByText('Task logs copied.')).toBeInTheDocument();
+  });
+
+  it('loads and copies the selected archived task logs while collapsed', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('latest output');
+    const readFile = vi.spyOn(Apis, 'readFile').mockResolvedValue('first attempt output');
+    renderTask({ ...retryTask(), task_id: 'collapsed-copy-task' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Task logs', exact: true }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Available task logs' }), {
+      target: { value: 'artifact:first' },
+    });
+    readFile.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy task logs' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('first attempt output'));
+    expect(JSON.stringify(readFile.mock.calls)).toContain('executor-logs-0');
+    expect(screen.getByRole('button', { name: 'Task logs', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
   it('selects archived attempts without mixing in latest logs, preserves selection, and copies the selected output', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
@@ -610,7 +718,7 @@ describe('RuntimeNodeDetails', () => {
       'Pod · earlier-pod',
     ]);
     fireEvent.change(select, { target: { value: 'artifact:first' } });
-    expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeEnabled();
     expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
     await act(async () => resolveArchive('first attempt failed\nfull output\n'));
     await waitFor(() =>
@@ -739,16 +847,16 @@ describe('RuntimeNodeDetails', () => {
       }),
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
-    expect(screen.getByRole('button', { name: 'Copy driver logs' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Copy driver logs' })).toBeEnabled();
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeEnabled(),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Copy task logs' }));
     await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(taskText));
     expect(await screen.findByText('Task logs copied.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Driver logs', exact: true }));
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Copy driver logs' })).toBeEnabled(),
+    expect(screen.getByRole('button', { name: 'Driver logs', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'false',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Copy driver logs' }));
     await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(driverText));

@@ -16,6 +16,7 @@
 
 import * as React from 'react';
 import PipelineVersionList from './PipelineVersionList';
+import { InspectionTabs } from 'src/components/inspection/InspectionTabs';
 import * as JsYaml from 'js-yaml';
 import { Apis } from 'src/lib/Apis';
 import { convertFlowElements } from 'src/lib/v2/StaticFlow';
@@ -108,7 +109,8 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
             href: RoutePageFactory.pipelineDetails(pipelineIdFromParams),
           },
         ],
-        pageTitle: 'Versions',
+        pageTitle: this.state?.v2Pipeline?.display_name || pipelineIdFromParams,
+        titleAccessory: undefined,
       };
     }
 
@@ -132,6 +134,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
           },
         ],
         pageTitle: 'Pipeline details',
+        titleAccessory: undefined,
       };
     } else {
       // Add buttons for creating experiment and deleting pipeline version
@@ -155,7 +158,6 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
         .newPipelineVersion('Upload version', () =>
           pipelineIdFromParams ? pipelineIdFromParams : '',
         )
-        .newExperiment(() => this.state.v2Pipeline?.pipeline_id || pipelineIdFromParams)
         .deletePipelineVersion(
           () =>
             pipelineIdFromParams && pipelineVersionIdFromParams
@@ -164,8 +166,11 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
           this._deleteCallback.bind(this),
           pipelineVersionIdFromParams ? true : false /* useCurrentResource */,
         );
+      const actions = buttons.getToolbarActionMap();
+      actions[ButtonKeys.DELETE_RUN].overflow = true;
       return {
-        actions: buttons.getToolbarActionMap(),
+        actions,
+        titleAccessory: this.versionSelector(),
         breadcrumbs: [{ displayName: 'Pipelines', href: RoutePage.PIPELINES }],
         pageTitle: this.props.params[RouteParams.pipelineId] ?? '',
       };
@@ -178,18 +183,30 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
     if (this.managingVersions) {
       return (
         <div className='kfp-pipeline-detail'>
-          <PipelineVersionList
-            {...this.props}
-            ref={this.versionList}
-            pipelineId={this.props.params[RouteParams.pipelineId]}
-            selectedIds={this.state.selectedVersionIds}
-            onSelectionChange={(selectedVersionIds) =>
-              this.setState({ selectedVersionIds }, () =>
-                this.props.updateToolbar(this.getInitialToolbarState()),
+          <InspectionTabs
+            tabs={['Graph', 'Details', 'Pipeline spec', 'Versions']}
+            selectedTab={3}
+            ariaLabel='Pipeline details'
+            onSwitch={(index) =>
+              this.props.navigate(
+                RoutePageFactory.pipelineDetails(this.props.params[RouteParams.pipelineId] || '') +
+                  (index === 1 ? '?tab=details' : index === 2 ? '?tab=spec' : ''),
               )
             }
-            onError={(message, error) => void this.showPageError(message, error)}
-          />
+          >
+            <PipelineVersionList
+              {...this.props}
+              ref={this.versionList}
+              pipelineId={this.props.params[RouteParams.pipelineId]}
+              selectedIds={this.state.selectedVersionIds}
+              onSelectionChange={(selectedVersionIds) =>
+                this.setState({ selectedVersionIds }, () =>
+                  this.props.updateToolbar(this.getInitialToolbarState()),
+                )
+              }
+              onError={(message, error) => void this.showPageError(message, error)}
+            />
+          </InspectionTabs>
         </div>
       );
     }
@@ -435,10 +452,10 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
         // An empty pipeline, which doesn't have any version.
         pageTitle = v2Pipeline.display_name!;
         const actions = this.props.toolbarProps.actions;
-        actions[ButtonKeys.DELETE_RUN].disabled = true;
+        if (actions[ButtonKeys.DELETE_RUN]) actions[ButtonKeys.DELETE_RUN].disabled = true;
         this.props.updateToolbar({ actions });
       } else {
-        pageTitle = `${v2Pipeline.display_name} (${v2SelectedVersion.display_name})`;
+        pageTitle = v2Pipeline.display_name || v2Pipeline.name || pipelineId;
         try {
           // TODO(jingzhang36): pagination not proper here. so if many versions,
           // the page size value should be?
@@ -463,7 +480,12 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
       breadcrumbs = [{ displayName: 'Pipelines', href: RoutePage.PIPELINES }];
     }
 
-    this.props.updateToolbar({ breadcrumbs, actions: toolbarActions, pageTitle });
+    this.props.updateToolbar({
+      breadcrumbs,
+      actions: toolbarActions,
+      pageTitle,
+      titleAccessory: this.versionSelector(v2Versions, v2SelectedVersion),
+    });
 
     const graphV2 = await this._createGraph(templateString);
     this.setStateSafe({
@@ -477,16 +499,35 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
     });
   }
 
+  private versionSelector(
+    versions = this.state?.v2Versions || [],
+    selected = this.state?.v2SelectedVersion,
+  ): React.ReactNode {
+    if (this.getOrigin() || !versions.length) return undefined;
+    return (
+      <select
+        className='kfp-pipeline-title-version'
+        aria-label='Version'
+        data-testid='version_selector'
+        value={selected?.pipeline_version_id || ''}
+        onChange={(event) => void this.handleVersionSelected(event.target.value)}
+      >
+        {!selected && <option value=''>Select a version</option>}
+        {versions.map((version) => (
+          <option key={version.pipeline_version_id} value={version.pipeline_version_id}>
+            {version.display_name || version.name || version.pipeline_version_id}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
   public async handleVersionSelected(versionId: string): Promise<void> {
     if (this.state.v2Pipeline) {
       const v2SelectedVersion = (this.state.v2Versions || []).find(
         (v) => v.pipeline_version_id === versionId,
       );
-      const pageTitle = this.state.v2Pipeline.display_name?.concat(
-        ' (',
-        v2SelectedVersion?.display_name!,
-        ')',
-      );
+      const pageTitle = this.state.v2Pipeline.display_name || this.state.v2Pipeline.name;
 
       this.clearBanner();
       const selectedVersionPipelineTemplate = await this._getTemplateString(v2SelectedVersion);
@@ -497,7 +538,10 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
         { replace: true },
       );
       this.props.updateToolbar(this.getInitialToolbarState());
-      this.props.updateToolbar({ pageTitle });
+      this.props.updateToolbar({
+        pageTitle,
+        titleAccessory: this.versionSelector(this.state.v2Versions, v2SelectedVersion),
+      });
 
       const graphV2 = await this._createGraph(selectedVersionPipelineTemplate);
       this.setStateSafe({

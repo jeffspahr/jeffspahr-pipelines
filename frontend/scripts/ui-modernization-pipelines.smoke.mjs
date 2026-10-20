@@ -408,111 +408,66 @@ async function darkTheme(page) {
   });
 }
 
-const cards = (page) => page.getByRole('list', { name: 'Pipelines' });
 const card = (page, name) =>
-  cards(page)
-    .getByRole('listitem')
-    .filter({ has: page.getByRole('link', { name, exact: true }) });
+  page.getByRole('row').filter({ has: page.getByRole('link', { name, exact: true }) });
 async function openList(page, fixture) {
   await page.goto(`${fixture.origin}/#/pipelines`);
   await page.getByRole('link', { name: 'Pipeline 01', exact: true }).waitFor();
-  // Explicitly exercise token pagination independent of the product default.
   await page.getByRole('combobox', { name: 'Rows per page' }).selectOption('10');
-  await page.getByRole('button', { name: 'Cards', exact: true }).click();
-  await waitForCards(page, 10);
+  await waitForRows(page, 10);
 }
-async function waitForCards(page, count) {
+async function waitForRows(page, count) {
   await page.waitForFunction(
-    (expected) => document.querySelectorAll('ul[aria-label="Pipelines"] > li').length === expected,
+    (expected) =>
+      document.querySelectorAll('table[aria-label="Pipelines"] tbody tr[data-row-id]').length ===
+      expected,
     count,
   );
 }
 
-test('pipelines default to table and retain a user-selected cards view after reload', async () => {
+test('pipelines remain table-only with latest version links and quiet display controls', async () => {
   await withFixture({}, async (page, fixture) => {
     await page.goto(`${fixture.origin}/#/pipelines`);
     await page.getByRole('table', { name: 'Pipelines', exact: true }).waitFor();
-    await page.getByRole('link', { name: 'Pipeline 01', exact: true }).waitFor();
-    assert.equal(await page.getByRole('combobox', { name: 'Rows per page' }).inputValue(), '20');
-    await screenshot(page, 'pipelines-table-light');
-    await page.getByRole('button', { name: 'Cards', exact: true }).click();
-    await waitForCards(page, 15);
-    await page.reload();
-    await waitForCards(page, 15);
+    await card(page, 'Pipeline 01')
+      .getByRole('link', { name: 'Version 01', exact: true })
+      .waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Cards', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Display options' }).count(), 0);
+    await page.getByRole('button', { name: 'Table options' }).waitFor();
     assert.equal(
-      await page.getByRole('button', { name: 'Cards', exact: true }).getAttribute('aria-pressed'),
-      'true',
+      await card(page, 'Pipeline 01')
+        .getByRole('link', { name: 'Version 01', exact: true })
+        .getAttribute('href'),
+      `#${pipelinePath(specialPipelineId, specialVersionId)}`,
     );
-    await page.getByRole('button', { name: 'Table', exact: true }).click();
-    await page.getByRole('table', { name: 'Pipelines', exact: true }).waitFor();
+    assert.ok(
+      fixture.lists
+        .filter(({ resource }) => resource === 'versions')
+        .every(({ page_size }) => page_size === '1'),
+    );
+    await screenshot(page, 'pipelines-table-light');
   });
 });
 
-// The card controls intentionally keep all server-backed capabilities from CustomTable.
-test('pipeline cards retain filtering, sorting, paging, selection and lazy version expansion', async () => {
+test('pipeline table retains filtering, sorting, paging and selection', async () => {
   await withFixture({}, async (page, fixture) => {
     await openList(page, fixture);
-    await waitForCards(page, 10);
-    await screenshot(page, 'pipelines-light');
-    assert.equal(
-      fixture.lists.filter(({ resource }) => resource === 'versions').length,
-      0,
-      'cards must not fetch versions or histories eagerly',
-    );
-    assert.equal(
-      await card(page, 'Pipeline 01')
-        .getByRole('link', { name: 'Pipeline 01', exact: true })
-        .getAttribute('href'),
-      `#${pipelinePath(specialPipelineId)}`,
-    );
     await page.getByRole('button', { name: 'Next page', exact: true }).click();
     await page.getByRole('link', { name: 'Pipeline 11', exact: true }).waitFor();
     await page.getByRole('searchbox', { name: 'Search pipelines' }).fill('Pipeline 01');
-    await page.getByRole('link', { name: 'Pipeline 01', exact: true }).waitFor();
-    assert.equal(fixture.lists.at(-1).page_token || '', '');
-    await waitForCards(page, 1);
+    await waitForRows(page, 1);
     await page.getByRole('button', { name: 'Clear filter', exact: true }).click();
     await page.getByRole('link', { name: 'Pipeline 10', exact: true }).waitFor();
-    await Promise.all([
-      page.waitForResponse(
-        (response) => new URL(response.url()).searchParams.get('sort_by') === 'display_name',
-      ),
-      chooseSort(page, 'Name: A–Z'),
-    ]);
-    assert.equal(fixture.lists.at(-1).sort_by, 'display_name');
-    await chooseSort(page, 'Name: Z–A');
-    await page.getByRole('link', { name: 'Pipeline 15', exact: true }).waitFor();
-    assert.equal(fixture.lists.at(-1).sort_by, 'display_name desc');
-    await card(page, 'Pipeline 15')
-      .getByRole('checkbox', { name: 'Select pipeline Pipeline 15' })
-      .check();
+    await page
+      .getByRole('columnheader', { name: /Pipeline name/ })
+      .getByRole('button')
+      .first()
+      .click();
+    await card(page, 'Pipeline 01').getByRole('checkbox').check();
     assert.equal(await page.getByRole('button', { name: 'Delete', exact: true }).isEnabled(), true);
-    await Promise.all([
-      page.waitForResponse(
-        (response) => new URL(response.url()).searchParams.get('sort_by') === 'created_at',
-      ),
-      chooseSort(page, 'Uploaded: oldest first'),
-    ]);
-    await chooseSort(page, 'Uploaded: newest first');
-    await page.getByRole('button', { name: 'Expand pipeline Pipeline 01' }).click();
-    const preview = card(page, 'Pipeline 01').getByRole('region', {
-      name: 'Recent pipeline versions',
-    });
-    await preview.getByRole('link', { name: 'Version 01', exact: true }).waitFor();
-    assert.equal(fixture.lists.filter(({ resource }) => resource === 'versions').length, 1);
-    assert.equal(fixture.lists.at(-1).page_size, '5');
-    assert.equal(fixture.lists.at(-1).sort_by, 'created_at desc');
-    assert.equal(await preview.getByRole('listitem').count(), 5);
-    assert.equal(await preview.getByRole('checkbox').count(), 0);
-    assert.equal(await preview.getByRole('button', { name: 'Next page', exact: true }).count(), 0);
-    assert.equal(
-      await preview.getByRole('link', { name: 'Version 01', exact: true }).getAttribute('href'),
-      `#${pipelinePath(specialPipelineId, specialVersionId)}`,
-    );
-    await screenshot(page, 'pipelines-expanded-light');
-    await darkTheme(page);
-    await screenshot(page, 'pipelines-expanded-dark');
-    await preview.getByRole('link', { name: 'View all versions', exact: true }).click();
+    await card(page, 'Pipeline 01').getByRole('link', { name: 'Pipeline 01', exact: true }).click();
+    await page.getByRole('tab', { name: 'Versions', exact: true }).click();
     await page.waitForURL('**?tab=versions');
     const versionsTable = page.getByRole('table', { name: 'Pipeline versions', exact: true });
     await versionsTable.getByRole('link', { name: 'Version 01', exact: true }).waitFor();
@@ -520,19 +475,24 @@ test('pipeline cards retain filtering, sorting, paging, selection and lazy versi
     await versionsTable.getByRole('checkbox', { name: 'Select version Version 01' }).check();
     await page.getByRole('button', { name: 'Next page', exact: true }).click();
     await versionsTable.getByRole('link', { name: 'Version 11', exact: true }).waitFor();
-    assert.equal(fixture.lists.at(-1).pipelineId, specialPipelineId);
   });
 });
 
 test('private/shared tabs and namespace changes preserve scoped pipeline lists', async () => {
   await withFixture({ namespace: 'team-a' }, async (page, fixture) => {
     await openList(page, fixture);
-    assert.equal(fixture.lists.at(-1).namespace, 'team-a');
+    assert.equal(
+      fixture.lists.filter(({ resource }) => resource === 'pipelines').at(-1).namespace,
+      'team-a',
+    );
     await page.getByRole('tab', { name: 'Shared', exact: true }).click();
     await page.waitForURL('**/#/shared/pipelines');
     await page.getByRole('link', { name: 'Pipeline 03', exact: true }).waitFor();
-    await waitForCards(page, 3);
-    assert.equal(fixture.lists.at(-1).namespace, undefined);
+    await waitForRows(page, 3);
+    assert.equal(
+      fixture.lists.filter(({ resource }) => resource === 'pipelines').at(-1).namespace,
+      undefined,
+    );
     await page.getByRole('tab', { name: 'Private', exact: true }).click();
     await page.getByRole('link', { name: 'Pipeline 10', exact: true }).waitFor();
     await Promise.all([
@@ -542,8 +502,11 @@ test('private/shared tabs and namespace changes preserve scoped pipeline lists',
       page.evaluate(() => window.selectFixtureNamespace('team-b')),
     ]);
     await page.getByRole('link', { name: 'Pipeline 02', exact: true }).waitFor();
-    await waitForCards(page, 2);
-    assert.equal(fixture.lists.at(-1).namespace, 'team-b');
+    await waitForRows(page, 2);
+    assert.equal(
+      fixture.lists.filter(({ resource }) => resource === 'pipelines').at(-1).namespace,
+      'team-b',
+    );
   });
 });
 
@@ -728,21 +691,14 @@ test('local file upload creates a private pipeline using its namespace and packa
   });
 });
 
-async function chooseSort(page, label) {
-  await page.getByRole('button', { name: 'More actions', exact: true }).click();
-  await page.getByRole('menuitemradio', { name: label, exact: true }).click();
-}
-
-test('pipeline table keeps selection and expansion columns compact on ultrawide screens', async () => {
+test('pipeline table keeps selection column compact on ultrawide screens', async () => {
   await withFixture({}, async (page, fixture) => {
     await page.setViewportSize({ width: 3440, height: 1263 });
     await page.goto(`${fixture.origin}/#/pipelines`);
     const table = page.getByRole('table', { name: 'Pipelines', exact: true });
     await table.getByRole('link', { name: 'Pipeline 01', exact: true }).waitFor();
     const selection = await table.locator('thead .kfp-runs-selection').boundingBox();
-    const expansion = await table.locator('thead .kfp-resource-expansion').boundingBox();
+    assert.equal(await table.locator('thead .kfp-resource-expansion').count(), 0);
     assert.ok(Math.abs(selection.width - 40) <= 1, `selection width: ${selection.width}`);
-    assert.ok(Math.abs(expansion.width - 36) <= 1, `expansion width: ${expansion.width}`);
-    assert.ok(Math.abs(expansion.x - selection.x - selection.width) <= 1);
   });
 });

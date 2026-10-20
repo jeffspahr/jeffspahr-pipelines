@@ -394,3 +394,10 @@
     min-height: 44px;
   }
 }
+
+.kfp-shell-workspace {
+  align-self: flex-start;
+  margin: 0 12px 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}

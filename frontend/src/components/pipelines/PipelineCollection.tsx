@@ -14,75 +14,37 @@
  * limitations under the License.
  */
 
-import { useState, type ReactNode } from 'react';
-import { LayoutGrid, List } from 'lucide-react';
-import { LocalStorage } from '../../lib/LocalStorage';
+import type { ReactNode } from 'react';
 import type { CustomTableRenderModel, Row } from '../CustomTable';
-import { Button } from '../ui/button';
 import { ResourceTable } from '../tables/ResourceTable';
-import { PipelineCards, PipelineControls } from './PipelineCards';
-
+import { CollectionToolbar } from '../tables/CollectionToolbar';
+import './Pipelines.css';
 function pipelineName(row: Row): string {
   const value = row.otherFields[0] as { display_name?: string; name?: string };
   return value.display_name || value.name || row.id;
 }
-
-// CustomTable remains the owner of filtering, sorting, paging, expansion, and selection.
-// Changing the presentation never remounts that controller or reloads its data.
 export function PipelineCollection({
   table,
-  actions,
-  filters,
   dateFilter,
   activeFilters,
 }: {
   table: CustomTableRenderModel;
-  actions?: ReactNode;
-  filters?: ReactNode;
   dateFilter?: ReactNode;
   activeFilters?: ReactNode;
 }) {
-  const [view, setView] = useState(LocalStorage.getPipelineView);
-  function changeView(next: 'table' | 'cards') {
-    setView(next);
-    LocalStorage.savePipelineView(next);
-  }
   return (
     <div className='kfp-pipeline-collection'>
-      <PipelineControls table={table} cards={view === 'cards'} actions={actions} filters={filters}>
-        <div className='kfp-pipeline-view-toggle' role='group' aria-label='Pipeline view'>
-          <Button
-            variant={view === 'table' ? 'secondary' : 'ghost'}
-            size='sm'
-            aria-pressed={view === 'table'}
-            onClick={() => changeView('table')}
-          >
-            <List aria-hidden='true' /> Table
-          </Button>
-          <Button
-            variant={view === 'cards' ? 'secondary' : 'ghost'}
-            size='sm'
-            aria-pressed={view === 'cards'}
-            onClick={() => changeView('cards')}
-          >
-            <LayoutGrid aria-hidden='true' /> Cards
-          </Button>
-        </div>
-      </PipelineControls>
+      <CollectionToolbar table={table} compactOptions />
       {activeFilters}
-      {view === 'cards' ? (
-        <PipelineCards table={table} hideControls />
-      ) : (
-        <ResourceTable
-          table={{ ...table, noFilterBox: true, filterActions: undefined }}
-          headerActions={{ created_at: dateFilter }}
-          label='Pipelines'
-          minWidth={820}
-          singular='pipeline'
-          plural='pipelines'
-          getRowLabel={pipelineName}
-        />
-      )}
+      <ResourceTable
+        table={{ ...table, noFilterBox: true, filterActions: undefined }}
+        headerActions={{ created_at: dateFilter }}
+        label='Pipelines'
+        minWidth={820}
+        singular='pipeline'
+        plural='pipelines'
+        getRowLabel={pipelineName}
+      />
     </div>
   );
 }
