@@ -226,6 +226,29 @@ describe('mock backend routes', () => {
       }
     });
 
+    it.each(['nested-conditions', 'parallel-folds', 'regional-training'])(
+      'serves complex %s review runs and their saved versions',
+      async (id) => {
+        const run = (await request.get(`/apis/v2beta1/runs/sample-run-${id}`).expect(200)).body;
+        expect(run.state_history[0]).toMatchObject({
+          state: 'RUNNING',
+          update_time: expect.any(String),
+        });
+        const version = (
+          await request.get(`/apis/v2beta1/pipelines/${id}/versions/${id}-v1`).expect(200)
+        ).body;
+        expect(run.pipeline_spec).toEqual(version.pipeline_spec);
+        const tasks = (await request.get(`/apis/v2beta1/runs/sample-run-${id}/tasks`).expect(200))
+          .body.tasks;
+        expect(tasks.length).toBeGreaterThan(5);
+        const leaf = tasks.find((task: { type: string }) => task.type === 'RUNTIME');
+        const fetched = (
+          await request.get(`/apis/v2beta1/runs/sample-run-${id}/tasks/${leaf.task_id}`).expect(200)
+        ).body;
+        expect(fetched.task_id).toBe(leaf.task_id);
+      },
+    );
+
     it('fetches a v2 run by id', async () => {
       const response = await request
         .get('/apis/v2beta1/runs/e0115ac1-0479-4194-a22d-01e65e09a32b')
