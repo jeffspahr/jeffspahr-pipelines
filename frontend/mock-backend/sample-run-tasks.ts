@@ -175,3 +175,94 @@ export function sampleDriverLogs(task: V2beta1PipelineTask, namespace: string): 
     '',
   ].join('\n');
 }
+
+// Synthetic component stdout for UI review; these are not KFP driver messages.
+export function sampleTaskLogs(task: V2beta1PipelineTask, run: V2beta1Run): string {
+  const name = task.name || 'component';
+  const start = task.create_time!.getTime();
+  const end = task.end_time?.getTime();
+  const timestamp = (fraction: number) =>
+    new Date(start + (end === undefined ? 30000 : end - start) * fraction).toISOString();
+  const operation = /prepare|load|extract/.test(name)
+    ? [
+        'Reading taxi trip records from input dataset',
+        'Removed 128 rows with missing pickup coordinates',
+        'Prepared 12480 rows with 8 feature columns',
+      ]
+    : /normalize|transform/.test(name)
+      ? [
+          'Loading numeric feature columns',
+          'Scaling trip distance and passenger count',
+          'Wrote transformed feature dataset',
+        ]
+      : /encode/.test(name)
+        ? [
+            'Loading categorical feature columns',
+            'Encoding pickup and dropoff zones',
+            'Wrote encoded feature dataset',
+          ]
+        : /validate/.test(name)
+          ? [
+              'Checking input schema and required columns',
+              'Checking feature ranges and missing values',
+              'Validation passed for 12480 records',
+            ]
+          : /aggregate/.test(name)
+            ? [
+                'Reading metrics from 3 validation folds',
+                'Calculating mean absolute error across folds',
+                'Mean absolute error: 2.41',
+              ]
+            : /score|evaluate/.test(name)
+              ? [
+                  'Loading trained model and evaluation dataset',
+                  'Scoring 2496 held-out trips',
+                  'Mean absolute error: 2.38; root mean squared error: 3.62',
+                ]
+              : /train/.test(name)
+                ? [
+                    'Loading training features and fare_amount target',
+                    'Training regressor: 100 estimators, max_depth=6',
+                    'Saved trained model artifact',
+                  ]
+                : [
+                    `Starting ${task.display_name || name}`,
+                    'Processing component inputs',
+                    'Wrote component outputs',
+                  ];
+  const lines = [
+    `${timestamp(0)} INFO Synthetic preview output for ${name}`,
+    `${timestamp(0.05)} INFO ${operation[0]}`,
+  ];
+  if (task.state === 'FAILED') {
+    const error =
+      [...(task.state_history || [])].reverse().find((entry) => entry.error)?.error?.message ||
+      'Component execution failed.';
+    if (run.state === 'CANCELED') {
+      lines.push(`${timestamp(0.5)} INFO ${operation[1]}`, `${timestamp(1)} WARNING ${error}`);
+    } else {
+      lines.push(
+        `${timestamp(0.5)} ERROR ${error}`,
+        'Traceback (most recent call last):',
+        '  File "/app/train.py", line 42, in train_model',
+        '    validate_training_features(features)',
+        '  File "/app/train.py", line 18, in validate_training_features',
+        '    raise ValueError("Training data contains invalid feature values.")',
+        'ValueError: Training data contains invalid feature values.',
+        `${timestamp(1)} ERROR Component exited with code 1; no model artifact produced`,
+      );
+    }
+  } else if (task.state === 'RUNNING') {
+    lines.push(
+      `${timestamp(0.5)} INFO ${operation[1]}`,
+      `${timestamp(1)} INFO ${run.state === 'CANCELING' ? 'Cancellation requested; stopping at the next safe checkpoint' : 'Progress: 40 of 100 estimators fitted'}`,
+    );
+  } else {
+    lines.push(
+      `${timestamp(0.5)} INFO ${operation[1]}`,
+      `${timestamp(0.9)} INFO ${operation[2]}`,
+      `${timestamp(1)} INFO Component completed successfully`,
+    );
+  }
+  return lines.join('\n') + '\n';
+}

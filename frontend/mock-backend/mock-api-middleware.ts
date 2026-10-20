@@ -58,7 +58,7 @@ import {
   RunSortKeys,
 } from '../src/lib/Apis';
 import { data as fixedData } from './fixed-data';
-import { sampleDriverLogs, sampleRunTasks } from './sample-run-tasks';
+import { sampleDriverLogs, sampleRunTasks, sampleTaskLogs } from './sample-run-tasks';
 import registerTensorboardProxy from './tensorboard-proxy';
 
 const rocMetadataJsonPath = './eval-output/metadata.json';
@@ -793,6 +793,19 @@ export default (app: express.Application) => {
     }
     if (podName === 'coinflip-recursive-q7dqb-3721646052') {
       res.status(500).send('Failed to retrieve log');
+      return;
+    }
+    for (const run of fixedData.runs) {
+      const task = sampleRunTasks(run).find((task) =>
+        task.pods?.some((pod) => pod.type === 'EXECUTOR' && pod.name === podName),
+      );
+      if (task) {
+        res.type('text/plain').send(sampleTaskLogs(task, run));
+        return;
+      }
+    }
+    if (podName.startsWith('sample-run-')) {
+      res.status(404).send('No executor logs are available for this sample task.');
       return;
     }
     const shortLog = fs.readFileSync('./mock-backend/shortlog.txt', 'utf-8');

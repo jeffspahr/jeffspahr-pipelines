@@ -20,6 +20,36 @@ import { setupMockBackendTest } from './test-helper.js';
 setupMockBackendTest();
 
 describe('standalone mock API server', () => {
+  it('serves task-specific output with failures, progress and cancellation', async () => {
+    const request = requests(createMockApiApp());
+    for (const [id, expected] of [
+      ['training-failed', 'ValueError: Training data contains invalid feature values.'],
+      ['training-running', 'Progress: 40 of 100 estimators fitted'],
+      ['sweep-canceled', 'Execution stopped after the run was canceled.'],
+    ]) {
+      const { body } = await request.get(`/apis/v2beta1/runs/sample-run-${id}/tasks`).expect(200);
+      const task = body.tasks.find((task: { name: string }) => task.name === 'train-model');
+      const response = await request
+        .get('/k8s/pod/logs')
+        .query({ podname: task.pods[0].name })
+        .expect(200);
+      expect(response.text).toContain(expected);
+      expect(response.text).not.toContain('hello world');
+      expect(response.text).not.toContain('Component completed successfully');
+      const prepare = body.tasks.find((task: { name: string }) => task.name === 'prepare-data');
+      const prepared = await request
+        .get('/k8s/pod/logs')
+        .query({ podname: prepare.pods[0].name })
+        .expect(200);
+      expect(prepared.text).toContain('Prepared 12480 rows');
+      expect(prepared.text).toContain('Component completed successfully');
+    }
+    await request
+      .get('/k8s/pod/logs')
+      .query({ podname: 'sample-run-training-failed-evaluate-model-executor' })
+      .expect(404);
+  });
+
   it('serves varied recurring schedules with detail lookups', async () => {
     const request = requests(createMockApiApp());
     const { body } = await request.get('/apis/v2beta1/recurringruns').expect(200);
