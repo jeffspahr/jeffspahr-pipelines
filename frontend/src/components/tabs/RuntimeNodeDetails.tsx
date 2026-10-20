@@ -16,7 +16,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, Copy, TriangleAlert, ChevronDown, ChevronRight } from 'lucide-react';
 import './RuntimeNodeDetails.css';
 import {
   InputOutputsIOArtifact,
@@ -295,18 +295,25 @@ function TaskNodeDetail({
           {selectedTab === 2 && (
             <div className='kfp-node-logs'>
               <section aria-label='Driver logs' className='kfp-node-logs-driver'>
-                <button
-                  type='button'
-                  className='kfp-node-logs-toggle'
-                  aria-expanded={driverExpanded}
-                  aria-controls={driverContentId}
-                  onClick={() =>
-                    setDriverChoice({ taskId: task?.task_id, expanded: !driverExpanded })
-                  }
-                >
-                  {driverExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  Driver logs
-                </button>
+                <div className='kfp-node-logs-heading'>
+                  <button
+                    type='button'
+                    className='kfp-node-logs-toggle'
+                    aria-expanded={driverExpanded}
+                    aria-controls={driverContentId}
+                    onClick={() =>
+                      setDriverChoice({ taskId: task?.task_id, expanded: !driverExpanded })
+                    }
+                  >
+                    {driverExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    Driver logs
+                  </button>
+                  <CopyLogsButton
+                    key={`driver-${task?.task_id}`}
+                    label='Driver logs'
+                    text={driverLogsState?.get(LOGS_DETAILS)}
+                  />
+                </div>
                 {driverExpanded && (
                   <div id={driverContentId}>
                     <p className='kfp-node-logs-description'>
@@ -332,7 +339,14 @@ function TaskNodeDetail({
                 )}
               </section>
               <section aria-label='Task logs' className='kfp-node-logs-task'>
-                <h3>Task logs</h3>
+                <div className='kfp-node-logs-heading'>
+                  <h3>Task logs</h3>
+                  <CopyLogsButton
+                    key={`task-${task?.task_id}`}
+                    label='Task logs'
+                    text={logsDetails}
+                  />
+                </div>
                 {namespacePending ? (
                   <p role='status'>Loading experiment namespace…</p>
                 ) : !task ? (
@@ -525,6 +539,50 @@ function TaskVolumeMountsDetails({
     [element, layers, pipelineJobString],
   );
   return <DetailsTable title='Volume Mounts' fields={fields} />;
+}
+
+function CopyLogsButton({ label, text }: { label: string; text?: string }) {
+  const [feedback, setFeedback] = useState<{ text: string; status: 'copied' | 'error' }>();
+  const status = feedback && feedback.text === text ? feedback.status : undefined;
+  const message =
+    status === 'copied'
+      ? `${label} copied.`
+      : status === 'error'
+        ? 'Could not copy. Select the log text and copy it manually.'
+        : '';
+  return (
+    <>
+      <button
+        type='button'
+        className='kfp-node-logs-copy'
+        aria-label={`Copy ${label.toLowerCase()}`}
+        title={
+          message || (text ? `Copy ${label.toLowerCase()}` : 'Logs must be loaded before copying')
+        }
+        disabled={!text}
+        onClick={async () => {
+          if (!text) return;
+          try {
+            await navigator.clipboard.writeText(text);
+            setFeedback({ text, status: 'copied' });
+          } catch {
+            setFeedback({ text, status: 'error' });
+          }
+        }}
+      >
+        {status === 'copied' ? (
+          <Check size={16} />
+        ) : status === 'error' ? (
+          <TriangleAlert size={16} />
+        ) : (
+          <Copy size={16} />
+        )}
+      </button>
+      <span className='sr-only' role='status'>
+        {message}
+      </span>
+    </>
+  );
 }
 
 interface LogsTabPanelProps {

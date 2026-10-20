@@ -538,6 +538,44 @@ describe('RuntimeNodeDetails', () => {
     expect(getPodLogsSpy).toHaveBeenCalledWith(TEST_RUN_ID, TEST_POD_NAME, '', '2026-08-11');
   });
 
+  it('copies each complete raw log source and reports clipboard failures', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const taskText = 'task first line\nsecond line\n';
+    const driverText = 'driver first line\nsetup complete\n';
+    vi.spyOn(Apis, 'getPodLogs').mockResolvedValue(taskText);
+    vi.spyOn(Apis, 'readFile').mockResolvedValue(driverText);
+    renderTask(
+      createTask({
+        status_metadata: {
+          custom_properties: {
+            driver_logs_uri: 's3://pipeline-root/driver-logs.txt' as unknown as object,
+          },
+        },
+      }),
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+    expect(screen.getByRole('button', { name: 'Copy driver logs' })).toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Copy task logs' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy task logs' }));
+    await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(taskText));
+    expect(await screen.findByText('Task logs copied.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Driver logs', exact: true }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Copy driver logs' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy driver logs' }));
+    await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(driverText));
+    expect(await screen.findByText('Driver logs copied.')).toBeInTheDocument();
+    writeText.mockRejectedValueOnce(new Error('Clipboard denied'));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy task logs' }));
+    expect(
+      await screen.findByText('Could not copy. Select the log text and copy it manually.'),
+    ).toBeInTheDocument();
+  });
+
   it('keeps legacy driver pod output out of task logs and retrieves it as driver logs', async () => {
     const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('driver diagnostics');
     const task = createTask({

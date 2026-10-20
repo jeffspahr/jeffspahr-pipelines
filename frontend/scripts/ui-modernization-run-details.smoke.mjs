@@ -723,6 +723,22 @@ test('one Logs tab separates collapsible driver output from task output', async 
       task: document.querySelector('[data-testid="logs-view-window"]').getBoundingClientRect().top,
     }));
     assert.ok(positions.driver < positions.task, 'driver logs precede task logs');
+    const copyLayout = await page.evaluate(() =>
+      [...document.querySelectorAll('.kfp-node-logs-heading')].map((heading) => {
+        const text = heading.querySelector('h3, .kfp-node-logs-toggle').getBoundingClientRect();
+        const copy = heading.querySelector('.kfp-node-logs-copy').getBoundingClientRect();
+        return {
+          textCenter: text.top + text.height / 2,
+          copyCenter: copy.top + copy.height / 2,
+          height: heading.getBoundingClientRect().height,
+        };
+      }),
+    );
+    assert.ok(
+      copyLayout.every((row) => Math.abs(row.textCenter - row.copyCenter) < 1 && row.height <= 28),
+      'copy controls stay on existing heading rows',
+    );
+
     assert.ok(
       (await page.getByTestId('driver-logs-view-window').boundingBox()).height < 50,
       'short driver output fits its content',
