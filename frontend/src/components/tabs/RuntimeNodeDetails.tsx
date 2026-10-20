@@ -30,7 +30,7 @@ import { buildRuntimeArtifactRows, RuntimeArtifactValue } from 'src/components/R
 import { InspectionNotice as Banner } from '../inspection/InspectionNotice';
 import { InspectionFields as DetailsTable } from '../inspection/InspectionFields';
 import { Button } from '../ui/button';
-import LogViewer from 'src/components/LogViewer';
+import LogViewer, { LOG_ROW_HEIGHT } from 'src/components/LogViewer';
 import { RuntimeInputOutputTab } from 'src/components/tabs/RuntimeInputOutputTab';
 import { RuntimeMetricsVisualizations } from 'src/components/viewers/RuntimeMetricsVisualizations';
 import {
@@ -544,6 +544,9 @@ function LogsTabPanel({
   bannerMode,
   onRefresh,
 }: LogsTabPanelProps) {
+  const logLines = details?.split(/[\r\n]+/) ?? [];
+  // Reserve space for a horizontal scrollbar without stretching short driver output.
+  const driverContentHeight = logLines.length * LOG_ROW_HEIGHT + 16;
   return (
     <div className='kfp-inspection-column'>
       {bannerMessage && (
@@ -554,8 +557,9 @@ function LogsTabPanel({
         <div
           className='kfp-inspection-log-window'
           data-testid={label === 'Driver logs' ? 'driver-logs-view-window' : 'logs-view-window'}
+          style={label === 'Driver logs' ? { height: driverContentHeight } : undefined}
         >
-          <LogViewer label={label} logLines={details.split(/[\r\n]+/)} />
+          <LogViewer label={label} logLines={logLines} />
         </div>
       )}
     </div>

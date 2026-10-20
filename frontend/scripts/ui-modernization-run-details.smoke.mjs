@@ -723,6 +723,10 @@ test('one Logs tab separates collapsible driver output from task output', async 
       task: document.querySelector('[data-testid="logs-view-window"]').getBoundingClientRect().top,
     }));
     assert.ok(positions.driver < positions.task, 'driver logs precede task logs');
+    assert.ok(
+      (await page.getByTestId('driver-logs-view-window').boundingBox()).height < 50,
+      'short driver output fits its content',
+    );
     await driverToggle.click();
     assert.equal(await driverToggle.getAttribute('aria-expanded'), 'false');
     assert.equal(await page.getByTestId('driver-logs-view-window').count(), 0);
@@ -730,6 +734,28 @@ test('one Logs tab separates collapsible driver output from task output', async 
       .getByTestId('logs-view-window')
       .getByText('executor attempt one', { exact: true })
       .waitFor();
+  });
+});
+
+test('long driver logs are capped and scrollable', async () => {
+  await withFixture({}, async (page, fixture) => {
+    fixture.tasks
+      .find((task) => task.name === 'train')
+      .pods.push({ name: 'train-driver', type: 'DRIVER' });
+    fixture.logs.set(
+      'train-driver',
+      Array.from({ length: 100 }, (_, i) => `driver line ${i}`).join('\n'),
+    );
+    await openTask(page);
+    await logs(page, 'executor attempt one');
+    await page.getByRole('button', { name: 'Driver logs', exact: true }).click();
+    const window = page.getByTestId('driver-logs-view-window');
+    await window.getByRole('grid').waitFor();
+    const dimensions = await window
+      .getByRole('grid')
+      .evaluate((el) => ({ height: el.clientHeight, content: el.scrollHeight }));
+    assert.equal((await window.boundingBox()).height, 200);
+    assert.ok(dimensions.content > dimensions.height, 'long driver output scrolls within its cap');
   });
 });
 

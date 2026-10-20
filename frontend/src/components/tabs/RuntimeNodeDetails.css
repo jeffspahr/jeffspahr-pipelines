@@ -40,5 +40,6 @@
   min-height: 160px;
 }
 .kfp-node-logs-driver .kfp-inspection-log-window {
-  height: 200px;
+  min-height: 0;
+  max-height: 200px;
 }

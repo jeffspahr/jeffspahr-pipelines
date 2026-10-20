@@ -19,6 +19,8 @@ import { List, AutoSizer, ListRowProps } from 'react-virtualized';
 import './LogViewer.css';
 import { OverscanIndicesGetter } from 'react-virtualized/dist/es/Grid';
 
+export const LOG_ROW_HEIGHT = 15;
+
 const listContainerStyleOverride = {
   overflow: 'visible',
 };
@@ -86,7 +88,7 @@ class LogViewer extends React.Component<LogViewerProps, LogViewerState> {
             width={width}
             height={height}
             rowCount={this.props.logLines.length}
-            rowHeight={15}
+            rowHeight={LOG_ROW_HEIGHT}
             className='kfp-log-viewer'
             aria-label={this.props.label || 'Task logs'}
             ref={this._rootRef}
