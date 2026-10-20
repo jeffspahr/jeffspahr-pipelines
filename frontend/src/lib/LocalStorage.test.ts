@@ -140,3 +140,11 @@ it.each(['null', '{}', '[1, 200]', '[2001]', '["200"]', 'invalid'])(
     expect(LocalStorage.getTableColumnWidths('invalid')).toBeUndefined();
   },
 );
+
+it('persists the flexible column and clears it with width reset', () => {
+  LocalStorage.saveTableColumnWidths('flex-test', [120, 240], 1);
+  expect(LocalStorage.getTableFlexibleColumn('flex-test')).toBe(1);
+  expect(LocalStorage.getTableColumnWidths('flex-test')).toEqual([120, 240]);
+  LocalStorage.saveTableColumnWidths('flex-test');
+  expect(LocalStorage.getTableFlexibleColumn('flex-test')).toBeUndefined();
+});

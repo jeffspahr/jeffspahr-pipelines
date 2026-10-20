@@ -892,9 +892,44 @@ test('artifact columns resize by pointer, persist after reload, and reset on ult
       Math.abs(resized.width - before.width - 120) <= 2,
       `Name width before=${before.width}, after=${resized.width}`,
     );
+    const shrinkHandle = await table
+      .getByRole('separator', { name: 'Resize Name column', exact: true })
+      .boundingBox();
+    const shrinkX = shrinkHandle.x + shrinkHandle.width / 2;
+    await page.mouse.move(shrinkX, y);
+    await page.mouse.down();
+    await page.mouse.move(shrinkX + 160 - resized.width, y, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      () =>
+        Math.abs(
+          document
+            .querySelector('table[aria-label="Artifacts"] th[aria-label="Name"]')
+            .getBoundingClientRect().width - 160,
+        ) <= 1,
+    );
+    const region = page.getByRole('region', { name: 'Artifacts table', exact: true });
+    assert.ok(
+      Math.abs((await table.boundingBox()).width - (await region.boundingBox()).width) <= 1,
+      'shrinking a column must keep the table filled',
+    );
+    assert.ok(
+      Math.abs((await name.boundingBox()).width - 160) <= 1,
+      'surplus must not stretch the resized column',
+    );
     await page.reload();
     await ready(page, 16);
-    assert.ok(Math.abs((await name.boundingBox()).width - resized.width) <= 1);
+    assert.ok(Math.abs((await name.boundingBox()).width - 160) <= 1);
+    assert.ok(
+      Math.abs((await table.boundingBox()).width - (await region.boundingBox()).width) <= 1,
+    );
+    await page.setViewportSize({ width: 375, height: 812 });
+    assert.ok(Math.abs((await name.boundingBox()).width - 160) <= 1);
+    assert.ok(
+      await region.evaluate((element) => element.scrollWidth > element.clientWidth),
+      'narrow layouts should scroll rather than shrink user widths',
+    );
+    await page.setViewportSize({ width: 3440, height: 1263 });
     await page.getByRole('button', { name: 'Reset column widths', exact: true }).click();
     await page
       .getByRole('button', { name: 'Reset column widths', exact: true })

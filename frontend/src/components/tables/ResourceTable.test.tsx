@@ -197,3 +197,49 @@ it('resizes columns by keyboard, remembers widths, and resets to the responsive 
     bounds.mockRestore();
   }
 });
+
+it('keeps the resized target exact and fills surplus with a different column, including after reload', async () => {
+  const bounds = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    width: 240,
+    height: 40,
+    top: 0,
+    left: 0,
+    right: 240,
+    bottom: 40,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
+  const content = () => (
+    <CustomTable
+      columns={[{ label: 'Name' }, { label: 'URI' }, { label: 'Created', width: 190 }]}
+      rows={[{ id: 'dataset', otherFields: ['Training', 's3://data', 'Today'] }]}
+      selectedIds={[]}
+      disableSelection
+      reload={async () => ''}
+      renderTable={(table) => <ResourceTable table={table} label='Resize examples' />}
+    />
+  );
+  try {
+    const view = render(content());
+    await waitFor(() => expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'false'));
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize Name column' }), {
+      key: 'ArrowLeft',
+    });
+    const table = screen.getByRole('table');
+    expect(table).toHaveStyle({ width: '100%', minWidth: '544px' });
+    expect(table.querySelectorAll('col')[0]).toHaveStyle({ width: '224px' });
+    expect(table.querySelectorAll('col')[1].style.width).toBe('');
+    view.unmount();
+    render(content());
+    expect(screen.getByRole('table').querySelectorAll('col')[0]).toHaveStyle({ width: '224px' });
+    expect(screen.getByRole('table').querySelectorAll('col')[1].style.width).toBe('');
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize URI column' }), {
+      key: 'ArrowLeft',
+    });
+    expect(screen.getByRole('table').querySelectorAll('col')[1]).toHaveStyle({ width: '224px' });
+    expect(screen.getByRole('table').querySelectorAll('col')[0].style.width).toBe('');
+  } finally {
+    bounds.mockRestore();
+  }
+});

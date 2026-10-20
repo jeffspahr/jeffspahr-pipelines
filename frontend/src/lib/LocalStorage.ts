@@ -94,11 +94,29 @@ export class LocalStorage {
     }
   }
 
-  public static saveTableColumnWidths(tableId: string, widths?: number[]): void {
+  public static getTableFlexibleColumn(tableId: string): number | undefined {
+    try {
+      const stored = localStorage.getItem(`tableFlexibleColumn_${tableId}`);
+      const index = stored === null ? NaN : Number(stored);
+      return Number.isInteger(index) && index >= 0 ? index : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  public static saveTableColumnWidths(
+    tableId: string,
+    widths?: number[],
+    flexibleColumn?: number,
+  ): void {
     try {
       const key = `tableColumnWidths_${tableId}`;
       if (widths) localStorage.setItem(key, JSON.stringify(widths));
       else localStorage.removeItem(key);
+      const flexibleKey = `tableFlexibleColumn_${tableId}`;
+      if (widths && flexibleColumn !== undefined)
+        localStorage.setItem(flexibleKey, String(flexibleColumn));
+      else localStorage.removeItem(flexibleKey);
     } catch {
       // Resizing remains available when browser storage is blocked.
     }

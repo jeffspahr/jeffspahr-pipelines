@@ -79,23 +79,44 @@ export function ResourceTable({
     : storedWidths;
   const resizedWidths =
     candidateWidths?.length === table.columns.length ? candidateWidths : undefined;
+  const storedFlexibleColumn = useMemo(
+    () => LocalStorage.getTableFlexibleColumn(tableId),
+    [tableId],
+  );
+  const [flexibleColumns, setFlexibleColumns] = useState<Record<string, number | undefined>>({});
+  const preferredFlexibleColumn = flexibleColumns[tableId] ?? storedFlexibleColumn;
+  const flexibleColumn =
+    preferredFlexibleColumn !== undefined && preferredFlexibleColumn < table.columns.length
+      ? preferredFlexibleColumn
+      : table.columns.length - 1;
   const tableElement = useRef<HTMLTableElement>(null);
   const drag = useRef<{ start: number; widths: number[]; index: number } | null>(null);
   const readWidths = () =>
-    resizedWidths ||
     Array.from(
       tableElement.current?.querySelectorAll<HTMLTableCellElement>('th[data-resizable]') || [],
       (cell) => Math.max(80, Math.min(2000, Math.round(cell.getBoundingClientRect().width))),
     );
-  const saveWidths = (widths?: number[]) => {
+  const saveWidths = (widths?: number[], flexIndex?: number) => {
     setSavedWidths((previous) => ({ ...previous, [tableId]: widths }));
-    LocalStorage.saveTableColumnWidths(tableId, widths);
+    setFlexibleColumns((previous) => ({ ...previous, [tableId]: flexIndex }));
+    LocalStorage.saveTableColumnWidths(tableId, widths, flexIndex);
   };
   const resizeColumn = (widths: number[], index: number, width: number) => {
+    // Keep the user's target exact; another column absorbs unused container space.
+    const autoIndex = table.columns.findIndex(
+      (_, position) => position !== index && columnWidths?.[position] === undefined,
+    );
+    const flexIndex =
+      autoIndex >= 0
+        ? autoIndex
+        : index === table.columns.length - 1
+          ? 0
+          : table.columns.length - 1;
     saveWidths(
       widths.map((value, position) =>
         position === index ? Math.max(80, Math.min(2000, Math.round(width))) : value,
       ),
+      flexIndex,
     );
   };
   const controlWidth = (table.disableSelection ? 0 : 40) + (table.getExpandedContent ? 36 : 0);
@@ -130,11 +151,15 @@ export function ResourceTable({
             aria-label={label}
             aria-busy={table.isBusy}
             style={{
-              minWidth: resizedWidths ? 0 : minWidth,
+              minWidth: resizedWidths
+                ? resizedWidths.reduce(
+                    (total, width, index) =>
+                      total + (index === flexibleColumn && table.columns.length > 1 ? 80 : width),
+                    controlWidth,
+                  )
+                : minWidth,
               tableLayout: 'fixed',
-              width: resizedWidths
-                ? resizedWidths.reduce((total, width) => total + width, controlWidth)
-                : undefined,
+              width: resizedWidths ? '100%' : undefined,
             }}
           >
             <colgroup>
@@ -143,7 +168,13 @@ export function ResourceTable({
               {table.columns.map((column, index) => (
                 <col
                   key={column.label}
-                  style={{ width: resizedWidths?.[index] ?? columnWidths?.[index] }}
+                  style={{
+                    width: resizedWidths
+                      ? index === flexibleColumn && table.columns.length > 1
+                        ? undefined
+                        : resizedWidths[index]
+                      : columnWidths?.[index],
+                  }}
                 />
               ))}
             </colgroup>
@@ -209,9 +240,15 @@ export function ResourceTable({
                         aria-label={`Resize ${column.label} column`}
                         aria-valuemin={80}
                         aria-valuemax={2000}
-                        aria-valuenow={resizedWidths?.[index] ?? 80}
+                        aria-valuenow={
+                          resizedWidths && (index !== flexibleColumn || table.columns.length === 1)
+                            ? resizedWidths[index]
+                            : 80
+                        }
                         aria-valuetext={
-                          resizedWidths ? `${resizedWidths[index]} pixels` : 'Automatic width'
+                          resizedWidths && (index !== flexibleColumn || table.columns.length === 1)
+                            ? `${resizedWidths[index]} pixels`
+                            : 'Automatic width'
                         }
                         tabIndex={0}
                         title='Drag to resize. Use left/right arrows to adjust; Home resets all widths.'
