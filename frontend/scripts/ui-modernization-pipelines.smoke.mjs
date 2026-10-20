@@ -515,6 +515,20 @@ test('pipeline details preserve encoded IDs, rendered IR, version switching and 
     await page.goto(`${fixture.origin}/#${pipelinePath(specialPipelineId, specialVersionId)}`);
     await page.getByTestId('DagCanvas').waitFor();
     await page.locator('.react-flow__node').first().waitFor();
+    const actionBounds = await Promise.all(
+      ['Create run', 'Upload version', 'More actions'].map((name) =>
+        page.getByRole('button', { name, exact: true }).boundingBox(),
+      ),
+    );
+    const [create, upload, more] = actionBounds;
+    assert.ok(create && upload && more, 'pipeline actions are visible');
+    assert.ok(Math.abs(create.y + create.height / 2 - (upload.y + upload.height / 2)) <= 1);
+    assert.ok(
+      Math.abs(create.y + create.height / 2 - (more.y + more.height / 2)) <= 1,
+      'overflow stays on the primary action row',
+    );
+    assert.ok(more.width <= 40, `overflow remains an icon button: ${more.width}`);
+
     await page.getByRole('tab', { name: 'Details', exact: true }).click();
     const version = page.getByRole('combobox', { name: 'Version', exact: true });
     assert.equal(await version.inputValue(), specialVersionId);

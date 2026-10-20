@@ -444,7 +444,10 @@ function InitialGraphFit({
   onReady: (instance: ReactFlowInstance<PipelineNode, Edge>) => void;
 }) {
   const instance = useReactFlow<PipelineNode, Edge>();
-  const nodesReady = useNodesInitialized();
+  // Controlled nodes intentionally ignore dimension-change events. Check measured
+  // internals directly: the default cached readiness flag only updates on setNodes.
+  // Collapsed descendants are omitted from this canvas, not hidden nodes.
+  const nodesReady = useNodesInitialized({ includeHiddenNodes: true });
   const viewportReady = useStore((store) => store.width > 0 && store.height > 0);
   const fitted = useRef(false);
   useEffect(() => {

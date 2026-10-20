@@ -771,3 +771,32 @@ if (process.env.KFP_SCALING_SAMPLES) {
     );
   });
 }
+
+test('initial graph fit contains every node of a large DAG after direct load and reload', async () => {
+  await withFixture(largeFixture(), async (page) => {
+    await page.goto(`${origin}/#/runs/details/${runId}`);
+    for (let load = 0; load < 2; load++) {
+      if (load) await page.reload();
+      await geometry(page, 201);
+      await page.waitForFunction(() => {
+        const canvas = document.querySelector('.react-flow');
+        const viewport = document.querySelector('.react-flow__viewport');
+        if (!canvas || !viewport) return false;
+        const bounds = canvas.getBoundingClientRect();
+        const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a;
+        return (
+          zoom <= 1 &&
+          [...document.querySelectorAll('.react-flow__node')].every((node) => {
+            const box = node.getBoundingClientRect();
+            return (
+              box.left >= bounds.left &&
+              box.right <= bounds.right &&
+              box.top >= bounds.top &&
+              box.bottom <= bounds.bottom
+            );
+          })
+        );
+      }, undefined, { timeout: 3000 });
+    }
+  });
+});

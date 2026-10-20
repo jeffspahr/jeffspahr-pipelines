@@ -268,7 +268,6 @@ export function sampleTaskLogs(task: V2beta1PipelineTask, run: V2beta1Run): stri
   const rowCount = task.outputs?.parameters?.find(
     (parameter) => parameter.parameter_key === 'row_count',
   );
-  if (rowCount) lines.push(`${timestamp(0.9)} INFO Processed ${String(rowCount.value)} rows`);
   if (task.state === 'FAILED') {
     const error =
       [...(task.state_history || [])].reverse().find((entry) => entry.error)?.error?.message ||
@@ -296,6 +295,7 @@ export function sampleTaskLogs(task: V2beta1PipelineTask, run: V2beta1Run): stri
     lines.push(
       `${timestamp(0.5)} INFO ${operation[1]}`,
       `${timestamp(0.9)} INFO ${operation[2]}`,
+      ...(rowCount ? [`${timestamp(0.95)} INFO Processed ${String(rowCount.value)} rows`] : []),
       `${timestamp(1)} INFO Component completed successfully`,
     );
   }

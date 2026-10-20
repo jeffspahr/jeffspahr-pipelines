@@ -18,7 +18,7 @@ const runs: V2beta1Run[] = complexRunSamples.map((sample) => ({
   finished_at: new Date('2026-01-01T00:12:00Z'),
   state: 'SUCCEEDED',
 }));
-import { sampleRunTasks } from '../mock-backend/sample-run-tasks';
+import { sampleRunTasks, sampleTaskLogs } from '../mock-backend/sample-run-tasks';
 import {
   convertSubDagToRuntimeFlowElements,
   getTaskRuntimeLayers,
@@ -52,6 +52,12 @@ describe('complex review runs', () => {
         { parameter_key: 'dataset_uri', value: expect.stringContaining(task.name!) },
       ]);
       expect(task.outputs?.parameters).toEqual([{ parameter_key: 'row_count', value: 12480 }]);
+      const logLines = sampleTaskLogs(task, run).trim().split('\n');
+      const timestamps = logLines.map((line) => Date.parse(line.split(' ')[0]));
+      expect(timestamps.every(Number.isFinite)).toBe(true);
+      expect(timestamps).toEqual([...timestamps].sort((a, b) => a - b));
+      expect(logLines.at(-2)).toContain('Processed 12480 rows');
+      expect(logLines.at(-1)).toContain('Component completed successfully');
       const layers = getTaskRuntimeLayers(task, tasks)!;
       expect(layers).toBeDefined();
       expect(

@@ -80,6 +80,8 @@
 }
 .kfp-theme .kfp-page-actions button {
   gap: 6px;
+}
+.kfp-theme .kfp-page-actions > span > button {
   width: 100%;
 }
 .kfp-theme .kfp-modern-page-content {
