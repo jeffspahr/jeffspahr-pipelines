@@ -15,7 +15,9 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import './RuntimeNodeDetails.css';
 import {
   InputOutputsIOArtifact,
   PipelineTaskTaskPod,
@@ -184,7 +186,10 @@ function TaskNodeDetail({
   onTaskTabChange,
 }: TaskNodeDetailProps) {
   const [localTab, setLocalTab] = useState(0);
-  const selectedTab = selectedTaskTab ?? localTab;
+  const requestedTab = selectedTaskTab ?? localTab;
+  const selectedTab = requestedTab === 3 ? 2 : requestedTab;
+  const driverContentId = useId();
+  const [driverChoice, setDriverChoice] = useState<{ taskId?: string; expanded: boolean }>();
   const setSelectedTab = onTaskTabChange ?? setLocalTab;
   const executorPod = getLatestTaskPod(task, PipelineTaskTaskPodType.EXECUTOR);
   const driverPod = getLatestTaskPod(task, PipelineTaskTaskPodType.DRIVER);
@@ -193,7 +198,6 @@ function TaskNodeDetail({
     : undefined;
   const logsSourceIdentity = [
     executorPod?.name,
-    driverPod?.name,
     executorLogsArtifact?.artifact_id,
     executorLogsArtifact?.uri,
   ].join(':');
@@ -228,37 +232,40 @@ function TaskNodeDetail({
     refetchInterval: task && !sourceFinished && !isTaskFinished(task.state) ? 10000 : false,
   });
 
+  const logsDetails = logsInfo?.get(LOGS_DETAILS);
+  const logsBannerMessage =
+    logsInfo?.get(LOGS_BANNER_MESSAGE) ||
+    (logsQueryFailed ? 'Failed to retrieve task logs.' : undefined);
+  const logsBannerAdditionalInfo =
+    logsInfo?.get(LOGS_BANNER_ADDITIONAL_INFO) || logsQueryError?.message;
+  const taskLogsUnavailable =
+    (!executorPod?.name && !executorLogsArtifact?.uri) ||
+    logsQueryFailed ||
+    (logsInfo !== undefined && !logsDetails?.trim());
+  const driverExpanded =
+    driverChoice?.taskId === task?.task_id && driverChoice !== undefined
+      ? driverChoice.expanded
+      : taskLogsUnavailable || requestedTab === 3;
   const driverLogUri = getDriverLogUri(task);
+  const hasDriverSource = !!driverLogUri || !!(runId && driverPod?.name);
   const { data: driverLogsInfo, refetch: refetchDriverLogs } = useQuery({
     queryKey: queryKeys.driverLogs(
       task?.task_id,
       task?.state,
       namespace,
-      driverLogUri,
+      [driverLogUri, driverPod?.name, runId].join(':'),
       sourceFinished,
     ),
-    queryFn: () => {
-      if (!driverLogUri) {
-        throw new Error('No driver log URI is found.');
-      }
-      return getDriverLogsInfo(driverLogUri, namespace);
-    },
-    enabled: !!task && !!driverLogUri && selectedTab === 3,
+    queryFn: () => getTaskDriverLogsInfo(task!, runId, namespace),
+    enabled: !!task && hasDriverSource && selectedTab === 2 && driverExpanded && !namespacePending,
     refetchInterval: task && !sourceFinished && !isTaskFinished(task.state) ? 10000 : false,
   });
-
-  const logsDetails = logsInfo?.get(LOGS_DETAILS);
-  const logsBannerMessage =
-    logsInfo?.get(LOGS_BANNER_MESSAGE) ||
-    (logsQueryFailed ? 'Failed to retrieve pod logs.' : undefined);
-  const logsBannerAdditionalInfo =
-    logsInfo?.get(LOGS_BANNER_ADDITIONAL_INFO) || logsQueryError?.message;
-  const driverLogsState = driverLogUri ? driverLogsInfo : DRIVER_LOGS_UNAVAILABLE;
+  const driverLogsState = hasDriverSource ? driverLogsInfo : DRIVER_LOGS_UNAVAILABLE;
 
   return (
     <div className='kfp-inspection-column'>
       <InspectionTabs
-        tabs={['Input/Output', 'Task Details', 'Task logs', 'Driver logs']}
+        tabs={['Input/Output', 'Task Details', 'Logs']}
         selectedTab={selectedTab}
         onSwitch={setSelectedTab}
         ariaLabel='Task inspection'
@@ -286,42 +293,63 @@ function TaskNodeDetail({
             </div>
           )}
           {selectedTab === 2 && (
-            <div className='kfp-inspection-column'>
-              {namespacePending && (
-                <p className='kfp-inspection-empty' role='status'>
-                  Loading experiment namespace…
-                </p>
-              )}
-              {logsBannerMessage && (
-                <Banner
-                  message={logsBannerMessage}
-                  additionalInfo={logsBannerAdditionalInfo}
-                  mode={logsDetails ? 'info' : 'error'}
-                />
-              )}
-              {logsDetails && (
-                <div className='kfp-inspection-log-window' data-testid='logs-view-window'>
-                  <LogViewer logLines={logsDetails.split(/[\r\n]+/)} />
-                </div>
-              )}
+            <div className='kfp-node-logs'>
+              <section aria-label='Driver logs' className='kfp-node-logs-driver'>
+                <button
+                  type='button'
+                  className='kfp-node-logs-toggle'
+                  aria-expanded={driverExpanded}
+                  aria-controls={driverContentId}
+                  onClick={() =>
+                    setDriverChoice({ taskId: task?.task_id, expanded: !driverExpanded })
+                  }
+                >
+                  {driverExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  Driver logs
+                </button>
+                {driverExpanded && (
+                  <div id={driverContentId}>
+                    <p className='kfp-node-logs-description'>
+                      Pipeline orchestration logs from the KFP driver.
+                    </p>
+                    {namespacePending ? (
+                      <p role='status'>Loading experiment namespace…</p>
+                    ) : !driverLogsState ? (
+                      <p role='status'>Loading driver logs…</p>
+                    ) : (
+                      <LogsTabPanel
+                        label='Driver logs'
+                        details={driverLogsState.get(LOGS_DETAILS)}
+                        bannerMessage={driverLogsState.get(LOGS_BANNER_MESSAGE)}
+                        bannerAdditionalInfo={driverLogsState.get(LOGS_BANNER_ADDITIONAL_INFO)}
+                        bannerMode={
+                          driverLogsState.has(LOGS_BANNER_ADDITIONAL_INFO) ? 'error' : 'info'
+                        }
+                        onRefresh={hasDriverSource ? () => void refetchDriverLogs() : undefined}
+                      />
+                    )}
+                  </div>
+                )}
+              </section>
+              <section aria-label='Task logs' className='kfp-node-logs-task'>
+                <h3>Task logs</h3>
+                {namespacePending ? (
+                  <p role='status'>Loading experiment namespace…</p>
+                ) : !task ? (
+                  <p role='status'>Task logs are not available yet.</p>
+                ) : !logsInfo && !logsQueryFailed ? (
+                  <p role='status'>Loading task logs…</p>
+                ) : (
+                  <LogsTabPanel
+                    label='Task logs'
+                    details={logsDetails}
+                    bannerMessage={logsBannerMessage}
+                    bannerAdditionalInfo={logsBannerAdditionalInfo}
+                    bannerMode={logsBannerAdditionalInfo ? 'error' : 'info'}
+                  />
+                )}
+              </section>
             </div>
-          )}
-          {selectedTab === 3 && (
-            <p className='kfp-inspection-empty'>Pipeline orchestration logs from the KFP driver.</p>
-          )}
-          {selectedTab === 3 && !driverLogsState && (
-            <p className='kfp-inspection-empty' role='status'>
-              Loading driver logs…
-            </p>
-          )}
-          {selectedTab === 3 && (
-            <LogsTabPanel
-              details={driverLogsState?.get(LOGS_DETAILS)}
-              bannerMessage={driverLogsState?.get(LOGS_BANNER_MESSAGE)}
-              bannerAdditionalInfo={driverLogsState?.get(LOGS_BANNER_ADDITIONAL_INFO)}
-              bannerMode={driverLogsState?.has(LOGS_BANNER_ADDITIONAL_INFO) ? 'error' : 'info'}
-              onRefresh={driverLogUri ? () => void refetchDriverLogs() : undefined}
-            />
           )}
         </div>
       </InspectionTabs>
@@ -500,6 +528,7 @@ function TaskVolumeMountsDetails({
 }
 
 interface LogsTabPanelProps {
+  label: string;
   details?: string;
   bannerMessage?: string;
   bannerAdditionalInfo?: string;
@@ -508,6 +537,7 @@ interface LogsTabPanelProps {
 }
 
 function LogsTabPanel({
+  label,
   details,
   bannerMessage,
   bannerAdditionalInfo,
@@ -521,8 +551,11 @@ function LogsTabPanel({
       )}
       {bannerMessage && onRefresh && <Button onClick={onRefresh}>Refresh</Button>}
       {details !== undefined && (
-        <div className='kfp-inspection-log-window' data-testid='logs-view-window'>
-          <LogViewer logLines={details.split(/[\r\n]+/)} />
+        <div
+          className='kfp-inspection-log-window'
+          data-testid={label === 'Driver logs' ? 'driver-logs-view-window' : 'logs-view-window'}
+        >
+          <LogViewer label={label} logLines={details.split(/[\r\n]+/)} />
         </div>
       )}
     </div>
@@ -535,7 +568,7 @@ export function getDriverLogUri(task?: V2beta1PipelineTask): string | undefined 
   return typeof driverLogUri === 'string' && driverLogUri ? driverLogUri : undefined;
 }
 
-// Uses the same keys as getLogsInfo so both log tabs render through LogsTabPanel.
+// Uses the same keys as getLogsInfo so both log sections render through LogsTabPanel.
 export async function getDriverLogsInfo(
   driverLogUri: string,
   namespace?: string,
@@ -555,6 +588,42 @@ export async function getDriverLogsInfo(
   return logsInfo;
 }
 
+/** Keep orchestration output out of the task's executor stream. */
+export async function getTaskDriverLogsInfo(
+  task: V2beta1PipelineTask,
+  runId?: string,
+  namespace?: string,
+): Promise<Map<string, string>> {
+  const uri = getDriverLogUri(task);
+  const artifactResult = uri ? await getDriverLogsInfo(uri, namespace) : undefined;
+  if (artifactResult?.has(LOGS_DETAILS)) return artifactResult;
+  const pod = getLatestTaskPod(task, PipelineTaskTaskPodType.DRIVER);
+  if (!runId || !pod?.name) return artifactResult ?? new Map(DRIVER_LOGS_UNAVAILABLE);
+  try {
+    const createdAt =
+      task.create_time && !Number.isNaN(task.create_time.getTime())
+        ? task.create_time.toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+    const details = await Apis.getPodLogs(runId, pod.name, namespace || '', createdAt);
+    return details.trim()
+      ? new Map([[LOGS_DETAILS, details]])
+      : (artifactResult ?? new Map(DRIVER_LOGS_UNAVAILABLE));
+  } catch (error) {
+    return new Map([
+      [LOGS_BANNER_MESSAGE, 'Failed to retrieve driver logs.'],
+      [
+        LOGS_BANNER_ADDITIONAL_INFO,
+        [
+          artifactResult?.get(LOGS_BANNER_ADDITIONAL_INFO),
+          `Driver pod logs error: ${await errorToMessage(error)}`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      ],
+    ]);
+  }
+}
+
 export async function getLogsInfo(
   task: V2beta1PipelineTask,
   runId?: string,
@@ -567,7 +636,6 @@ export async function getLogsInfo(
   }
 
   const executorPod = getLatestTaskPod(task, PipelineTaskTaskPodType.EXECUTOR);
-  const driverPod = getLatestTaskPod(task, PipelineTaskTaskPodType.DRIVER);
   const taskCreatedAt = task.create_time;
   const createdAt =
     taskCreatedAt && !Number.isNaN(taskCreatedAt.getTime())
@@ -576,65 +644,48 @@ export async function getLogsInfo(
   let podLogsError: unknown;
   if (runId && executorPod?.name) {
     try {
-      logsInfo.set(
-        LOGS_DETAILS,
-        await Apis.getPodLogs(runId, executorPod.name, namespace || '', createdAt),
-      );
-      return logsInfo;
+      const details = await Apis.getPodLogs(runId, executorPod.name, namespace || '', createdAt);
+      if (details.trim()) {
+        logsInfo.set(LOGS_DETAILS, details);
+        return logsInfo;
+      }
     } catch (error) {
       podLogsError = error;
     }
-  } else {
-    podLogsError = new Error('Task pod information is not available.');
   }
 
   const executorLogsArtifact = getOutputArtifactByName(task, EXECUTOR_LOGS_ARTIFACT_KEY);
   let artifactLogsError: unknown;
   if (executorLogsArtifact?.uri) {
     try {
-      logsInfo.set(LOGS_DETAILS, await readArtifactFile(executorLogsArtifact, namespace));
-      return logsInfo;
+      const details = await readArtifactFile(executorLogsArtifact, namespace);
+      if (details.trim()) {
+        logsInfo.set(LOGS_DETAILS, details);
+        return logsInfo;
+      }
     } catch (error) {
       artifactLogsError = error;
     }
   }
 
-  let driverLogsError: unknown;
-  if (runId && driverPod?.name) {
-    try {
-      logsInfo.set(
-        LOGS_DETAILS,
-        await Apis.getPodLogs(runId, driverPod.name, namespace || '', createdAt),
-      );
-      logsInfo.set(
-        LOGS_BANNER_MESSAGE,
-        'Showing driver initialization logs. These are not component executor output logs.',
-      );
-      return logsInfo;
-    } catch (error) {
-      driverLogsError = error;
-    }
+  if (!podLogsError && !artifactLogsError) {
+    logsInfo.set(LOGS_BANNER_MESSAGE, 'Task logs are not available yet.');
+    return logsInfo;
   }
-
-  const podErrorMessage = await errorToMessage(podLogsError);
+  const podErrorMessage = podLogsError
+    ? await errorToMessage(podLogsError)
+    : 'No executor pod logs available.';
   logsInfo.set(
     LOGS_BANNER_MESSAGE,
-    artifactLogsError || driverLogsError
-      ? 'Failed to retrieve task logs.'
-      : 'Failed to retrieve pod logs.',
+    artifactLogsError ? 'Failed to retrieve task logs.' : 'Failed to retrieve pod logs.',
   );
   const additionalInfo = [`Pod logs error: ${podErrorMessage}`];
   if (artifactLogsError) {
     additionalInfo.push(`Executor logs artifact error: ${await errorToMessage(artifactLogsError)}`);
   }
-  if (driverLogsError) {
-    additionalInfo.push(`Driver pod logs error: ${await errorToMessage(driverLogsError)}`);
-  }
   logsInfo.set(
     LOGS_BANNER_ADDITIONAL_INFO,
-    artifactLogsError || driverLogsError
-      ? additionalInfo.join('\n')
-      : `Error response: ${podErrorMessage}`,
+    artifactLogsError ? additionalInfo.join('\n') : `Error response: ${podErrorMessage}`,
   );
   return logsInfo;
 }

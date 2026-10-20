@@ -880,7 +880,7 @@ describe('RunDetailsV2', () => {
     fireEvent.click(await screen.findByText('preprocess'));
     fireEvent.click(await screen.findByRole('tab', { name: 'Task Details', exact: true }));
     expect(await screen.findByText('preprocess-task')).toBeVisible();
-    fireEvent.click(screen.getByRole('tab', { name: 'Task logs', exact: true }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
     expect(await screen.findByText('Loading experiment namespace…')).toBeVisible();
     expect(getPodLogsSpy).not.toHaveBeenCalled();
 
@@ -929,7 +929,7 @@ describe('RunDetailsV2', () => {
       </NamespaceContext.Provider>,
     );
     fireEvent.click(await screen.findByText('preprocess'));
-    fireEvent.click(await screen.findByRole('tab', { name: 'Task logs', exact: true }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Logs', exact: true }));
     expect(await screen.findByText('fallback logs')).toBeVisible();
     expect(getPodLogsSpy).toHaveBeenCalledExactlyOnceWith(
       RUN_ID,
@@ -975,7 +975,7 @@ describe('RunDetailsV2', () => {
     );
 
     fireEvent.click(await screen.findByText('preprocess'));
-    fireEvent.click(await screen.findByText('Task logs'));
+    fireEvent.click(await screen.findByText('Logs'));
 
     await waitFor(() =>
       expect(getPodLogsSpy).toHaveBeenCalledWith(RUN_ID, 'preprocess-pod', 'team-a', '2026-08-12'),
@@ -1730,7 +1730,7 @@ describe('RunDetailsV2', () => {
         'aria-selected',
         'true',
       );
-      expect(await screen.findByRole('tab', { name: 'Task logs', exact: true })).toHaveAttribute(
+      expect(await screen.findByRole('tab', { name: 'Logs', exact: true })).toHaveAttribute(
         'aria-selected',
         'true',
       );
@@ -1868,7 +1868,7 @@ describe('RunDetailsV2', () => {
           'aria-selected',
           'true',
         );
-        expect(await screen.findByRole('tab', { name: 'Task logs', exact: true })).toHaveAttribute(
+        expect(await screen.findByRole('tab', { name: 'Logs', exact: true })).toHaveAttribute(
           'aria-selected',
           'true',
         );

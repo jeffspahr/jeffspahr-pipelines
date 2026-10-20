@@ -334,7 +334,6 @@ exports[`LogViewer > renders an empty container when no logs passed 1`] = `
       aria-label="Task logs"
       aria-readonly="true"
       class="ReactVirtualized__Grid ReactVirtualized__List kfp-log-viewer"
-      id="logViewer"
       role="grid"
       style="box-sizing: border-box; direction: ltr; height: 0px; position: relative; width: 0px; -webkit-overflow-scrolling: touch; will-change: transform; overflow-x: hidden; overflow-y: hidden;"
       tabindex="0"

@@ -380,7 +380,7 @@ async function changeTask(page, taskName) {
   await selected(page, taskName);
 }
 async function logs(page, text) {
-  await tab(page, 'Task logs').click();
+  await tab(page, 'Logs').click();
   await page.getByTestId('logs-view-window').getByText(text, { exact: true }).waitFor();
 }
 async function screenshot(page, name) {
@@ -635,7 +635,7 @@ test('Run Details distinguishes executor, artifact, and driver log sources', asy
     await openTask(page);
     await tab(page, 'Task Details').click();
     await page.getByText('task-train', { exact: true }).waitFor();
-    await tab(page, 'Task logs').click();
+    await tab(page, 'Logs').click();
     await page.getByText('Loading experiment namespace…', { exact: true }).waitFor();
     assert.equal(
       fixture.requests.filter((request) =>
@@ -666,13 +666,22 @@ test('Run Details distinguishes executor, artifact, and driver log sources', asy
       0,
     );
     await changeTask(page, 'prepare');
-    await logs(page, 'driver initialization output');
+    await tab(page, 'Logs').click();
     await page
-      .getByText(
-        'Showing driver initialization logs. These are not component executor output logs.',
-        { exact: true },
-      )
+      .getByTestId('driver-logs-view-window')
+      .getByText('driver initialization output', { exact: true })
       .waitFor();
+    assert.equal(
+      await page.getByTestId('logs-view-window').count(),
+      0,
+      'driver output must not appear in task output',
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Driver logs', exact: true })
+        .getAttribute('aria-expanded'),
+      'true',
+    );
     assert.deepEqual(
       fixture.requests
         .filter((request) => request.path === '/k8s/pod/logs')
@@ -680,6 +689,47 @@ test('Run Details distinguishes executor, artifact, and driver log sources', asy
       ['train-pod', 'preprocess-pod', 'prepare-driver'],
     );
     await screenshot(page, 'run-details-driver-logs');
+  });
+});
+
+test('one Logs tab separates collapsible driver output from task output', async () => {
+  await withFixture({}, async (page, fixture) => {
+    fixture.tasks
+      .find((task) => task.name === 'train')
+      .pods.push({ name: 'train-driver', type: 'DRIVER' });
+    fixture.logs.set('train-driver', 'driver orchestration output');
+    await openTask(page);
+    await logs(page, 'executor attempt one');
+    const driverToggle = page.getByRole('button', { name: 'Driver logs', exact: true });
+    assert.equal(await driverToggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.getByRole('tab', { name: 'Driver logs', exact: true }).count(), 0);
+    await driverToggle.click();
+    await page
+      .getByTestId('driver-logs-view-window')
+      .getByText('driver orchestration output', { exact: true })
+      .waitFor();
+    assert.equal(await page.getByText('driver orchestration output', { exact: true }).count(), 1);
+    assert.equal(
+      await page
+        .getByTestId('logs-view-window')
+        .getByText('executor attempt one', { exact: true })
+        .count(),
+      1,
+    );
+    const positions = await page.evaluate(() => ({
+      driver: document
+        .querySelector('[data-testid="driver-logs-view-window"]')
+        .getBoundingClientRect().top,
+      task: document.querySelector('[data-testid="logs-view-window"]').getBoundingClientRect().top,
+    }));
+    assert.ok(positions.driver < positions.task, 'driver logs precede task logs');
+    await driverToggle.click();
+    assert.equal(await driverToggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.getByTestId('driver-logs-view-window').count(), 0);
+    await page
+      .getByTestId('logs-view-window')
+      .getByText('executor attempt one', { exact: true })
+      .waitFor();
   });
 });
 
@@ -793,9 +843,9 @@ test('Run Details log output scrolls horizontally and pauses then resumes follow
     fixture.logs.set('train-pod', lines.join('\n'));
     await openTask(page);
     await logs(page, lines.at(-1));
-    const viewer = page.locator('#logViewer');
+    const viewer = page.locator('[data-testid="logs-view-window"] [role="grid"]');
     await page.waitForFunction(() => {
-      const viewer = document.querySelector('#logViewer');
+      const viewer = document.querySelector('[data-testid="logs-view-window"] [role="grid"]');
       return viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight <= 20;
     });
     assert.equal(await viewer.evaluate((node) => node.scrollWidth > node.clientWidth), true);
@@ -810,7 +860,7 @@ test('Run Details log output scrolls horizontally and pauses then resumes follow
     fixture.logs.set('train-pod', lines.join('\n'));
     await tick(page, '/k8s/pod/logs');
     await page.waitForFunction((count) => {
-      const viewer = document.querySelector('#logViewer');
+      const viewer = document.querySelector('[data-testid="logs-view-window"] [role="grid"]');
       return viewer.scrollHeight >= count * 15 && viewer.scrollTop <= 20;
     }, lines.length);
     await viewer.evaluate(
@@ -824,7 +874,7 @@ test('Run Details log output scrolls horizontally and pauses then resumes follow
     fixture.logs.set('train-pod', lines.join('\n'));
     await tick(page, '/k8s/pod/logs');
     await page.waitForFunction((count) => {
-      const viewer = document.querySelector('#logViewer');
+      const viewer = document.querySelector('[data-testid="logs-view-window"] [role="grid"]');
       return (
         viewer.scrollHeight >= count * 15 &&
         viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight <= 20
@@ -1052,7 +1102,7 @@ test('Run Details exposes semantic values and restores navigation after closing 
     const inspector = page.getByRole('dialog');
     const narrowReturnTarget = await page.evaluateHandle(() => window.kfpFixtureGraphFocusTarget);
     assert.equal(await inspector.getAttribute('aria-modal'), 'true');
-    await tab(page, 'Task logs').click();
+    await tab(page, 'Logs').click();
     await page
       .getByTestId('logs-view-window')
       .getByText('executor attempt one', { exact: true })
@@ -1063,38 +1113,60 @@ test('Run Details exposes semantic values and restores navigation after closing 
   });
 });
 
-
 test('Inspector resize preserves manual zoom and selected-node visibility', async () => {
   await withFixture({}, async (page) => {
     await page.goto(`${origin}/#/runs/details/${runId}`);
     await node(page, 'prepare').waitFor();
     await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
-    const measure = () => page.evaluate(() => {
-      const canvas = document.querySelector('[data-testid="DagCanvas"]').getBoundingClientRect();
-      const matrix = new DOMMatrixReadOnly(document.querySelector('.react-flow__viewport').style.transform);
-      const selected = document.querySelector('.react-flow__node.selected')?.getBoundingClientRect();
-      return { width: canvas.width, zoom: matrix.a, x: matrix.e,
-        visible: !selected || (selected.left >= canvas.left && selected.right <= canvas.right && selected.top >= canvas.top && selected.bottom <= canvas.bottom) };
-    });
+    const measure = () =>
+      page.evaluate(() => {
+        const canvas = document.querySelector('[data-testid="DagCanvas"]').getBoundingClientRect();
+        const matrix = new DOMMatrixReadOnly(
+          document.querySelector('.react-flow__viewport').style.transform,
+        );
+        const selected = document
+          .querySelector('.react-flow__node.selected')
+          ?.getBoundingClientRect();
+        return {
+          width: canvas.width,
+          zoom: matrix.a,
+          x: matrix.e,
+          visible:
+            !selected ||
+            (selected.left >= canvas.left &&
+              selected.right <= canvas.right &&
+              selected.top >= canvas.top &&
+              selected.bottom <= canvas.bottom),
+        };
+      });
     const before = await measure();
     await node(page, 'prepare').locator('button').first().click();
     const inspector = page.getByRole('dialog');
     await inspector.waitFor();
-    await page.waitForFunction(width => document.querySelector('[data-testid="DagCanvas"]').clientWidth < width, before.width);
+    await page.waitForFunction(
+      (width) => document.querySelector('[data-testid="DagCanvas"]').clientWidth < width,
+      before.width,
+    );
     const opened = await measure();
     assert.equal(opened.zoom, before.zoom);
     assert.ok(opened.visible);
     const resize = inspector.getByRole('separator', { name: 'Resize node details' });
     await resize.focus();
     await page.keyboard.press('ArrowLeft');
-    await page.waitForFunction(width => document.querySelector('[data-testid="DagCanvas"]').clientWidth < width, opened.width);
+    await page.waitForFunction(
+      (width) => document.querySelector('[data-testid="DagCanvas"]').clientWidth < width,
+      opened.width,
+    );
     const resized = await measure();
     assert.equal(resized.zoom, before.zoom);
     assert.ok(resized.visible);
     assert.notEqual(resized.x, opened.x);
     await inspector.getByRole('button', { name: 'close', exact: true }).click();
     await inspector.waitFor({ state: 'hidden' });
-    await page.waitForFunction(width => document.querySelector('[data-testid="DagCanvas"]').clientWidth === width, before.width);
+    await page.waitForFunction(
+      (width) => document.querySelector('[data-testid="DagCanvas"]').clientWidth === width,
+      before.width,
+    );
     const closed = await measure();
     assert.equal(closed.zoom, before.zoom);
     assert.equal(closed.width, before.width);

@@ -1,0 +1,44 @@
+.kfp-node-logs {
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+.kfp-node-logs-driver {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.kfp-node-logs-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  padding: 4px 0;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.kfp-node-logs-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.kfp-node-logs-description {
+  color: var(--muted-foreground);
+  margin: 8px 0;
+}
+.kfp-node-logs-task h3 {
+  margin: 0 0 8px;
+  font-size: inherit;
+  font-weight: 500;
+}
+.kfp-node-logs .kfp-inspection-log-window {
+  flex: none;
+  height: 320px;
+  min-height: 160px;
+}
+.kfp-node-logs-driver .kfp-inspection-log-window {
+  height: 200px;
+}

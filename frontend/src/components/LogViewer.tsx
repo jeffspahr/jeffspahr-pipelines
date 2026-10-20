@@ -25,6 +25,7 @@ const listContainerStyleOverride = {
 
 interface LogViewerProps {
   logLines: string[];
+  label?: string;
 }
 
 // Use the same amount of overscan above and below visible rows.
@@ -81,14 +82,13 @@ class LogViewer extends React.Component<LogViewerProps, LogViewerState> {
       <AutoSizer>
         {({ height, width }) => (
           <List
-            id='logViewer'
             containerStyle={listContainerStyleOverride}
             width={width}
             height={height}
             rowCount={this.props.logLines.length}
             rowHeight={15}
             className='kfp-log-viewer'
-            aria-label='Task logs'
+            aria-label={this.props.label || 'Task logs'}
             ref={this._rootRef}
             overscanIndicesGetter={overscanOnBothDirections}
             overscanRowCount={

@@ -25,6 +25,7 @@ import {
 } from 'src/apisv2beta1/run';
 import {
   getDriverLogsInfo,
+  getTaskDriverLogsInfo,
   getDriverLogUri,
   getTaskDetailsFields,
   getLogsInfo,
@@ -120,6 +121,12 @@ describe('RuntimeNodeDetails', () => {
     return render(taskView(task, extraProps));
   }
 
+  function openDriverLogs() {
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+    const toggle = screen.getByRole('button', { name: 'Driver logs', exact: true });
+    if (toggle.getAttribute('aria-expanded') === 'false') fireEvent.click(toggle);
+  }
+
   describe('Driver logs', () => {
     const driverLogUri = 's3://pipeline-root/driver-logs.txt';
 
@@ -185,16 +192,16 @@ describe('RuntimeNodeDetails', () => {
         expect(readFileSpy).not.toHaveBeenCalled();
         fireEvent.click(screen.getByRole('tab', { name: 'Task Details', exact: true }));
         expect(readFileSpy).not.toHaveBeenCalled();
-        fireEvent.click(screen.getByRole('tab', { name: 'Task logs', exact: true }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
         expect(await screen.findByText('executor output')).toBeVisible();
         expect(readFileSpy).not.toHaveBeenCalled();
 
-        fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+        openDriverLogs();
         expect(screen.getByText('Pipeline orchestration logs from the KFP driver.')).toBeVisible();
 
         expect(await screen.findByText('driver initialization')).toBeVisible();
         expect(screen.getByText('finished')).toBeVisible();
-        expect(screen.queryByText('executor output')).not.toBeInTheDocument();
+        expect(screen.getByText('executor output')).toBeVisible();
         expect(readFileSpy).toHaveBeenCalledExactlyOnceWith({
           path: {
             bucket: 'pipeline-root',
@@ -221,12 +228,12 @@ describe('RuntimeNodeDetails', () => {
       const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('unused');
       renderTask(uri === undefined ? createTask() : createSystemLogsTask(uri));
 
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
 
       expect(await screen.findByText('Driver logs are not available yet.')).toBeVisible();
-      expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('driver-logs-view-window')).not.toBeInTheDocument();
       expect(readFileSpy).not.toHaveBeenCalled();
-      expect(getPodLogsSpy).not.toHaveBeenCalled();
+      expect(getPodLogsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('shows loading until the driver log artifact arrives', async () => {
@@ -238,7 +245,7 @@ describe('RuntimeNodeDetails', () => {
           }),
       );
       renderTask(createSystemLogsTask());
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
       expect(await screen.findByText('Loading driver logs…')).toBeVisible();
       await act(async () => resolveLogs('Creating task train-model in pod kubeflow'));
       expect(await screen.findByText('Creating task train-model in pod kubeflow')).toBeVisible();
@@ -248,9 +255,9 @@ describe('RuntimeNodeDetails', () => {
     it.each(['', '  \n'])('shows an unavailable state for an empty artifact', async (contents) => {
       vi.spyOn(Apis, 'readFile').mockResolvedValue(contents);
       renderTask(createSystemLogsTask());
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
       expect(await screen.findByText('Driver logs are not available yet.')).toBeVisible();
-      expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('driver-logs-view-window')).not.toBeInTheDocument();
     });
 
     it('shows artifact-fetch error details and recovers on Refresh without leaving Driver logs', async () => {
@@ -261,11 +268,16 @@ describe('RuntimeNodeDetails', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       renderTask(createSystemLogsTask());
 
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
 
       expect(await screen.findByText('Failed to retrieve driver logs.')).toBeVisible();
-      expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'Details', exact: true }));
+      expect(screen.queryByTestId('driver-logs-view-window')).not.toBeInTheDocument();
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Driver logs' })).getByRole('button', {
+          name: 'Details',
+          exact: true,
+        }),
+      );
       const dialog = await screen.findByRole('dialog');
       expect(
         within(dialog).getByText('Error response: storage temporarily unavailable'),
@@ -289,7 +301,7 @@ describe('RuntimeNodeDetails', () => {
 
       await act(async () => vi.advanceTimersByTimeAsync(20_000));
       expect(readFileSpy).not.toHaveBeenCalled();
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
       await act(async () => vi.advanceTimersByTimeAsync(1));
       expect(screen.getByText('Failed to retrieve driver logs.')).toBeVisible();
 
@@ -315,7 +327,7 @@ describe('RuntimeNodeDetails', () => {
           .mockResolvedValueOnce('previous driver logs')
           .mockReturnValueOnce(nextLogs);
         const view = renderTask(createSystemLogsTask());
-        fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+        openDriverLogs();
         expect(await screen.findByText('previous driver logs')).toBeVisible();
 
         view.rerender(
@@ -330,7 +342,7 @@ describe('RuntimeNodeDetails', () => {
 
         await waitFor(() => expect(readFileSpy).toHaveBeenCalledTimes(2));
         expect(screen.queryByText('previous driver logs')).not.toBeInTheDocument();
-        expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
+        expect(screen.queryByTestId('driver-logs-view-window')).not.toBeInTheDocument();
         await act(async () => resolveNextLogs('current driver logs'));
         expect(await screen.findByText('current driver logs')).toBeVisible();
       },
@@ -346,7 +358,7 @@ describe('RuntimeNodeDetails', () => {
         .mockReturnValueOnce(previousLogs)
         .mockResolvedValueOnce('current task driver logs');
       const view = renderTask(createSystemLogsTask());
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
       await waitFor(() => expect(readFileSpy).toHaveBeenCalledTimes(1));
 
       view.rerender(taskView(createSystemLogsTask(driverLogUri, { task_id: 'second-task-id' })));
@@ -360,7 +372,7 @@ describe('RuntimeNodeDetails', () => {
     it('retrieves a newly available URI on task refresh without resetting the selected tab', async () => {
       const readFileSpy = vi.spyOn(Apis, 'readFile').mockResolvedValue('new driver logs');
       const view = renderTask(createTask());
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
       expect(await screen.findByText('Driver logs are not available yet.')).toBeVisible();
       expect(readFileSpy).not.toHaveBeenCalled();
 
@@ -379,7 +391,7 @@ describe('RuntimeNodeDetails', () => {
         .mockResolvedValue('final driver logs');
       const task = createSystemLogsTask(driverLogUri, { state: PipelineTaskTaskState.RUNNING });
       const view = renderTask(task, { sourceFinished: false });
-      fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+      openDriverLogs();
       await act(async () => vi.advanceTimersByTimeAsync(1));
       expect(screen.getByText('live driver logs')).toBeVisible();
 
@@ -398,7 +410,7 @@ describe('RuntimeNodeDetails', () => {
       .mockRejectedValue(new Error('Failed to retrieve pod logs'));
     renderTask(createTask());
 
-    fireEvent.click(await screen.findByText('Task logs'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Logs' }));
 
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalled());
     await screen.findByText('Failed to retrieve pod logs.');
@@ -408,7 +420,7 @@ describe('RuntimeNodeDetails', () => {
     const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('test-logs-details');
     renderTask(createTask());
 
-    fireEvent.click(await screen.findByText('Task logs'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Logs' }));
 
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalled());
     await screen.findByTestId(TEST_LOG_VIEW_ID);
@@ -526,39 +538,103 @@ describe('RuntimeNodeDetails', () => {
     expect(getPodLogsSpy).toHaveBeenCalledWith(TEST_RUN_ID, TEST_POD_NAME, '', '2026-08-11');
   });
 
-  it('falls back to explicitly labeled driver logs when executor output is unavailable', async () => {
+  it('keeps legacy driver pod output out of task logs and retrieves it as driver logs', async () => {
     const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('driver diagnostics');
-
-    const logsInfo = await getLogsInfo(
-      createTask({ pods: [{ name: 'driver-pod', type: PipelineTaskTaskPodType.DRIVER }] }),
-      TEST_RUN_ID,
-      TEST_NAMESPACE,
-    );
-
-    expect(getPodLogsSpy).toHaveBeenCalledWith(
+    const task = createTask({
+      pods: [{ name: 'driver-pod', type: PipelineTaskTaskPodType.DRIVER }],
+    });
+    const taskLogs = await getLogsInfo(task, TEST_RUN_ID, TEST_NAMESPACE);
+    expect(taskLogs.get(LOGS_BANNER_MESSAGE)).toBe('Task logs are not available yet.');
+    expect(getPodLogsSpy).not.toHaveBeenCalled();
+    const driverLogs = await getTaskDriverLogsInfo(task, TEST_RUN_ID, TEST_NAMESPACE);
+    expect(driverLogs.get(LOGS_DETAILS)).toBe('driver diagnostics');
+    expect(getPodLogsSpy).toHaveBeenCalledExactlyOnceWith(
       TEST_RUN_ID,
       'driver-pod',
       TEST_NAMESPACE,
       '2026-08-11',
     );
-    expect(logsInfo.get(LOGS_DETAILS)).toBe('driver diagnostics');
-    expect(logsInfo.get(LOGS_BANNER_MESSAGE)).toBe(
-      'Showing driver initialization logs. These are not component executor output logs.',
+  });
+
+  it('automatically expands driver diagnostics without duplicating them as task logs', async () => {
+    vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('driver diagnostics');
+    const task = createTask({
+      pods: [{ name: 'driver-pod', type: PipelineTaskTaskPodType.DRIVER }],
+    });
+    const view = renderTask(task);
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs' }));
+    expect(screen.getByRole('button', { name: 'Driver logs' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await screen.findByText('Task logs are not available yet.');
+    expect(screen.getByTestId('driver-logs-view-window')).toBeInTheDocument();
+    expect(screen.queryByTestId(TEST_LOG_VIEW_ID)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Driver logs' }));
+    view.rerender(taskView({ ...task }));
+    expect(screen.getByRole('button', { name: 'Driver logs' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
     );
   });
 
-  it('shows the driver-log label alongside driver diagnostics', async () => {
-    vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('driver diagnostics');
-    renderTask(
-      createTask({ pods: [{ name: 'driver-pod', type: PipelineTaskTaskPodType.DRIVER }] }),
+  it('falls back to the legacy driver pod when the driver artifact is unavailable', async () => {
+    vi.spyOn(Apis, 'readFile').mockRejectedValue(new Error('artifact missing'));
+    const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('legacy driver output');
+    const task = createTask({
+      status_metadata: {
+        custom_properties: { driver_logs_uri: 's3://root/driver.log' as unknown as object },
+      },
+      pods: [
+        { name: 'driver-old', type: PipelineTaskTaskPodType.DRIVER },
+        { name: 'driver-new', type: PipelineTaskTaskPodType.DRIVER },
+      ],
+    });
+    expect((await getTaskDriverLogsInfo(task, TEST_RUN_ID, TEST_NAMESPACE)).get(LOGS_DETAILS)).toBe(
+      'legacy driver output',
     );
-
-    fireEvent.click(await screen.findByText('Task logs'));
-
-    await screen.findByText(
-      'Showing driver initialization logs. These are not component executor output logs.',
+    expect(getPodLogsSpy).toHaveBeenCalledExactlyOnceWith(
+      TEST_RUN_ID,
+      'driver-new',
+      TEST_NAMESPACE,
+      '2026-08-11',
     );
-    screen.getByTestId(TEST_LOG_VIEW_ID);
+  });
+
+  it('auto-expands driver logs after executor retrieval fails, preserving a manual collapse on refresh', async () => {
+    vi.spyOn(Apis, 'getPodLogs').mockRejectedValue(new Error('executor unavailable'));
+    vi.spyOn(Apis, 'readFile').mockResolvedValue('driver setup diagnostics');
+    const task = createTask({
+      status_metadata: {
+        custom_properties: { driver_logs_uri: 's3://root/driver.log' as unknown as object },
+      },
+    });
+    const view = renderTask(task);
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs' }));
+    await screen.findByText('Failed to retrieve pod logs.');
+    expect(screen.getByRole('button', { name: 'Driver logs' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await screen.findByTestId('driver-logs-view-window');
+    fireEvent.click(screen.getByRole('button', { name: 'Driver logs' }));
+    view.rerender(taskView({ ...task, state: PipelineTaskTaskState.RUNNING }));
+    expect(screen.getByRole('button', { name: 'Driver logs' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('normalizes a legacy driver-tab selection to the combined Logs tab', async () => {
+    vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('executor output');
+    renderTask(createTask(), { selectedTaskTab: 3 });
+    expect(screen.getByRole('tab', { name: 'Logs' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tab', { name: 'Driver logs' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Driver logs' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(await screen.findByTestId(TEST_LOG_VIEW_ID)).toBeInTheDocument();
   });
 
   it('prefers executor pod logs when both executor and driver pods are available', async () => {
@@ -620,7 +696,7 @@ describe('RuntimeNodeDetails', () => {
     const initialTask = createTask({ state: PipelineTaskTaskState.RUNNING });
     const view = renderTask(initialTask);
 
-    fireEvent.click(await screen.findByText('Task logs'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Logs' }));
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId(TEST_LOG_VIEW_ID)).toBeVisible();
 
@@ -660,7 +736,7 @@ describe('RuntimeNodeDetails', () => {
       .mockReturnValueOnce(secondTaskLogs);
     const view = renderTask(createTask());
 
-    fireEvent.click(await screen.findByText('Task logs'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Logs' }));
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId(TEST_LOG_VIEW_ID)).toBeVisible();
 
@@ -694,7 +770,7 @@ describe('RuntimeNodeDetails', () => {
     const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('final output');
     renderTask(createTask({ state: PipelineTaskTaskState.RUNNING }), { sourceFinished: true });
 
-    fireEvent.click(screen.getByText('Task logs'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Logs' }));
     await act(async () => vi.advanceTimersByTimeAsync(0));
     expect(getPodLogsSpy).toHaveBeenCalledTimes(1);
 
@@ -727,7 +803,7 @@ describe('RuntimeNodeDetails', () => {
       }),
     );
 
-    fireEvent.click(await screen.findByText('Task logs'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Logs' }));
 
     await waitFor(() => expect(readFileSpy).toHaveBeenCalled());
     expect(await screen.findByTestId(TEST_LOG_VIEW_ID)).toBeVisible();
