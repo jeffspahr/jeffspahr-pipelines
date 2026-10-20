@@ -137,7 +137,24 @@ function DagCanvasView({
       }),
     [elements, layers, getSubDagElements, expansion],
   );
+  // Runtime task pages can replace the initial static graph with loop iterations.
+  // Track geometry, not task status, so background polling does not reset the view.
+  const layoutKey = useMemo(
+    () =>
+      JSON.stringify(
+        grouped.nodes.map(({ id, parentId, position, width, height }) => [
+          id,
+          parentId,
+          position.x,
+          position.y,
+          width,
+          height,
+        ]),
+      ),
+    [grouped.nodes],
+  );
   const toggleGroup = useCallback((id: string, isCollapsed: boolean) => {
+    manuallyMoved.current = true;
     setExpansion((previous) => {
       const collapsed = new Set(previous.collapsed);
       const expanded = new Set(previous.expanded);
@@ -154,6 +171,7 @@ function DagCanvasView({
     setPositions({});
   }, []);
   const resetPositionsAndFitView = useCallback(() => {
+    manuallyMoved.current = true;
     setPositions({});
     requestAnimationFrame(() => {
       void reactFlowInstance.current?.fitView(GRAPH_FIT_OPTIONS);
@@ -391,6 +409,7 @@ function DagCanvasView({
           deleteKeyCode={null}
         >
           <InitialGraphFit
+            layoutKey={layoutKey}
             onReady={(instance) => {
               reactFlowInstance.current = instance;
               lastFocusedNodeId.current = focusedId || null;
@@ -439,8 +458,10 @@ function DagCanvasView({
 // External synchronization: wait for React Flow's measured nodes and viewport,
 // rather than fitting during onInit while its container is still being laid out.
 function InitialGraphFit({
+  layoutKey,
   onReady,
 }: {
+  layoutKey: string;
   onReady: (instance: ReactFlowInstance<PipelineNode, Edge>) => void;
 }) {
   const instance = useReactFlow<PipelineNode, Edge>();
@@ -449,14 +470,20 @@ function InitialGraphFit({
   // Collapsed descendants are omitted from this canvas, not hidden nodes.
   const nodesReady = useNodesInitialized({ includeHiddenNodes: true });
   const viewportReady = useStore((store) => store.width > 0 && store.height > 0);
-  const fitted = useRef(false);
+  const fittedLayout = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!nodesReady || !viewportReady || !instance.viewportInitialized || fitted.current) return;
+    if (
+      !nodesReady ||
+      !viewportReady ||
+      !instance.viewportInitialized ||
+      fittedLayout.current === layoutKey
+    )
+      return;
     const frame = requestAnimationFrame(() => {
-      fitted.current = true;
+      fittedLayout.current = layoutKey;
       onReady(instance);
     });
     return () => cancelAnimationFrame(frame);
-  }, [nodesReady, viewportReady, instance, onReady]);
+  }, [nodesReady, viewportReady, instance, onReady, layoutKey]);
   return null;
 }

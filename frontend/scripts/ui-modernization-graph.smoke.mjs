@@ -26,6 +26,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { after, before, test } from 'node:test';
 import { launchBrowser } from './browser-launch.mjs';
+import { transform } from 'esbuild';
 import { recordScalingTrial } from './performance-evidence.mjs';
 
 const origin = 'http://kfp.test';
@@ -51,6 +52,20 @@ before(async () => {
   }
 });
 after(async () => browser?.close());
+
+async function reviewParallelFixture() {
+  const { code } = await transform(
+    await readFile(new URL('../mock-backend/complex-run-samples.ts', import.meta.url), 'utf8'),
+    { loader: 'ts', format: 'esm' },
+  );
+  const samples = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+  const sample = samples.complexRunSamples.find((entry) => entry.id === 'parallel-folds');
+  return {
+    spec: samples.complexPipelineSpec(sample),
+    tasks: samples.complexRunTasks({ run_id: 'sample-run-parallel-folds', created_at: new Date(createdAt) }),
+    tasksDelayMs: 700,
+  };
+}
 
 function runtimeTask(id, name, parent, type = 'RUNTIME', extra = {}) {
   return {
@@ -240,6 +255,8 @@ async function withFixture(data, exercise) {
           finished_at: finishedAt,
         });
       if (path === `/apis/v2beta1/runs/${runId}/tasks`) {
+        if (data.waitForTasks) await data.waitForTasks();
+        if (data.tasksDelayMs) await new Promise((resolve) => setTimeout(resolve, data.tasksDelayMs));
         assert.equal(url.searchParams.get('page_size'), '200');
         assert.equal(url.searchParams.get('order_by'), 'create_time asc');
         const token = url.searchParams.get('page_token') || '';
@@ -318,7 +335,7 @@ async function geometry(page, expectedCount) {
       )
         return current;
     }
-    throw new Error(`Graph did not settle at ${count} nodes`);
+    throw new Error(`Graph did not settle at ${count} nodes: ${JSON.stringify(measure().nodes.map((node) => node.id))}`);
   }, expectedCount);
 }
 function sameGeometry(a, b) {
@@ -772,31 +789,62 @@ if (process.env.KFP_SCALING_SAMPLES) {
   });
 }
 
+async function assertGraphFits(page) {
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.react-flow');
+    const viewport = document.querySelector('.react-flow__viewport');
+    if (!canvas || !viewport) return false;
+    const bounds = canvas.getBoundingClientRect();
+    const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a;
+    return zoom <= 1 && [...document.querySelectorAll('.react-flow__node')].every((node) => {
+      const box = node.getBoundingClientRect();
+      return box.left >= bounds.left && box.right <= bounds.right &&
+        box.top >= bounds.top && box.bottom <= bounds.bottom;
+    });
+  }, undefined, { timeout: 3000 });
+}
+
 test('initial graph fit contains every node of a large DAG after direct load and reload', async () => {
   await withFixture(largeFixture(), async (page) => {
     await page.goto(`${origin}/#/runs/details/${runId}`);
     for (let load = 0; load < 2; load++) {
       if (load) await page.reload();
       await geometry(page, 201);
-      await page.waitForFunction(() => {
-        const canvas = document.querySelector('.react-flow');
-        const viewport = document.querySelector('.react-flow__viewport');
-        if (!canvas || !viewport) return false;
-        const bounds = canvas.getBoundingClientRect();
-        const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a;
-        return (
-          zoom <= 1 &&
-          [...document.querySelectorAll('.react-flow__node')].every((node) => {
-            const box = node.getBoundingClientRect();
-            return (
-              box.left >= bounds.left &&
-              box.right <= bounds.right &&
-              box.top >= bounds.top &&
-              box.bottom <= bounds.bottom
-            );
-          })
-        );
-      }, undefined, { timeout: 3000 });
+      await assertGraphFits(page);
+    }
+  });
+});
+
+test('initial graph fit follows late runtime loop iterations after load and reload', async () => {
+  await withFixture(await reviewParallelFixture(), async (page) => {
+    await page.goto(`${origin}/#/runs/details/${runId}`);
+    for (let load = 0; load < 2; load++) {
+      if (load) await page.reload();
+      await geometry(page, 15);
+      await assertGraphFits(page);
+    }
+  });
+});
+
+test('late runtime loop layout preserves manual zoom and pan', async () => {
+  let releaseTasks;
+  const tasksReady = new Promise((resolve) => { releaseTasks = resolve; });
+  const fixture = { ...await reviewParallelFixture(), tasksDelayMs: 0, waitForTasks: () => tasksReady };
+  await withFixture(fixture, async (page) => {
+    try {
+      await page.goto(`${origin}/#/runs/details/${runId}`);
+      await page.locator('.react-flow__node').first().waitFor();
+      await settledViewport(page);
+      await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+      await page.getByRole('region', { name: 'Pipeline graph' }).press('ArrowRight');
+      await settledViewport(page);
+      const before = await viewport(page);
+      releaseTasks();
+      await geometry(page, 15);
+      await settledViewport(page);
+      assert.deepEqual(await viewport(page), before);
+    } finally {
+      releaseTasks();
     }
   });
 });
