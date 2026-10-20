@@ -57,7 +57,7 @@ const TYPE_FILTERS = [
 ];
 
 const COLUMNS: Column[] = [
-  { customRenderer: artifactNameRenderer, flex: 2, label: 'Name', sortKey: 'name' },
+  { customRenderer: artifactNameRenderer, flex: 2, width: '28%', label: 'Name', sortKey: 'name' },
   {
     customRenderer: artifactIdRenderer,
     flex: 1.5,
@@ -66,7 +66,7 @@ const COLUMNS: Column[] = [
     sortKey: 'artifact_id',
   },
   { customRenderer: artifactTypeRenderer, flex: 2, width: 160, label: 'Type', sortKey: 'type' },
-  { customRenderer: artifactUriRenderer, flex: 1.8, width: 210, label: 'URI', sortKey: 'uri' },
+  { customRenderer: artifactUriRenderer, flex: 1.8, label: 'URI', sortKey: 'uri' },
   {
     customRenderer: textRenderer,
     flex: 1.2,

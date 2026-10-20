@@ -76,20 +76,48 @@ export class LocalStorage {
     }
   }
 
+  public static getTableColumnWidths(tableId: string): number[] | undefined {
+    try {
+      const widths: unknown = JSON.parse(
+        localStorage.getItem(`tableColumnWidths_${tableId}`) || 'null',
+      );
+      return Array.isArray(widths) &&
+        widths.length > 0 &&
+        widths.every(
+          (width) =>
+            typeof width === 'number' && Number.isFinite(width) && width >= 80 && width <= 2000,
+        )
+        ? widths
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  public static saveTableColumnWidths(tableId: string, widths?: number[]): void {
+    try {
+      const key = `tableColumnWidths_${tableId}`;
+      if (widths) localStorage.setItem(key, JSON.stringify(widths));
+      else localStorage.removeItem(key);
+    } catch {
+      // Resizing remains available when browser storage is blocked.
+    }
+  }
+
   public static getTablePageSize(pageId?: string): number {
     const key = pageId
       ? `${LocalStorageKey.tablePageSize}_${pageId}`
       : LocalStorageKey.tablePageSize;
     try {
       const parsed = Number(localStorage.getItem(key));
-      return [10, 20, 50, 100].includes(parsed) ? parsed : 10;
+      return [10, 20, 50, 100].includes(parsed) ? parsed : 20;
     } catch {
-      return 10;
+      return 20;
     }
   }
 
   public static saveTablePageSize(value: number, pageId?: string): void {
-    const normalizedValue = [10, 20, 50, 100].includes(value) ? value : 10;
+    const normalizedValue = [10, 20, 50, 100].includes(value) ? value : 20;
     const key = pageId
       ? `${LocalStorageKey.tablePageSize}_${pageId}`
       : LocalStorageKey.tablePageSize;

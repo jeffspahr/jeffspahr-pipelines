@@ -107,16 +107,16 @@ describe('RecurringRunDetailsV2', () => {
     );
     await waitFor(() => {
       expect(getRecurringRunSpy).toHaveBeenCalled();
-      expect(screen.getByText('Enabled')).toBeInTheDocument();
+      expect(screen.getByText('Enabled', { selector: 'dt' })).toBeInTheDocument();
     });
     expect(getPipelineVersionSpy).not.toHaveBeenCalled();
     screen.getByText('Yes');
-    screen.getByText('Trigger');
-    screen.getByText('Every 1 hours');
+    screen.getByText('Frequency');
+    screen.getByText('Every hour');
     screen.getByText('Max. concurrent runs');
     screen.getByText('50');
-    screen.getByText('Catchup');
-    screen.getByText('false');
+    screen.getByText('Catch up missed runs');
+    screen.getByText('Disabled');
     screen.getByText('param1');
     screen.getByText('value1');
   });
@@ -142,16 +142,16 @@ describe('RecurringRunDetailsV2', () => {
     );
     await waitFor(() => {
       expect(getRecurringRunSpy).toHaveBeenCalled();
-      expect(screen.getByText('Enabled')).toBeInTheDocument();
+      expect(screen.getByText('Enabled', { selector: 'dt' })).toBeInTheDocument();
     });
     expect(getPipelineVersionSpy).not.toHaveBeenCalled();
     screen.getByText('Yes');
-    screen.getByText('Trigger');
+    screen.getByText('Frequency');
     screen.getByText('* * * 0 0 !');
     screen.getByText('Max. concurrent runs');
     screen.getByText('50');
-    screen.getByText('Catchup');
-    screen.getByText('true');
+    screen.getByText('Catch up missed runs');
+    screen.getByText('Enabled', { selector: 'dd' });
   });
 
   it('loads the recurring run given its id in query params', async () => {
@@ -275,14 +275,14 @@ describe('RecurringRunDetailsV2', () => {
     });
 
     // "Still loads run" means that the details are still rendered successfully.
-    screen.getByText('Enabled');
+    screen.getByText('Enabled', { selector: 'dt' });
     screen.getByText('Yes');
-    screen.getByText('Trigger');
-    screen.getByText('Every 1 hours');
+    screen.getByText('Frequency');
+    screen.getByText('Every hour');
     screen.getByText('Max. concurrent runs');
     screen.getByText('50');
-    screen.getByText('Catchup');
-    screen.getByText('false');
+    screen.getByText('Catch up missed runs');
+    screen.getByText('Disabled');
     screen.getByText('param1');
     screen.getByText('value1');
   });

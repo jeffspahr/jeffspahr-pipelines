@@ -358,7 +358,7 @@ async function graphControlTargets(page) {
   assert.equal(targets.attributionCount, 0, 'attribution is covered by shared third-party notices');
   assert.deepEqual(
     targets.controls.map(({ label }) => label),
-    ['Zoom in', 'Zoom out', 'Fit view', 'Unlock graph'],
+    ['Zoom in', 'Zoom out', 'Fit view', 'Unlock node positions'],
     'flat graphs do not expose inapplicable group controls',
   );
   for (const { label, box } of targets.controls) {

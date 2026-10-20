@@ -41,3 +41,13 @@
     padding: 0 16px 16px;
   }
 }
+
+.kfp-theme .kfp-recurring-detail {
+  overflow: auto;
+}
+.kfp-theme .kfp-detail-sections-stacked {
+  display: grid;
+  width: 100%;
+  max-width: 800px;
+  grid-template-columns: minmax(0, 1fr);
+}

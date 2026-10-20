@@ -15,10 +15,9 @@
  */
 
 import 'src/pages/DetailLayouts.css';
-import { RecurringRunPipeline } from 'src/components/runs/RecurringRunPipeline';
+import { RecurringRunOverview } from 'src/components/runs/RecurringRunOverview';
 import type * as React from 'react';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
-import { InspectionFields as DetailsTable } from 'src/components/inspection/InspectionFields';
 import 'src/components/runs/ExperimentWorkflows.css';
 import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
 import { V2beta1RecurringRun, V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
@@ -26,9 +25,7 @@ import { Apis } from 'src/lib/Apis';
 import { Page } from './Page';
 import { RoutePage, RouteParams } from 'src/components/Router';
 import { Breadcrumb, ToolbarProps } from 'src/lib/PageChromeTypes';
-import { KeyValue } from 'src/lib/DetailsTableTypes';
-import { formatDateString, errorToMessage, enabledDisplayStringV2 } from 'src/lib/Utils';
-import { triggerDisplayString } from 'src/lib/TriggerUtils';
+import { errorToMessage } from 'src/lib/Utils';
 
 interface RecurringRunConfigState {
   run: V2beta1RecurringRun | null;
@@ -64,69 +61,7 @@ class RecurringRunDetailsView extends Page<{}, RecurringRunConfigState> {
   }
 
   public render(): React.JSX.Element {
-    const { run } = this.state;
-    let runDetails: Array<KeyValue<string>> = [];
-    let inputParameters: Array<KeyValue<string>> = [];
-    let triggerDetails: Array<KeyValue<string>> = [];
-    if (run) {
-      runDetails = [
-        ['Description', run.description!],
-        ['Created at', formatDateString(run.created_at)],
-      ];
-      inputParameters = Object.entries(run.runtime_config?.parameters || []).map(([key, value]) => {
-        const displayValue =
-          value == null ? '' : typeof value === 'string' ? value : JSON.stringify(value);
-        return [key || '', displayValue];
-      });
-      if (run.trigger) {
-        triggerDetails = [
-          ['Enabled', enabledDisplayStringV2(run.trigger, run.status!)],
-          ['Trigger', triggerDisplayString(run.trigger)],
-        ];
-        if (run.max_concurrency) {
-          triggerDetails.push(['Max. concurrent runs', run.max_concurrency]);
-        }
-        triggerDetails.push(['Catchup', `${!run.no_catchup}`]);
-        if (run.trigger.cron_schedule && run.trigger.cron_schedule.start_time) {
-          triggerDetails.push([
-            'Start time',
-            formatDateString(run.trigger.cron_schedule.start_time),
-          ]);
-        } else if (run.trigger.periodic_schedule && run.trigger.periodic_schedule.start_time) {
-          triggerDetails.push([
-            'Start time',
-            formatDateString(run.trigger.periodic_schedule.start_time),
-          ]);
-        }
-        if (run.trigger.cron_schedule && run.trigger.cron_schedule.end_time) {
-          triggerDetails.push(['End time', formatDateString(run.trigger.cron_schedule.end_time)]);
-        } else if (run.trigger.periodic_schedule && run.trigger.periodic_schedule.end_time) {
-          triggerDetails.push([
-            'End time',
-            formatDateString(run.trigger.periodic_schedule.end_time),
-          ]);
-        }
-      }
-    }
-
-    return (
-      <div className='kfp-detail-page'>
-        {run && (
-          <div className='kfp-detail-sections'>
-            <RecurringRunPipeline run={run} />
-            <DetailsTable title='Recurring run details' fields={runDetails} />
-
-            {!!triggerDetails.length && (
-              <DetailsTable title='Run trigger' fields={triggerDetails} />
-            )}
-
-            {!!inputParameters.length && (
-              <DetailsTable title='Run parameters' fields={inputParameters} />
-            )}
-          </div>
-        )}
-      </div>
-    );
+    return this.state.run ? <RecurringRunOverview run={this.state.run} /> : <div />;
   }
 
   public componentDidMount(): Promise<void> {

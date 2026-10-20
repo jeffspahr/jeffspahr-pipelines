@@ -448,6 +448,10 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
     await page.getByRole('alert').waitFor();
     fixture.failList = false;
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await ready(page, 16);
+    assert.equal(await page.getByRole('combobox', { name: 'Rows per page' }).inputValue(), '20');
+    // Select a smaller page explicitly so this fixture exercises token pagination.
+    await page.getByRole('combobox', { name: 'Rows per page' }).selectOption('10');
     await ready(page, 10);
     await page.getByRole('alert').waitFor({ state: 'hidden' });
     assert.equal(
@@ -857,5 +861,57 @@ test('TensorBoard preserves PVC/image/pod-template contracts, proxy readiness, c
     assert.equal(fixture.requests.filter((item) => item.method === 'POST').length, 2);
     assert.equal(fixture.requests.filter((item) => item.method === 'DELETE').length, 2);
     assert.ok(fixture.requests.some((item) => item.method === 'HEAD'));
+  });
+});
+
+test('artifact columns resize by pointer, persist after reload, and reset on ultrawide screens', async () => {
+  await withFixture({ namespace: 'team-a' }, async (page) => {
+    await page.setViewportSize({ width: 3440, height: 1263 });
+    await page.goto(`${origin}/#/artifacts`);
+    await ready(page, 16);
+    const table = page.getByRole('table', { name: 'Artifacts', exact: true });
+    const name = table.getByRole('columnheader', { name: 'Name', exact: true });
+    const before = await name.boundingBox();
+    const tableBounds = await table.boundingBox();
+    assert.ok(Math.abs(before.width / tableBounds.width - 0.28) < 0.01);
+    const handle = await table
+      .getByRole('separator', { name: 'Resize Name column', exact: true })
+      .boundingBox();
+    const x = handle.x + handle.width / 2;
+    const y = handle.y + handle.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 120, y, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForFunction((expected) => {
+      const heading = document.querySelector('table[aria-label="Artifacts"] th[aria-label="Name"]');
+      return Math.abs(heading.getBoundingClientRect().width - expected) <= 2;
+    }, before.width + 120);
+    const resized = await name.boundingBox();
+    assert.ok(
+      Math.abs(resized.width - before.width - 120) <= 2,
+      `Name width before=${before.width}, after=${resized.width}`,
+    );
+    await page.reload();
+    await ready(page, 16);
+    assert.ok(Math.abs((await name.boundingBox()).width - resized.width) <= 1);
+    await page.getByRole('button', { name: 'Reset column widths', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Reset column widths', exact: true })
+      .waitFor({ state: 'hidden' });
+    await page.waitForFunction((expected) => {
+      const heading = document.querySelector('table[aria-label="Artifacts"] th[aria-label="Name"]');
+      return Math.abs(heading.getBoundingClientRect().width - expected) <= 1;
+    }, before.width);
+    assert.ok(
+      Math.abs((await name.boundingBox()).width - before.width) <= 1,
+      `reset width=${(await name.boundingBox()).width}; before=${before.width}; table=${(await table.boundingBox()).width}`,
+    );
+    await page.reload();
+    await ready(page, 16);
+    assert.ok(
+      Math.abs((await name.boundingBox()).width - before.width) <= 1,
+      `reset width=${(await name.boundingBox()).width}; before=${before.width}; table=${(await table.boundingBox()).width}`,
+    );
   });
 });

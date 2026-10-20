@@ -408,7 +408,7 @@ describe('RunList', () => {
       undefined,
       undefined,
       '',
-      10,
+      20,
       RunSortKeys.CREATED_AT + ' desc',
       '',
       true,

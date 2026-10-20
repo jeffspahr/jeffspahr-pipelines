@@ -140,16 +140,16 @@ describe('RecurringRunDetailsV2FC', () => {
     );
     await waitFor(() => {
       expect(getRecurringRunSpy).toHaveBeenCalled();
-      expect(screen.getByText('Enabled')).toBeInTheDocument();
+      expect(screen.getByText('Enabled', { selector: 'dt' })).toBeInTheDocument();
     });
     expect(getPipelineVersionSpy).not.toHaveBeenCalled();
     screen.getByText('Yes');
-    screen.getByText('Trigger');
-    screen.getByText('Every 1 hours');
+    screen.getByText('Frequency');
+    screen.getByText('Every hour');
     screen.getByText('Max. concurrent runs');
     screen.getByText('50');
-    screen.getByText('Catchup');
-    screen.getByText('false');
+    screen.getByText('Catch up missed runs');
+    screen.getByText('Disabled');
     screen.getByText('param1');
     screen.getByText('value1');
     screen.getByText(
@@ -179,16 +179,16 @@ describe('RecurringRunDetailsV2FC', () => {
     );
     await waitFor(() => {
       expect(getRecurringRunSpy).toHaveBeenCalled();
-      expect(screen.getByText('Enabled')).toBeInTheDocument();
+      expect(screen.getByText('Enabled', { selector: 'dt' })).toBeInTheDocument();
     });
     expect(getPipelineVersionSpy).not.toHaveBeenCalled();
     screen.getByText('Yes');
-    screen.getByText('Trigger');
+    screen.getByText('Frequency');
     screen.getByText('* * * 0 0 !');
     screen.getByText('Max. concurrent runs');
     screen.getByText('50');
-    screen.getByText('Catchup');
-    screen.getByText('true');
+    screen.getByText('Catch up missed runs');
+    screen.getByText('Enabled', { selector: 'dd' });
     screen.getByText(formatDateString(cronTestRecurringRun.trigger.cron_schedule.start_time));
     screen.getByText(formatDateString(cronTestRecurringRun.trigger.cron_schedule.end_time));
   });
@@ -233,7 +233,7 @@ describe('RecurringRunDetailsV2FC', () => {
       expect(getRecurringRunSpy).toHaveBeenCalled();
     });
     // Wait for UI to render before asserting toolbar (avoids flakiness from async updates)
-    expect(await screen.findByText('Enabled')).toBeInTheDocument();
+    expect(await screen.findByText('Enabled', { selector: 'dt' })).toBeInTheDocument();
     await waitFor(() => {
       expect(updateToolbarSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -353,14 +353,14 @@ describe('RecurringRunDetailsV2FC', () => {
     });
 
     // "Still loads run" means that the details are still rendered successfully.
-    screen.getByText('Enabled');
+    screen.getByText('Enabled', { selector: 'dt' });
     screen.getByText('Yes');
-    screen.getByText('Trigger');
-    screen.getByText('Every 1 hours');
+    screen.getByText('Frequency');
+    screen.getByText('Every hour');
     screen.getByText('Max. concurrent runs');
     screen.getByText('50');
-    screen.getByText('Catchup');
-    screen.getByText('false');
+    screen.getByText('Catch up missed runs');
+    screen.getByText('Disabled');
     screen.getByText('param1');
     screen.getByText('value1');
   });
@@ -375,8 +375,8 @@ describe('RecurringRunDetailsV2FC', () => {
       expect(getRecurringRunSpy).toHaveBeenCalled();
     });
     await waitFor(() => {
-      expect(screen.getByText('Enabled')).toBeInTheDocument();
-      expect(screen.getByText('Every 1 hours')).toBeInTheDocument();
+      expect(screen.getByText('Enabled', { selector: 'dt' })).toBeInTheDocument();
+      expect(screen.getByText('Every hour')).toBeInTheDocument();
     });
 
     const refreshAction = updateToolbarSpy.mock.lastCall?.[0].actions.refresh.action as
@@ -391,10 +391,10 @@ describe('RecurringRunDetailsV2FC', () => {
       expect(getRecurringRunSpy.mock.calls.length).toBeGreaterThan(refreshCallCount);
     });
 
-    screen.getByText('Enabled');
+    screen.getByText('Enabled', { selector: 'dt' });
     screen.getByText('Yes');
-    screen.getByText('Trigger');
-    screen.getByText('Every 1 hours');
+    screen.getByText('Frequency');
+    screen.getByText('Every hour');
   });
 
   it('shows top bar buttons', async () => {
@@ -407,7 +407,7 @@ describe('RecurringRunDetailsV2FC', () => {
       expect(getRecurringRunSpy).toHaveBeenCalled();
     });
     await waitFor(() => {
-      expect(screen.getByText('Enabled')).toBeInTheDocument();
+      expect(screen.getByText('Enabled', { selector: 'dt' })).toBeInTheDocument();
       expect(updateToolbarSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
           actions: expect.objectContaining({

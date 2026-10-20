@@ -230,7 +230,7 @@ describe('CustomTable', () => {
     expect(reload).toHaveBeenLastCalledWith({
       filter: '',
       orderAscending: false,
-      pageSize: 10,
+      pageSize: 20,
       pageToken: '',
       sortBy: '',
     });
@@ -372,7 +372,7 @@ describe('CustomTable', () => {
     expect(reload).toHaveBeenLastCalledWith({
       filter: '',
       orderAscending: false,
-      pageSize: 10,
+      pageSize: 20,
       pageToken: '',
       sortBy: 'col1sortkey desc',
     });
@@ -382,7 +382,7 @@ describe('CustomTable', () => {
       expect(reload).toHaveBeenLastCalledWith({
         filter: '',
         orderAscending: true,
-        pageSize: 10,
+        pageSize: 20,
         pageToken: '',
         sortBy: 'col2sortkey',
       }),
@@ -432,7 +432,7 @@ describe('CustomTable', () => {
     expect(reload).toHaveBeenLastCalledWith({
       filter: '',
       orderAscending: false,
-      pageSize: 10,
+      pageSize: 20,
       pageToken: '',
       sortBy: 'col1sortkey desc',
     });
@@ -442,7 +442,7 @@ describe('CustomTable', () => {
       expect(reload).toHaveBeenLastCalledWith({
         filter: '',
         orderAscending: true,
-        pageSize: 10,
+        pageSize: 20,
         pageToken: '',
         sortBy: 'col2sortkey',
       }),
@@ -453,7 +453,7 @@ describe('CustomTable', () => {
       expect(reload).toHaveBeenLastCalledWith({
         filter: '',
         orderAscending: false,
-        pageSize: 10,
+        pageSize: 20,
         pageToken: '',
         sortBy: 'col2sortkey desc',
       }),
@@ -650,7 +650,7 @@ describe('CustomTable', () => {
       expect(spy).toHaveBeenLastCalledWith({
         filter: '',
         orderAscending: false,
-        pageSize: 10,
+        pageSize: 20,
         pageToken: 'some token',
         sortBy: '',
       }),
@@ -669,7 +669,7 @@ describe('CustomTable', () => {
     expect(spy).toHaveBeenLastCalledWith({
       filter: '',
       orderAscending: false,
-      pageSize: 10,
+      pageSize: 20,
       pageToken: 'some token',
       sortBy: '',
     });
@@ -695,7 +695,7 @@ describe('CustomTable', () => {
       expect(spy).toHaveBeenLastCalledWith({
         filter: '',
         orderAscending: false,
-        pageSize: 10,
+        pageSize: 20,
         pageToken: '',
         sortBy: '',
       }),
@@ -849,7 +849,7 @@ describe('CustomTable', () => {
     expect(reload).toHaveBeenLastCalledWith({
       filter: expectedEncodedFilter,
       orderAscending: false,
-      pageSize: 10,
+      pageSize: 20,
       pageToken: '',
       sortBy: '',
     });
@@ -886,7 +886,7 @@ describe('CustomTable', () => {
       expect(reload).toHaveBeenLastCalledWith({
         filter: expectedEncodedFilter,
         orderAscending: false,
-        pageSize: 10,
+        pageSize: 20,
         pageToken: '',
         sortBy: '',
       }),

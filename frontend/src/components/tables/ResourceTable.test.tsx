@@ -19,7 +19,10 @@ import { vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CustomTable, { ExpandState } from '../CustomTable';
+import { LocalStorage } from '../../lib/LocalStorage';
 import { ResourceTable } from './ResourceTable';
+
+beforeEach(() => localStorage.clear());
 
 function Table({
   single = false,
@@ -155,4 +158,42 @@ it('uses column sizing without adding selection controls to read-only collection
   expect(table.querySelectorAll('col')[1]).toHaveStyle({ width: '190px' });
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   expect(screen.getByTestId('table-row')).toHaveAttribute('data-interactive', 'false');
+});
+
+it('resizes columns by keyboard, remembers widths, and resets to the responsive layout', async () => {
+  const bounds = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    width: 240,
+    height: 40,
+    top: 0,
+    left: 0,
+    right: 240,
+    bottom: 40,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
+  try {
+    const first = render(<Table />);
+    await waitFor(() => expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'false'));
+    const resize = screen.getByRole('separator', { name: 'Resize Pipeline column' });
+    fireEvent.keyDown(resize, { key: 'ArrowRight' });
+    expect(resize).toHaveAttribute('aria-valuenow', '256');
+    expect(screen.getByRole('table').querySelectorAll('col')[2]).toHaveStyle({ width: '256px' });
+    expect(screen.getByRole('table').querySelectorAll('col')[0]).toHaveStyle({ width: '40px' });
+    expect(screen.getByRole('table').querySelectorAll('col')[1]).toHaveStyle({ width: '36px' });
+    expect(screen.getByLabelText('Selected resources')).toBeEmptyDOMElement();
+    first.unmount();
+    render(<Table />);
+    expect(screen.getByRole('separator', { name: 'Resize Pipeline column' })).toHaveAttribute(
+      'aria-valuenow',
+      '256',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Reset column widths' }));
+    expect(screen.queryByRole('button', { name: 'Reset column widths' })).not.toBeInTheDocument();
+    expect(
+      LocalStorage.getTableColumnWidths(JSON.stringify(['Pipelines', ['name']])),
+    ).toBeUndefined();
+  } finally {
+    bounds.mockRestore();
+  }
 });

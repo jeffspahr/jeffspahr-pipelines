@@ -258,7 +258,7 @@ function TaskNodeDetail({
   return (
     <div className='kfp-inspection-column'>
       <InspectionTabs
-        tabs={['Input/Output', 'Task Details', 'Logs', 'Driver logs']}
+        tabs={['Input/Output', 'Task Details', 'Task logs', 'Driver logs']}
         selectedTab={selectedTab}
         onSwitch={setSelectedTab}
         ariaLabel='Task inspection'
@@ -305,6 +305,9 @@ function TaskNodeDetail({
                 </div>
               )}
             </div>
+          )}
+          {selectedTab === 3 && (
+            <p className='kfp-inspection-empty'>Pipeline orchestration logs from the KFP driver.</p>
           )}
           {selectedTab === 3 && !driverLogsState && (
             <p className='kfp-inspection-empty' role='status'>

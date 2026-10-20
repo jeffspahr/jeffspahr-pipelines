@@ -190,8 +190,8 @@ export function AppShell({
             <span className='kfp-shell-brand-mark' aria-hidden='true'>
               <img
                 src={`${import.meta.env.BASE_URL}static/kubeflow-pipelines.svg`}
-                width={28}
-                height={28}
+                width={40}
+                height={40}
                 alt=''
               />
             </span>

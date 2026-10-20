@@ -435,3 +435,33 @@
   display: flex;
   margin: auto;
 }
+
+.kfp-theme .kfp-runs-table th[data-resizable] {
+  position: relative;
+  padding-right: 18px;
+}
+.kfp-theme .kfp-column-resize {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  border-right: 1px solid var(--border);
+}
+.kfp-theme .kfp-column-resize:hover,
+.kfp-theme .kfp-column-resize:focus-visible {
+  background: var(--primary-soft);
+  border-right: 2px solid var(--primary);
+  outline: none;
+}
+.kfp-theme .kfp-column-reset {
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 8px;
+  border-top: 1px solid var(--border);
+}
+.kfp-theme .kfp-runs-table .kfp-resource-expansion {
+  padding: 0 2px;
+}

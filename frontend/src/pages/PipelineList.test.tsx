@@ -354,7 +354,7 @@ describe('PipelineList', () => {
     });
     await renderPipelineList({ namespace: 'test-ns' });
     await waitForPipelinesLoad();
-    expect(listPipelinesSpy).toHaveBeenLastCalledWith('test-ns', '', 10, 'created_at desc', '');
+    expect(listPipelinesSpy).toHaveBeenLastCalledWith('test-ns', '', 20, 'created_at desc', '');
     expect(getPipelineListState()).toHaveProperty('displayPipelines', [
       { expandState: ExpandState.COLLAPSED, display_name: 'pipeline1', name: 'pipeline1' },
     ]);
@@ -371,7 +371,7 @@ describe('PipelineList', () => {
     await waitFor(() => {
       expect(listPipelinesSpy).toHaveBeenCalledTimes(1);
     });
-    expect(listPipelinesSpy).toHaveBeenLastCalledWith('test-ns', '', 10, 'created_at desc', '');
+    expect(listPipelinesSpy).toHaveBeenLastCalledWith('test-ns', '', 20, 'created_at desc', '');
     expect(updateBannerSpy).toHaveBeenLastCalledWith({});
   });
 
@@ -403,7 +403,7 @@ describe('PipelineList', () => {
     await waitFor(() => {
       expect(listPipelinesSpy).toHaveBeenCalledTimes(1);
     });
-    expect(listPipelinesSpy).toHaveBeenLastCalledWith(undefined, '', 10, 'created_at desc', '');
+    expect(listPipelinesSpy).toHaveBeenLastCalledWith(undefined, '', 20, 'created_at desc', '');
     expect(updateBannerSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         additionalInfo: 'bad stuff happened',

@@ -110,7 +110,7 @@ describe('PipelinesDialog', () => {
     );
     await flushPromisesInAct();
 
-    expect(listPipelineSpy).toHaveBeenCalledWith('ns', '', 10, 'created_at desc', '');
+    expect(listPipelineSpy).toHaveBeenCalledWith('ns', '', 20, 'created_at desc', '');
     // Verify the display names are shown instead of the names
     screen.getByText('old mock pipeline name');
     screen.getByText('new mock pipeline name');
@@ -124,7 +124,7 @@ describe('PipelinesDialog', () => {
     );
     await flushPromisesInAct();
 
-    expect(listPipelineSpy).toHaveBeenCalledWith(undefined, '', 10, 'created_at desc', '');
+    expect(listPipelineSpy).toHaveBeenCalledWith(undefined, '', 20, 'created_at desc', '');
     // Verify the display names are shown instead of the names
     screen.getByText('old mock pipeline name');
     screen.getByText('new mock pipeline name');
@@ -174,7 +174,7 @@ describe('PipelinesDialog', () => {
     );
     await userEvent.click(screen.getByRole('tab', { name: 'Shared' }));
     await waitFor(() =>
-      expect(listPipelineSpy).toHaveBeenLastCalledWith(undefined, '', 10, 'created_at desc', ''),
+      expect(listPipelineSpy).toHaveBeenLastCalledWith(undefined, '', 20, 'created_at desc', ''),
     );
     await act(async () => {
       finish(oldPipeline);

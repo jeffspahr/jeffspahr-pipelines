@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-import { Fragment, useId } from 'react';
+import { Fragment, useId, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, TriangleAlert } from 'lucide-react';
+import { LocalStorage } from '../../lib/LocalStorage';
 import { ExpandState } from '../CustomTable';
 import type { CustomTableRenderModel, Row } from '../CustomTable';
 import { Button } from '../ui/button';
@@ -67,6 +68,37 @@ export function ResourceTable({
     (table.columns.some((column) => column.width !== undefined)
       ? table.columns.map((column) => column.width)
       : undefined);
+  const tableId = JSON.stringify([
+    label,
+    table.columns.map((column) => column.sortKey || column.label),
+  ]);
+  const storedWidths = useMemo(() => LocalStorage.getTableColumnWidths(tableId), [tableId]);
+  const [savedWidths, setSavedWidths] = useState<Record<string, number[] | undefined>>({});
+  const candidateWidths = Object.prototype.hasOwnProperty.call(savedWidths, tableId)
+    ? savedWidths[tableId]
+    : storedWidths;
+  const resizedWidths =
+    candidateWidths?.length === table.columns.length ? candidateWidths : undefined;
+  const tableElement = useRef<HTMLTableElement>(null);
+  const drag = useRef<{ start: number; widths: number[]; index: number } | null>(null);
+  const readWidths = () =>
+    resizedWidths ||
+    Array.from(
+      tableElement.current?.querySelectorAll<HTMLTableCellElement>('th[data-resizable]') || [],
+      (cell) => Math.max(80, Math.min(2000, Math.round(cell.getBoundingClientRect().width))),
+    );
+  const saveWidths = (widths?: number[]) => {
+    setSavedWidths((previous) => ({ ...previous, [tableId]: widths }));
+    LocalStorage.saveTableColumnWidths(tableId, widths);
+  };
+  const resizeColumn = (widths: number[], index: number, width: number) => {
+    saveWidths(
+      widths.map((value, position) =>
+        position === index ? Math.max(80, Math.min(2000, Math.round(width))) : value,
+      ),
+    );
+  };
+  const controlWidth = (table.disableSelection ? 0 : 40) + (table.getExpandedContent ? 36 : 0);
   const filterId = useId();
   const density = useDensity()?.density ?? 'comfortable';
   const visibleSelected = table.rows.filter((row) => table.selectedIds.includes(row.id)).length;
@@ -93,20 +125,28 @@ export function ResourceTable({
           tabIndex={0}
         >
           <table
+            ref={tableElement}
             className='kfp-runs-table'
             aria-label={label}
             aria-busy={table.isBusy}
-            style={{ minWidth, tableLayout: columnWidths ? 'fixed' : undefined }}
+            style={{
+              minWidth: resizedWidths ? 0 : minWidth,
+              tableLayout: 'fixed',
+              width: resizedWidths
+                ? resizedWidths.reduce((total, width) => total + width, controlWidth)
+                : undefined,
+            }}
           >
-            {columnWidths && (
-              <colgroup>
-                {!table.disableSelection && <col style={{ width: 40 }} />}
-                {table.getExpandedContent && <col style={{ width: 36 }} />}
-                {table.columns.map((column, index) => (
-                  <col key={column.label} style={{ width: columnWidths[index] }} />
-                ))}
-              </colgroup>
-            )}
+            <colgroup>
+              {!table.disableSelection && <col style={{ width: 40 }} />}
+              {table.getExpandedContent && <col style={{ width: 36 }} />}
+              {table.columns.map((column, index) => (
+                <col
+                  key={column.label}
+                  style={{ width: resizedWidths?.[index] ?? columnWidths?.[index] }}
+                />
+              ))}
+            </colgroup>
             <thead>
               <tr>
                 {!table.disableSelection && (
@@ -129,7 +169,7 @@ export function ResourceTable({
                 {table.getExpandedContent && (
                   <th scope='col' aria-label='Row details' className='kfp-resource-expansion' />
                 )}
-                {table.columns.map((column) => {
+                {table.columns.map((column, index) => {
                   const sortable = !table.disableSorting && !!column.sortKey;
                   const sorted = sortable && table.sortBy === column.sortKey;
                   const SortIcon = sorted
@@ -141,6 +181,8 @@ export function ResourceTable({
                     <th
                       key={column.label}
                       scope='col'
+                      data-resizable
+                      aria-label={column.label}
                       aria-sort={
                         sorted
                           ? table.sortOrder === 'asc'
@@ -160,6 +202,60 @@ export function ResourceTable({
                         )}
                         {headerActions?.[column.sortKey || column.label]}
                       </span>
+                      <span
+                        className='kfp-column-resize'
+                        role='separator'
+                        aria-orientation='vertical'
+                        aria-label={`Resize ${column.label} column`}
+                        aria-valuemin={80}
+                        aria-valuemax={2000}
+                        aria-valuenow={resizedWidths?.[index] ?? 80}
+                        aria-valuetext={
+                          resizedWidths ? `${resizedWidths[index]} pixels` : 'Automatic width'
+                        }
+                        tabIndex={0}
+                        title='Drag to resize. Use left/right arrows to adjust; Home resets all widths.'
+                        onKeyDown={(event) => {
+                          if (event.key === 'Home') {
+                            event.preventDefault();
+                            saveWidths();
+                          } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                            event.preventDefault();
+                            const widths = readWidths();
+                            resizeColumn(
+                              widths,
+                              index,
+                              widths[index] + (event.key === 'ArrowRight' ? 16 : -16),
+                            );
+                          }
+                        }}
+                        onDoubleClick={() => saveWidths()}
+                        onPointerDown={(event) => {
+                          if (event.button !== 0) return;
+                          event.preventDefault();
+                          event.currentTarget.focus();
+                          event.currentTarget.setPointerCapture(event.pointerId);
+                          drag.current = { start: event.clientX, widths: readWidths(), index };
+                        }}
+                        onPointerMove={(event) => {
+                          if (!drag.current) return;
+                          const { start, widths, index: draggedIndex } = drag.current;
+                          resizeColumn(
+                            widths,
+                            draggedIndex,
+                            widths[draggedIndex] + event.clientX - start,
+                          );
+                        }}
+                        onPointerUp={() => {
+                          drag.current = null;
+                        }}
+                        onPointerCancel={() => {
+                          drag.current = null;
+                        }}
+                        onLostPointerCapture={() => {
+                          drag.current = null;
+                        }}
+                      />
                     </th>
                   );
                 })}
@@ -301,6 +397,13 @@ export function ResourceTable({
             </tbody>
           </table>
         </div>
+        {resizedWidths && (
+          <div className='kfp-column-reset'>
+            <Button variant='ghost' size='sm' onClick={() => saveWidths()}>
+              Reset column widths
+            </Button>
+          </div>
+        )}
         <TableFooter table={table} plural={plural} />
       </div>
     </div>

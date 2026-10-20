@@ -380,7 +380,7 @@ async function changeTask(page, taskName) {
   await selected(page, taskName);
 }
 async function logs(page, text) {
-  await tab(page, 'Logs').click();
+  await tab(page, 'Task logs').click();
   await page.getByTestId('logs-view-window').getByText(text, { exact: true }).waitFor();
 }
 async function screenshot(page, name) {
@@ -635,7 +635,7 @@ test('Run Details distinguishes executor, artifact, and driver log sources', asy
     await openTask(page);
     await tab(page, 'Task Details').click();
     await page.getByText('task-train', { exact: true }).waitFor();
-    await tab(page, 'Logs').click();
+    await tab(page, 'Task logs').click();
     await page.getByText('Loading experiment namespace…', { exact: true }).waitFor();
     assert.equal(
       fixture.requests.filter((request) =>
@@ -1052,7 +1052,7 @@ test('Run Details exposes semantic values and restores navigation after closing 
     const inspector = page.getByRole('dialog');
     const narrowReturnTarget = await page.evaluateHandle(() => window.kfpFixtureGraphFocusTarget);
     assert.equal(await inspector.getAttribute('aria-modal'), 'true');
-    await tab(page, 'Logs').click();
+    await tab(page, 'Task logs').click();
     await page
       .getByTestId('logs-view-window')
       .getByText('executor attempt one', { exact: true })

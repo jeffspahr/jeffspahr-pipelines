@@ -47,6 +47,7 @@ import { InspectionFields as DetailsTable } from 'src/components/inspection/Insp
 import { PipelineSpecTabContent } from 'src/components/PipelineSpecTabContent';
 import { QUERY_PARAMS, RoutePage, RoutePageFactory, RouteParams } from 'src/components/Router';
 import { InspectionPanel } from 'src/components/inspection/InspectionPanel';
+import { RunElapsed } from 'src/components/runs/RunElapsed';
 import { RunStatus } from 'src/components/runs/RunStatus';
 import { Alert } from 'src/components/ui/alert';
 import { Button } from 'src/components/ui/button';
@@ -777,7 +778,7 @@ function updateToolBar(
           {runMetadata.display_name || 'Run name unknown'}
         </span>
         <RunStatus state={runMetadata.state} />
-        <span className='kfp-inspection-run-elapsed'>Elapsed {getRunDurationV2(runMetadata)}</span>
+        <RunElapsed run={runMetadata} />
       </div>
     );
 

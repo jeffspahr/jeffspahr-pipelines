@@ -109,7 +109,7 @@ describe('PrivateAndSharedPipelines', () => {
     expect(Apis.pipelineServiceApiV2.listPipelines).toHaveBeenLastCalledWith(
       'ns',
       '',
-      10,
+      20,
       'created_at desc',
       '',
     );
@@ -133,7 +133,7 @@ describe('PrivateAndSharedPipelines', () => {
     expect(Apis.pipelineServiceApiV2.listPipelines).toHaveBeenLastCalledWith(
       undefined,
       '',
-      10,
+      20,
       'created_at desc',
       '',
     );
@@ -164,7 +164,7 @@ describe('PrivateAndSharedPipelines', () => {
       expect(Apis.pipelineServiceApiV2.listPipelines).toHaveBeenCalledWith(
         'old',
         '',
-        10,
+        20,
         'created_at desc',
         '',
       ),

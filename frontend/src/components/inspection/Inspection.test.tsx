@@ -39,6 +39,14 @@ let viewport: ViewportMedia;
 beforeEach(() => {
   viewport = new ViewportMedia();
   vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  vi.stubGlobal(
     'matchMedia',
     vi.fn(() => viewport),
   );
@@ -268,7 +276,8 @@ it('resizes the desktop inspector with a named keyboard separator and preserves 
   expect(handle).toHaveAttribute('aria-orientation', 'vertical');
   expect(handle).toHaveAttribute('aria-valuenow', '380');
   expect(handle).toHaveAttribute('aria-valuemin', '300');
-  expect(handle).toHaveAttribute('aria-valuemax', '1080');
+  // Keep 240px available for the graph beside the inspector.
+  expect(handle).toHaveAttribute('aria-valuemax', '960');
   await waitFor(() => expect(screen.getByRole('button', { name: 'close' })).toHaveFocus());
   handle.focus();
   await user.keyboard('{ArrowLeft}');
@@ -279,13 +288,13 @@ it('resizes the desktop inspector with a named keyboard separator and preserves 
   await user.keyboard('{Home}{ArrowRight}');
   expect(handle).toHaveAttribute('aria-valuenow', '300');
   await user.keyboard('{End}{ArrowLeft}');
-  expect(handle).toHaveAttribute('aria-valuenow', '1080');
-  expect(handle).toHaveAttribute('aria-valuetext', '1080 pixels');
-  expect(panel).toHaveStyle({ width: '1080px' });
+  expect(handle).toHaveAttribute('aria-valuenow', '960');
+  expect(handle).toHaveAttribute('aria-valuetext', '960 pixels');
+  expect(panel).toHaveStyle({ width: '960px' });
   view.rerender(content('Updated task'));
   expect(handle).toHaveFocus();
-  expect(handle).toHaveAttribute('aria-valuenow', '1080');
-  expect(panel).toHaveStyle({ width: '1080px' });
+  expect(handle).toHaveAttribute('aria-valuenow', '960');
+  expect(panel).toHaveStyle({ width: '960px' });
   await user.keyboard('{Escape}');
   expect(close).toHaveBeenCalledOnce();
 });
@@ -316,7 +325,7 @@ it('bounds inspector width to the viewport without discarding the chosen desktop
   });
   expect(screen.getByRole('separator', { name: 'Resize node details' })).toHaveAttribute(
     'aria-valuenow',
-    '1080',
+    '960',
   );
 });
 

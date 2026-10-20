@@ -90,7 +90,7 @@ describe('ExperimentList', () => {
     await screen.findByText('experiment with id: testexperiment1');
     expect(listExperimentsSpy).toHaveBeenLastCalledWith(
       '',
-      10,
+      20,
       ExperimentSortKeys.CREATED_AT + ' desc',
       encodeURIComponent(
         JSON.stringify({
@@ -115,7 +115,7 @@ describe('ExperimentList', () => {
     await screen.findByText('experiment with id: testexperiment1');
     expect(listExperimentsSpy).toHaveBeenLastCalledWith(
       '',
-      10,
+      20,
       ExperimentSortKeys.CREATED_AT + ' desc',
       encodeURIComponent(
         JSON.stringify({
@@ -200,7 +200,7 @@ describe('ExperimentList', () => {
     });
     expect(listExperimentsSpy).toHaveBeenLastCalledWith(
       '',
-      10,
+      20,
       ExperimentSortKeys.CREATED_AT + ' desc',
       '',
       undefined,

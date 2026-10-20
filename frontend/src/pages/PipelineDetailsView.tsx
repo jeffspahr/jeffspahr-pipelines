@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import 'src/pages/DetailLayouts.css';
+import { Link } from 'react-router';
 import { useCallback, useId, useMemo, useState } from 'react';
 import { V2beta1Pipeline, V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
 import { InspectionTabs } from 'src/components/inspection/InspectionTabs';
@@ -41,6 +42,7 @@ const TAB_NAMES = ['Graph', 'Details', 'Pipeline spec'];
 
 interface PipelineDetailsViewProps {
   templateString?: string;
+  manageVersionsHref?: string;
   definitionSource?: PipelineDefinitionSource;
   pipelineFlowElements: PipelineFlowElement[];
   pipeline: V2beta1Pipeline | null;
@@ -51,6 +53,7 @@ interface PipelineDetailsViewProps {
 
 function PipelineDetailsView({
   templateString,
+  manageVersionsHref,
   definitionSource,
   pipelineFlowElements,
   pipeline,
@@ -73,22 +76,27 @@ function PipelineDetailsView({
 
   return (
     <div className='kfp-detail-page kfp-pipeline-detail' data-testid='pipeline-detail-v2'>
-      {versions.length > 0 && (
+      {(versions.length > 0 || manageVersionsHref) && (
         <div className='kfp-pipeline-version-control'>
-          <label htmlFor={versionSelectorId}>Version</label>
-          <select
-            id={versionSelectorId}
-            data-testid='version_selector'
-            value={selectedVersion?.pipeline_version_id || ''}
-            onChange={(event) => handleVersionSelected(event.target.value)}
-          >
-            {!selectedVersion && <option value=''>Select a version</option>}
-            {versions.map((version) => (
-              <option key={version.pipeline_version_id} value={version.pipeline_version_id}>
-                {version.display_name || version.name}
-              </option>
-            ))}
-          </select>
+          {versions.length > 0 && (
+            <>
+              <label htmlFor={versionSelectorId}>Version</label>
+              <select
+                id={versionSelectorId}
+                data-testid='version_selector'
+                value={selectedVersion?.pipeline_version_id || ''}
+                onChange={(event) => handleVersionSelected(event.target.value)}
+              >
+                {!selectedVersion && <option value=''>Select a version</option>}
+                {versions.map((version) => (
+                  <option key={version.pipeline_version_id} value={version.pipeline_version_id}>
+                    {version.display_name || version.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {manageVersionsHref && <Link to={manageVersionsHref}>Manage versions</Link>}
         </div>
       )}
       <InspectionTabs

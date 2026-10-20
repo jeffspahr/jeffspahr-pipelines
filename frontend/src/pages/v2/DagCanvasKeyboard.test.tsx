@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useEffect, useRef } from 'react';
 import type { ReactFlowInstance, ReactFlowProps } from '@xyflow/react';
 import DagCanvas from './DagCanvas';
+import { mockResizeObserver } from 'src/TestUtils';
 
 const viewport = vi.hoisted(() => ({
   getViewport: vi.fn(() => ({ x: 10, y: 20, zoom: 2 })),
@@ -41,7 +42,10 @@ vi.mock('@xyflow/react', async (importOriginal) => ({
   },
 }));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockResizeObserver();
+});
 const canvas = () => <DagCanvas elements={[]} layers={['root']} onElementClick={vi.fn()} />;
 
 it.each([
@@ -65,7 +69,7 @@ it.each([
   ['F', false],
 ])('fits the whole graph with %s when locked=%s', (key, locked) => {
   render(canvas());
-  if (!locked) fireEvent.click(screen.getByLabelText('Unlock graph'));
+  if (!locked) fireEvent.click(screen.getByLabelText('Unlock node positions'));
   viewport.fitView.mockClear();
   fireEvent.keyDown(screen.getByRole('button', { name: 'Node' }), { key });
   expect(viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 });
@@ -77,10 +81,10 @@ it('pans from focused nodes only while locked and resumes panning when relocked'
   const node = screen.getByRole('button', { name: 'Node' });
   fireEvent.keyDown(node, { key: 'ArrowRight' });
   expect(viewport.setViewport).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByLabelText('Unlock graph'));
+  fireEvent.click(screen.getByLabelText('Unlock node positions'));
   fireEvent.keyDown(node, { key: 'ArrowRight' });
   expect(viewport.setViewport).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByLabelText('Lock graph'));
+  fireEvent.click(screen.getByLabelText('Lock node positions'));
   fireEvent.keyDown(node, { key: 'ArrowRight' });
   expect(viewport.setViewport).toHaveBeenCalledTimes(2);
 });
@@ -120,9 +124,9 @@ it('enables keyboard node movement only while unlocked', () => {
   render(canvas());
   const node = screen.getByRole('button', { name: 'Node' });
   expect(node).toHaveAttribute('data-focusable', 'false');
-  fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
   expect(node).toHaveAttribute('data-focusable', 'true');
-  fireEvent.click(screen.getByRole('button', { name: 'Lock graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Lock node positions' }));
   expect(node).toHaveAttribute('data-focusable', 'false');
 });
 

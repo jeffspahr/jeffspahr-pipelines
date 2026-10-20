@@ -15,7 +15,6 @@
  */
 
 import * as React from 'react';
-import { Link } from 'react-router';
 import PipelineVersionList from './PipelineVersionList';
 import * as JsYaml from 'js-yaml';
 import { Apis } from 'src/lib/Apis';
@@ -196,16 +195,6 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
     }
     return (
       <div className='kfp-pipeline-detail'>
-        {!this.getOrigin() && (
-          <Link
-            to={
-              RoutePageFactory.pipelineDetails(this.props.params[RouteParams.pipelineId] || '') +
-              '?tab=versions'
-            }
-          >
-            Manage versions
-          </Link>
-        )}
         {this.state.graphIsLoading && (
           <p className='kfp-pipeline-loading' role='status'>
             Currently loading pipeline information
@@ -214,6 +203,11 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
         {!this.state.graphIsLoading && (
           <PipelineDetailsView
             key={v2SelectedVersion?.pipeline_version_id ?? templateString}
+            manageVersionsHref={
+              !this.getOrigin()
+                ? `${RoutePageFactory.pipelineDetails(this.props.params[RouteParams.pipelineId] || '')}?tab=versions`
+                : undefined
+            }
             templateString={templateString}
             definitionSource={this.state.definitionSource}
             pipelineFlowElements={graphV2 || []}

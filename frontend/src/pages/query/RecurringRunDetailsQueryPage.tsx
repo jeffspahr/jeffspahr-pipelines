@@ -15,12 +15,11 @@
  */
 
 import 'src/pages/DetailLayouts.css';
-import { RecurringRunPipeline } from 'src/components/runs/RecurringRunPipeline';
+import { RecurringRunOverview } from 'src/components/runs/RecurringRunOverview';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
 import { queryKeys } from 'src/hooks/queryKeys';
-import { InspectionFields as DetailsTable } from 'src/components/inspection/InspectionFields';
 import 'src/components/runs/ExperimentWorkflows.css';
 import { V2beta1RecurringRun, V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
 import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
@@ -28,9 +27,7 @@ import { Apis } from 'src/lib/Apis';
 import { PageProps } from 'src/pages/Page';
 import { RoutePage, RouteParams } from 'src/components/Router';
 import { Breadcrumb, ToolbarProps } from 'src/lib/PageChromeTypes';
-import { KeyValue } from 'src/lib/DetailsTableTypes';
-import { formatDateString, enabledDisplayStringV2, errorToMessage } from 'src/lib/Utils';
-import { triggerDisplayString } from 'src/lib/TriggerUtils';
+import { errorToMessage } from 'src/lib/Utils';
 
 export function RecurringRunDetailsQueryPage(props: PageProps) {
   const { updateBanner, updateToolbar } = props;
@@ -177,30 +174,7 @@ export function RecurringRunDetailsQueryPage(props: PageProps) {
     );
   }
 
-  const parameters = recurringRun ? getRunParameters(recurringRun) : [];
-
-  return (
-    <div className='kfp-detail-page'>
-      {recurringRun && (
-        <div className='kfp-detail-sections'>
-          <RecurringRunPipeline run={recurringRun} />
-          <DetailsTable
-            title='Recurring run details'
-            fields={getRecurringRunDetails(recurringRun)}
-          ></DetailsTable>
-          <DetailsTable title='Run triggers' fields={getRunTriggers(recurringRun)}></DetailsTable>
-          {parameters.length ? (
-            <DetailsTable title='Run parameters' fields={parameters} />
-          ) : (
-            <section className='kfp-inspection-fields' aria-label='Run parameters'>
-              <h3>Run parameters</h3>
-              <p>No run parameters configured.</p>
-            </section>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  return recurringRun ? <RecurringRunOverview run={recurringRun} /> : null;
 }
 
 function getBreadcrumbs(experimentId?: string, experimentName?: string): Breadcrumb[] {
@@ -218,43 +192,4 @@ function getBreadcrumbs(experimentId?: string, experimentName?: string): Breadcr
   }
 
   return breadcrumbs;
-}
-
-function getRecurringRunDetails(recurringRun: V2beta1RecurringRun): Array<KeyValue<string>> {
-  let details: Array<KeyValue<string>> = [];
-
-  details.push(['Description', recurringRun.description!]);
-  details.push(['Created at', formatDateString(recurringRun.created_at)]);
-
-  return details;
-}
-
-function getRunTriggers(recurringRun: V2beta1RecurringRun): Array<KeyValue<string>> {
-  let triggers: Array<KeyValue<string>> = [];
-
-  triggers.push(['Enabled', enabledDisplayStringV2(recurringRun.trigger, recurringRun.status!)]);
-  triggers.push(['Trigger', triggerDisplayString(recurringRun.trigger)]);
-  triggers.push(['Max. concurrent runs', recurringRun.max_concurrency]);
-  triggers.push(['Catchup', `${!recurringRun.no_catchup}`]);
-  const schedule = recurringRun.trigger?.cron_schedule || recurringRun.trigger?.periodic_schedule;
-  if (schedule?.start_time) {
-    triggers.push(['Start time', formatDateString(schedule.start_time)]);
-  }
-  if (schedule?.end_time) {
-    triggers.push(['End time', formatDateString(schedule.end_time)]);
-  }
-
-  return triggers;
-}
-
-function getRunParameters(recurringRun: V2beta1RecurringRun): Array<KeyValue<string>> {
-  const parameters = Object.entries(recurringRun.runtime_config?.parameters || []).map(
-    ([key, value]) => {
-      const displayValue =
-        value == null ? '' : typeof value === 'string' ? value : JSON.stringify(value);
-      return [key || '', displayValue];
-    },
-  );
-
-  return parameters;
 }

@@ -41,7 +41,7 @@ import { V2beta1Filter, V2beta1PredicateOperation } from 'src/apisv2beta1/filter
 // Default arguments for Apis.experimentServiceApiV2.listExperiments.
 const LIST_EXPERIMENT_DEFAULTS = [
   '', // page token
-  10, // page size
+  20, // page size
   'created_at desc', // sort by
   encodeURIComponent(
     JSON.stringify({

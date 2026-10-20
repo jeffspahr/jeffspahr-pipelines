@@ -101,7 +101,11 @@ async function withFixture(options, exercise) {
   };
   let requests = 0;
   page.on('pageerror', (error) => fixture.errors.push(error.message));
-  await context.addInitScript(({ namespace }) => {
+  await context.addInitScript(({ namespace, useDefaultPageSize }) => {
+    // Retain a saved ten-row preference for fixtures that exercise token pagination.
+    if (!useDefaultPageSize && !localStorage.getItem('tablePageSize_runs')) {
+      localStorage.setItem('tablePageSize_runs', '10');
+    }
     if (!localStorage.getItem('kfp.theme')) localStorage.setItem('kfp.theme', 'light');
     if (namespace) {
       window.centraldashboard = {
@@ -389,6 +393,19 @@ async function screenshot(page, name) {
     animations: 'disabled',
   });
 }
+
+test('Runs defaults to twenty rows when no page-size preference exists', async () => {
+  await withFixture({ useDefaultPageSize: true }, async (page, fixture) => {
+    await page.goto(`${origin}/#/runs`);
+    await ready(page, 15);
+    assert.equal(fixture.lists[0].page_size, '20');
+    assert.equal(await page.getByRole('combobox', { name: 'Rows per page' }).inputValue(), '20');
+    assert.equal(
+      await page.getByRole('button', { name: 'Next page', exact: true }).isEnabled(),
+      false,
+    );
+  });
+});
 
 test('Runs preserves token paging, filtering, sorting, and page selection contracts', async () => {
   await withFixture({}, async (page, fixture) => {

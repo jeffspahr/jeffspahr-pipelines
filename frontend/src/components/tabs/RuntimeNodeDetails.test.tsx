@@ -185,11 +185,12 @@ describe('RuntimeNodeDetails', () => {
         expect(readFileSpy).not.toHaveBeenCalled();
         fireEvent.click(screen.getByRole('tab', { name: 'Task Details', exact: true }));
         expect(readFileSpy).not.toHaveBeenCalled();
-        fireEvent.click(screen.getByRole('tab', { name: 'Logs', exact: true }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Task logs', exact: true }));
         expect(await screen.findByText('executor output')).toBeVisible();
         expect(readFileSpy).not.toHaveBeenCalled();
 
         fireEvent.click(screen.getByRole('tab', { name: 'Driver logs', exact: true }));
+        expect(screen.getByText('Pipeline orchestration logs from the KFP driver.')).toBeVisible();
 
         expect(await screen.findByText('driver initialization')).toBeVisible();
         expect(screen.getByText('finished')).toBeVisible();
@@ -397,7 +398,7 @@ describe('RuntimeNodeDetails', () => {
       .mockRejectedValue(new Error('Failed to retrieve pod logs'));
     renderTask(createTask());
 
-    fireEvent.click(await screen.findByText('Logs'));
+    fireEvent.click(await screen.findByText('Task logs'));
 
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalled());
     await screen.findByText('Failed to retrieve pod logs.');
@@ -407,7 +408,7 @@ describe('RuntimeNodeDetails', () => {
     const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('test-logs-details');
     renderTask(createTask());
 
-    fireEvent.click(await screen.findByText('Logs'));
+    fireEvent.click(await screen.findByText('Task logs'));
 
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalled());
     await screen.findByTestId(TEST_LOG_VIEW_ID);
@@ -552,7 +553,7 @@ describe('RuntimeNodeDetails', () => {
       createTask({ pods: [{ name: 'driver-pod', type: PipelineTaskTaskPodType.DRIVER }] }),
     );
 
-    fireEvent.click(await screen.findByText('Logs'));
+    fireEvent.click(await screen.findByText('Task logs'));
 
     await screen.findByText(
       'Showing driver initialization logs. These are not component executor output logs.',
@@ -619,7 +620,7 @@ describe('RuntimeNodeDetails', () => {
     const initialTask = createTask({ state: PipelineTaskTaskState.RUNNING });
     const view = renderTask(initialTask);
 
-    fireEvent.click(await screen.findByText('Logs'));
+    fireEvent.click(await screen.findByText('Task logs'));
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId(TEST_LOG_VIEW_ID)).toBeVisible();
 
@@ -659,7 +660,7 @@ describe('RuntimeNodeDetails', () => {
       .mockReturnValueOnce(secondTaskLogs);
     const view = renderTask(createTask());
 
-    fireEvent.click(await screen.findByText('Logs'));
+    fireEvent.click(await screen.findByText('Task logs'));
     await waitFor(() => expect(getPodLogsSpy).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId(TEST_LOG_VIEW_ID)).toBeVisible();
 
@@ -693,7 +694,7 @@ describe('RuntimeNodeDetails', () => {
     const getPodLogsSpy = vi.spyOn(Apis, 'getPodLogs').mockResolvedValue('final output');
     renderTask(createTask({ state: PipelineTaskTaskState.RUNNING }), { sourceFinished: true });
 
-    fireEvent.click(screen.getByText('Logs'));
+    fireEvent.click(screen.getByText('Task logs'));
     await act(async () => vi.advanceTimersByTimeAsync(0));
     expect(getPodLogsSpy).toHaveBeenCalledTimes(1);
 
@@ -726,7 +727,7 @@ describe('RuntimeNodeDetails', () => {
       }),
     );
 
-    fireEvent.click(await screen.findByText('Logs'));
+    fireEvent.click(await screen.findByText('Task logs'));
 
     await waitFor(() => expect(readFileSpy).toHaveBeenCalled());
     expect(await screen.findByTestId(TEST_LOG_VIEW_ID)).toBeVisible();

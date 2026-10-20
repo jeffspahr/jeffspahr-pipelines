@@ -88,7 +88,7 @@ it('keeps paging usable when preference storage cannot be read or written', asyn
   const reload = vi.fn(async () => '');
   render(<Harness reload={reload} />);
   await waitFor(() => expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'false'));
-  expect(screen.getByRole('combobox')).toHaveValue('10');
+  expect(screen.getByRole('combobox')).toHaveValue('20');
   fireEvent.change(screen.getByRole('combobox'), { target: { value: '50' } });
   await waitFor(() =>
     expect(reload).toHaveBeenLastCalledWith(expect.objectContaining({ pageSize: 50 })),

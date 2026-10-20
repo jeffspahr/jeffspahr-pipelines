@@ -203,6 +203,9 @@
   width: 30px;
   height: 30px;
 }
+.kfp-graph-canvas .react-flow__controls-button svg {
+  fill: none;
+}
 .kfp-graph-canvas .react-flow__controls-button:disabled {
   color: var(--muted-foreground);
   background: var(--muted);

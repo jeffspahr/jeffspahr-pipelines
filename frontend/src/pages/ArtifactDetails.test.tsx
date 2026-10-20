@@ -529,7 +529,7 @@ describe('ArtifactDetails', () => {
       [TEST_ARTIFACT_ID],
       undefined,
       '',
-      10,
+      20,
       'id asc',
     );
   });
@@ -691,7 +691,7 @@ describe('ArtifactDetails', () => {
       [TEST_ARTIFACT_ID],
       undefined,
       'next-page',
-      10,
+      20,
       'id asc',
     );
 

@@ -319,7 +319,7 @@ it('places expand then collapse above native zoom controls and toggles all desce
   expect(buttons[2]).toHaveAccessibleName('Zoom in');
   expect(buttons[3]).toHaveAccessibleName('Zoom out');
   expect(buttons[4]).toHaveAccessibleName('Fit view');
-  expect(buttons[5]).toHaveAccessibleName('Unlock graph');
+  expect(buttons[5]).toHaveAccessibleName('Unlock node positions');
   expect(buttons).toHaveLength(6);
   expect(expandAll).toBeDisabled();
   expect(collapseAll).toBeEnabled();
@@ -385,15 +385,15 @@ it('starts locked while keeping node details and viewport controls available', (
       <DagCanvas {...options} />
     </CommonTestWrapper>,
   );
-  expect(screen.getByRole('button', { name: 'Unlock graph' })).toHaveAttribute(
+  expect(screen.getByRole('button', { name: 'Unlock node positions' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   fireEvent.click(screen.getByText('Train model'));
   expect(options.onElementClick).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('button', { name: 'Zoom in' })).not.toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));
-  expect(screen.getByRole('button', { name: 'Lock graph' })).toHaveAttribute(
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
+  expect(screen.getByRole('button', { name: 'Lock node positions' })).toHaveAttribute(
     'aria-pressed',
     'false',
   );

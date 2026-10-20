@@ -4,6 +4,7 @@
 // You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 import fs from 'fs';
+import { complexPipelineSpec, complexRunSamples } from './complex-run-samples';
 import { sampleRunPipelineSpec } from './sample-run-tasks';
 import YAML from 'yaml';
 import { V2beta1Experiment } from '../src/apisv2beta1/experiment';
@@ -80,6 +81,22 @@ for (const version of ['v1.0', 'v1.1']) {
         description: `Taxi training ${version}`,
       },
     },
+  });
+}
+
+for (const sample of complexRunSamples) {
+  pipelines.push({
+    pipeline_id: sample.id,
+    name: sample.id,
+    display_name: sample.name,
+    created_at: new Date('2026-01-01'),
+  });
+  versions.push({
+    pipeline_id: sample.id,
+    pipeline_version_id: `${sample.id}-v1`,
+    display_name: 'v1.0',
+    created_at: new Date('2026-01-01'),
+    pipeline_spec: complexPipelineSpec(sample),
   });
 }
 
@@ -232,6 +249,20 @@ function reviewRuns(): V2beta1Run[] {
           }),
       created_at: createdAt,
       finished_at: terminal ? new Date(createdAt.getTime() + 12 * 60_000) : undefined,
+      state_history:
+        sample.state === 'PENDING'
+          ? []
+          : [
+              { state: 'RUNNING', update_time: new Date(createdAt.getTime() + 10_000) },
+              ...(terminal
+                ? [
+                    {
+                      state: sample.state,
+                      update_time: new Date(createdAt.getTime() + 12 * 60_000),
+                    },
+                  ]
+                : []),
+            ],
       state: sample.state,
       storage_state: sample.archived ? 'ARCHIVED' : 'AVAILABLE',
     };
@@ -243,7 +274,33 @@ export const data = {
   pipelines,
   versions,
   get runs() {
-    return [...runs, ...reviewRuns()];
+    return [
+      ...runs,
+      ...reviewRuns(),
+      ...complexRunSamples.map((sample): V2beta1Run => {
+        const created = new Date();
+        created.setUTCHours(0, 0, 0, 0);
+        const finished = new Date(created.getTime() + 12 * 60_000);
+        return {
+          run_id: `sample-run-${sample.id}`,
+          display_name: sample.name,
+          experiment_id: experiments[0].experiment_id,
+          pipeline_version_reference: {
+            pipeline_id: sample.id,
+            pipeline_version_id: `${sample.id}-v1`,
+          },
+          pipeline_spec: complexPipelineSpec(sample),
+          created_at: created,
+          finished_at: finished,
+          state: 'SUCCEEDED',
+          storage_state: 'AVAILABLE',
+          state_history: [
+            { state: 'RUNNING', update_time: new Date(created.getTime() + 10_000) },
+            { state: 'SUCCEEDED', update_time: finished },
+          ],
+        };
+      }),
+    ];
   },
   get recurringRuns() {
     return [...recurringRuns, ...reviewSchedules()];

@@ -490,6 +490,8 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                           />
                         </th>
                         <th
+                          aria-label="Run"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -497,8 +499,22 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                           >
                             Run
                           </span>
+                          <span
+                            aria-label="Resize Run column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Status"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -534,8 +550,22 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                               </svg>
                             </button>
                           </span>
+                          <span
+                            aria-label="Resize Status column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Pipeline version"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -543,8 +573,22 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                           >
                             Pipeline version
                           </span>
+                          <span
+                            aria-label="Resize Pipeline version column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Duration"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -552,8 +596,22 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                           >
                             Duration
                           </span>
+                          <span
+                            aria-label="Resize Duration column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Recurring run"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -561,8 +619,22 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                           >
                             Recurring run
                           </span>
+                          <span
+                            aria-label="Resize Recurring run column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Started"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -598,6 +670,18 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                               </svg>
                             </button>
                           </span>
+                          <span
+                            aria-label="Resize Started column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                       </tr>
                     </thead>
@@ -1192,6 +1276,8 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                           />
                         </th>
                         <th
+                          aria-label="Run"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1199,8 +1285,22 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                           >
                             Run
                           </span>
+                          <span
+                            aria-label="Resize Run column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Status"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1236,8 +1336,22 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                               </svg>
                             </button>
                           </span>
+                          <span
+                            aria-label="Resize Status column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Pipeline version"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1245,8 +1359,22 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                           >
                             Pipeline version
                           </span>
+                          <span
+                            aria-label="Resize Pipeline version column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Duration"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1254,8 +1382,22 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                           >
                             Duration
                           </span>
+                          <span
+                            aria-label="Resize Duration column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Recurring run"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1263,8 +1405,22 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                           >
                             Recurring run
                           </span>
+                          <span
+                            aria-label="Resize Recurring run column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Started"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1300,6 +1456,18 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                               </svg>
                             </button>
                           </span>
+                          <span
+                            aria-label="Resize Started column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                       </tr>
                     </thead>
@@ -1912,6 +2080,8 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                           />
                         </th>
                         <th
+                          aria-label="Run"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1919,8 +2089,22 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                           >
                             Run
                           </span>
+                          <span
+                            aria-label="Resize Run column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Status"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1956,8 +2140,22 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                               </svg>
                             </button>
                           </span>
+                          <span
+                            aria-label="Resize Status column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Pipeline version"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1965,8 +2163,22 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                           >
                             Pipeline version
                           </span>
+                          <span
+                            aria-label="Resize Pipeline version column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Duration"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1974,8 +2186,22 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                           >
                             Duration
                           </span>
+                          <span
+                            aria-label="Resize Duration column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Recurring run"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -1983,8 +2209,22 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                           >
                             Recurring run
                           </span>
+                          <span
+                            aria-label="Resize Recurring run column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                         <th
+                          aria-label="Started"
+                          data-resizable="true"
                           scope="col"
                         >
                           <span
@@ -2020,6 +2260,18 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                               </svg>
                             </button>
                           </span>
+                          <span
+                            aria-label="Resize Started column"
+                            aria-orientation="vertical"
+                            aria-valuemax="2000"
+                            aria-valuemin="80"
+                            aria-valuenow="80"
+                            aria-valuetext="Automatic width"
+                            class="kfp-column-resize"
+                            role="separator"
+                            tabindex="0"
+                            title="Drag to resize. Use left/right arrows to adjust; Home resets all widths."
+                          />
                         </th>
                       </tr>
                     </thead>

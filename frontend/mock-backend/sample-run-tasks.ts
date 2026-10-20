@@ -3,6 +3,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
+import { complexRunTasks } from './complex-run-samples';
 import { PipelineTaskTaskState, V2beta1PipelineTask, V2beta1Run } from '../src/apisv2beta1/run';
 
 const steps = [
@@ -72,6 +73,8 @@ export const sampleRunPipelineSpec = {
 };
 
 export function sampleRunTasks(run: V2beta1Run): V2beta1PipelineTask[] {
+  const complex = complexRunTasks(run);
+  if (complex) return complex;
   if (!run.run_id?.startsWith('sample-run-') || run.state === 'PENDING') return [];
   const origin = run.created_at!.getTime();
   const at = (seconds: number) => new Date(origin + seconds * 1000);

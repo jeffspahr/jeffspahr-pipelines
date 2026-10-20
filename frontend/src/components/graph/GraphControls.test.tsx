@@ -46,7 +46,7 @@ it('orders the six graph controls and dispatches each action', () => {
     'Zoom in',
     'Zoom out',
     'Fit view',
-    'Lock graph',
+    'Lock node positions',
   ]);
   expect(screen.getByRole('button', { name: 'Fit view' })).toHaveAttribute(
     'aria-keyshortcuts',
@@ -60,7 +60,7 @@ it('orders the six graph controls and dispatches each action', () => {
   expect(mocked.viewport.fitView).toHaveBeenCalledExactlyOnceWith({ maxZoom: 1 });
   expect(options.onLockChange).toHaveBeenCalledWith(true);
   rerender(<GraphControls {...options} locked />);
-  fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
   expect(options.onLockChange).toHaveBeenLastCalledWith(false);
 });
 
@@ -70,7 +70,7 @@ it.each([
   ['Zoom in', 'Zoom in'],
   ['Zoom out', 'Zoom out'],
   ['Fit view', 'Fit graph to view (F)'],
-  ['Lock graph', 'Lock nodes to pan with dragging and arrow keys'],
+  ['Lock node positions', 'Lock nodes to pan with dragging and arrow keys'],
 ])('shows the %s tooltip after 500ms, not sooner', async (label, tooltip) => {
   render(<GraphControls {...props()} />);
   const button = screen.getByRole('button', { name: label });

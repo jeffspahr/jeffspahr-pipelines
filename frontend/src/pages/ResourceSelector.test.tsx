@@ -124,7 +124,7 @@ describe('ResourceSelector', () => {
 
   it('displays resource selector', async () => {
     await renderResourceSelector();
-    expect(listResourceSpy).toHaveBeenLastCalledWith('', 10, 'created_at desc', '');
+    expect(listResourceSpy).toHaveBeenLastCalledWith('', 20, 'created_at desc', '');
     expect(screen.getByText('test-1 name')).toBeInTheDocument();
     expect(screen.getByText('test-2 name')).toBeInTheDocument();
   });

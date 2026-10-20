@@ -130,7 +130,7 @@ export default function GraphControls({
         <CropFreeIcon />
       </PaletteButton>
       <PaletteButton
-        label={locked ? 'Unlock graph' : 'Lock graph'}
+        label={locked ? 'Unlock node positions' : 'Lock node positions'}
         tooltip={locked ? 'Unlock node dragging' : 'Lock nodes to pan with dragging and arrow keys'}
         aria-pressed={locked}
         className='react-flow__controls-interactive'

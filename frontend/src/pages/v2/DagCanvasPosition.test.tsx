@@ -8,6 +8,9 @@ import { nestedArtifactSpec } from 'src/data/test/groupedFlow';
 import { convertSubDagToFlowElements } from 'src/lib/v2/StaticFlow';
 import { layerNodeId } from 'src/lib/v2/GroupedFlow';
 import DagCanvas from './DagCanvas';
+import { mockResizeObserver } from 'src/TestUtils';
+
+beforeEach(() => mockResizeObserver());
 
 // Drive live position changes and drag-stop without depending on jsdom SVG geometry.
 vi.mock('@xyflow/react', async (importOriginal) => ({
@@ -76,7 +79,7 @@ it('updates leaves and groups during dragging without changing child-relative po
       onElementClick={vi.fn()}
     />,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
   const leaf = screen.getByTestId('task.deploy');
   expect(leaf).toHaveAttribute('data-draggable', 'true');
   fireEvent.mouseMove(leaf);
@@ -104,7 +107,7 @@ it('still respects a read-only host for both leaves and groups', () => {
       onElementClick={vi.fn()}
     />,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
   for (const id of ['task.workflow', 'task.deploy']) {
     const node = screen.getByTestId(id);
     const position = node.textContent;
@@ -124,7 +127,7 @@ it('rejects live drag updates while locked, including after a refresh', () => {
     onElementClick: vi.fn(),
   };
   const { rerender } = render(<DagCanvas {...options} />);
-  expect(screen.getByRole('button', { name: 'Unlock graph' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Unlock node positions' })).toBeInTheDocument();
   rerender(<DagCanvas {...options} elements={resolve(['root'])} />);
   for (const id of ['task.workflow', 'task.deploy']) {
     const node = screen.getByTestId(id);
@@ -133,7 +136,7 @@ it('rejects live drag updates while locked, including after a refresh', () => {
     fireEvent.click(node);
     expect(node.textContent).toBe(position);
   }
-  fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
   fireEvent.mouseMove(screen.getByTestId('task.workflow'));
   expect(screen.getByTestId('task.workflow')).toHaveTextContent('{"x":45,"y":90}');
 });
@@ -180,7 +183,7 @@ it('preserves nested task drag positions across data refreshes', () => {
     />
   );
   const { rerender } = render(canvas());
-  fireEvent.click(screen.getByRole('button', { name: 'Unlock graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
   fireEvent.click(screen.getByTestId(id));
   expect(screen.getByTestId(id)).toHaveTextContent('{"x":77,"y":88}');
   rerender(canvas());

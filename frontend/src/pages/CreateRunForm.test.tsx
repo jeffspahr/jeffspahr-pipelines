@@ -749,7 +749,7 @@ describe('NewRunV2', () => {
       await waitFor(() => {
         expect(listExperimentSpy).toHaveBeenCalledWith(
           '',
-          10,
+          20,
           'created_at desc',
           encodeURIComponent(
             JSON.stringify({
