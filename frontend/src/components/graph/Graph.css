@@ -244,7 +244,6 @@
   stroke: var(--border-strong);
 }
 .kfp-graph-edge:hover .react-flow__edge-path,
-.kfp-graph-edge:focus-visible .react-flow__edge-path,
 .kfp-graph-edge.selected .react-flow__edge-path {
   stroke: var(--primary);
   stroke-width: 2;

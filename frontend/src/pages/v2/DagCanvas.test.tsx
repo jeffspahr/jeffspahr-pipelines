@@ -413,3 +413,36 @@ it('supports keyboard collapse and expansion', async () => {
   await userEvent.keyboard(' ');
   expect(screen.getByText('Train model')).toBeInTheDocument();
 });
+
+it('keeps dependencies out of the tab order with names built from node labels', async () => {
+  const { container } = render(
+    <CommonTestWrapper>
+      <DagCanvas {...props()} />
+    </CommonTestWrapper>,
+  );
+  const edges = container.querySelectorAll('.react-flow__edge');
+  expect(edges.length).toBeGreaterThan(0);
+  edges.forEach((edge) => {
+    expect(edge).not.toHaveAttribute('tabindex');
+    expect(edge).not.toHaveAttribute('aria-describedby');
+    expect(edge.getAttribute('aria-label')).toMatch(/^[^[\]]+ to [^[\]]+$/);
+    expect(edge.getAttribute('aria-label')).not.toMatch(/task\./);
+  });
+  screen.getByRole('region', { name: 'Pipeline graph' }).focus();
+  await userEvent.tab();
+  expect(document.activeElement?.closest('.react-flow__node')).not.toBeNull();
+});
+
+it('describes unlocked node wrappers without React Flow delete instructions', () => {
+  render(
+    <CommonTestWrapper>
+      <DagCanvas {...props()} />
+    </CommonTestWrapper>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock node positions' }));
+  const wrapper = screen.getByText('Prepare data').closest('.react-flow__node');
+  expect(wrapper).toHaveAttribute('tabindex', '0');
+  expect(wrapper).toHaveAccessibleDescription(
+    'Press Enter, then use the arrow keys to move this node.',
+  );
+});

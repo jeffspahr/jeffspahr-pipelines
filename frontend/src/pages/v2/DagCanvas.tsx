@@ -24,6 +24,7 @@ import {
   useState,
 } from 'react';
 import {
+  AriaLabelConfig,
   ReactFlow,
   ReactFlowProvider,
   Background,
@@ -65,6 +66,13 @@ const panDirections = new Map([
   ['ArrowUp', { x: 0, y: 40 }],
   ['ArrowDown', { x: 0, y: -40 }],
 ]);
+// React Flow's default node descriptions mention deleting, which this read-only graph lacks.
+// React Flow 12.12 shows the keyboardDisabled text when keyboard support is on, so set both keys.
+const nodeDescription = 'Press Enter, then use the arrow keys to move this node.';
+const ariaLabelConfig: Partial<AriaLabelConfig> = {
+  'node.a11yDescription.default': nodeDescription,
+  'node.a11yDescription.keyboardDisabled': nodeDescription,
+};
 const editableSelector =
   'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="slider"], [role="spinbutton"]';
 
@@ -208,15 +216,15 @@ function DagCanvasView({
       }),
     [grouped, positions, selectedId, toggleGroup, canDrag],
   );
-  const edges = useMemo(
-    () =>
-      grouped.edges.map((edge) => ({
-        ...edge,
-        className: `${edge.className || ''} kfp-graph-edge`,
-        style: { ...edge.style, strokeWidth: 1.5 },
-      })),
-    [grouped.edges],
-  );
+  const edges = useMemo(() => {
+    const labels = new Map(grouped.nodes.map((node) => [node.id, node.data.label]));
+    return grouped.edges.map((edge) => ({
+      ...edge,
+      ariaLabel: `${labels.get(edge.source) ?? edge.source} to ${labels.get(edge.target) ?? edge.target}`,
+      className: `${edge.className || ''} kfp-graph-edge`,
+      style: { ...edge.style, strokeWidth: 1.5 },
+    }));
+  }, [grouped]);
   const visibleStates = [
     ...new Set(
       nodes
@@ -393,6 +401,8 @@ function DagCanvasView({
           multiSelectionKeyCode={locked ? null : undefined}
           nodesConnectable={false}
           nodesFocusable={canDrag}
+          edgesFocusable={false}
+          ariaLabelConfig={ariaLabelConfig}
           onInit={(instance) => {
             reactFlowInstance.current = instance;
           }}
