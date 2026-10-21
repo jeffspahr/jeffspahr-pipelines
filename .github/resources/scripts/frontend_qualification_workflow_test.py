@@ -14,20 +14,21 @@
 # limitations under the License.
 """Keep frontend presubmit validation fast and complete."""
 
-from itertools import product
 import json
-from pathlib import Path
 import unittest
+from itertools import product
+from pathlib import Path
 
-from generate_ci_workflow_inventory import UniqueKeyLoader
 import yaml
+from generate_ci_workflow_inventory import UniqueKeyLoader
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
 def workflow(name):
     return yaml.load(
-        (ROOT / '.github/workflows' / name).read_text(), Loader=UniqueKeyLoader)
+        (ROOT / '.github/workflows' / name).read_text(), Loader=UniqueKeyLoader
+    )
 
 
 def lanes(job):
@@ -39,15 +40,21 @@ def lanes(job):
 
 
 class FrontendQualificationWorkflowTest(unittest.TestCase):
-
     def test_presubmit_bundles_after_validation_without_repeating_it(self):
-        scripts = json.loads(
-            (ROOT / 'frontend/package.json').read_text())['scripts']
+        scripts = json.loads((ROOT / 'frontend/package.json').read_text())[
+            'scripts'
+        ]
         steps = workflow('frontend.yml')['jobs']['frontend-tests']['steps']
-        checks = next(i for i, step in enumerate(steps)
-                      if 'npm run test:ci' in step.get('run', ''))
-        bundle = next(i for i, step in enumerate(steps)
-                      if 'npm run build:bundle' in step.get('run', ''))
+        checks = next(
+            i
+            for i, step in enumerate(steps)
+            if 'npm run test:ci' in step.get('run', '')
+        )
+        bundle = next(
+            i
+            for i, step in enumerate(steps)
+            if 'npm run build:bundle' in step.get('run', '')
+        )
         self.assertLess(checks, bundle)
         for check in ('lint', 'typecheck'):
             self.assertIn(f'npm run {check}', scripts['test:ci'])
@@ -60,8 +67,9 @@ class FrontendQualificationWorkflowTest(unittest.TestCase):
     def test_presubmit_runs_all_retained_node_check_suites(self):
         steps = workflow('frontend.yml')['jobs']['frontend-tests']['steps']
         commands = '\n'.join(step.get('run', '') for step in steps)
-        scripts = json.loads(
-            (ROOT / 'frontend/package.json').read_text())['scripts']
+        scripts = json.loads((ROOT / 'frontend/package.json').read_text())[
+            'scripts'
+        ]
         commands += '\n' + scripts['test:browser-runner']
         for suite in (ROOT / 'frontend/scripts').glob('*.check.mjs'):
             with self.subTest(suite=suite.name):
@@ -71,10 +79,12 @@ class FrontendQualificationWorkflowTest(unittest.TestCase):
         presubmit = workflow('frontend.yml')
         self.assertEqual(
             lanes(presubmit['jobs']['browser-tests']),
-            {('ubuntu-latest', 'chromium')})
+            {('ubuntu-latest', 'chromium')},
+        )
         self.assertIn('pull_request', presubmit['on'])
-        self.assertEqual(presubmit['jobs']['browser-tests']['needs'],
-                         'frontend-tests')
+        self.assertEqual(
+            presubmit['jobs']['browser-tests']['needs'], 'frontend-tests'
+        )
 
 
 if __name__ == '__main__':

@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Bound browser dependency acquisition on disposable hosted Ubuntu runners."""
+
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 AZURE_MIRROR = re.compile(
-    r'https?://azure\.archive\.ubuntu\.com/ubuntu(?=[/\s]|$)')
-APT_LIMITS = '''Acquire::http::Timeout "30";
+    r'https?://azure\.archive\.ubuntu\.com/ubuntu(?=[/\s]|$)'
+)
+APT_LIMITS = """Acquire::http::Timeout "30";
 Acquire::https::Timeout "30";
 Acquire::Retries "2";
-'''
+"""
 
 
 def configure(root):
@@ -31,8 +33,9 @@ def configure(root):
     for source in sources:
         if source.is_file():
             before = source.read_text()
-            after = AZURE_MIRROR.sub('https://archive.ubuntu.com/ubuntu',
-                                     before)
+            after = AZURE_MIRROR.sub(
+                'https://archive.ubuntu.com/ubuntu', before
+            )
             if after != before:
                 source.write_text(after)
                 print(
@@ -42,11 +45,14 @@ def configure(root):
 
 
 def main():
-    if not (os.environ.get('CI') == 'true' and
-            os.environ.get('GITHUB_ACTIONS') == 'true' and
-            os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'):
+    if not (
+        os.environ.get('CI') == 'true'
+        and os.environ.get('GITHUB_ACTIONS') == 'true'
+        and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
+    ):
         raise RuntimeError(
-            'APT configuration requires a disposable GitHub runner')
+            'APT configuration requires a disposable GitHub runner'
+        )
     configure(Path('/etc/apt'))
 
 

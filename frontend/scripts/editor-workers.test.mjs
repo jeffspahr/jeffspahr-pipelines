@@ -64,8 +64,11 @@ describe('packaged Ace workers', () => {
           data: model,
         });
         context.main.deferredUpdate.call();
+        // JSON diagnostics are asynchronous in Ace 1.45; wait for the worker event.
+        await expect
+          .poll(() => messages.find((message) => message.name === 'annotate'))
+          .toBeDefined();
         const annotations = messages.find((message) => message.name === 'annotate');
-        expect(annotations).toBeDefined();
         expect(annotations.data.length > 0).toBe(invalidSyntax);
         expect(messages.filter((message) => message.type === 'error')).toEqual([]);
       }
