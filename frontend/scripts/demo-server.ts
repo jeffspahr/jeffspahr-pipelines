@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import express from '../mock-backend/node_modules/express/index.js';
+import { resolve } from 'node:path';
+import { createMockApiApp } from '../mock-backend/mock-api-app';
+import { createPrecompressedStaticApp } from '../server/static-assets';
+assert.equal(process.env.GITHUB_ACTIONS, 'true');
+const app = express();
+app.use((req, res, next) => ['GET','HEAD'].includes(req.method) ? next() : res.status(405).end());
+app.get('/__qualification', (_,res)=>res.json({fixtures:'same current mock backend',readOnly:true}));
+app.use(createMockApiApp());
+const root=resolve(process.env.KFP_BROWSER_BUILD_DIR!);
+app.use(createPrecompressedStaticApp(root,{cacheControl:'no-store'}));
+app.use(express.static(root));
+app.get('/{*path}', (_,res)=>res.sendFile(resolve(root,'index.html')));
+app.listen(Number(process.env.KFP_BROWSER_FLOOR_PORT),'127.0.0.1');

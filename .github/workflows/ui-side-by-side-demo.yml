@@ -1,0 +1,91 @@
+name: UI Side-by-Side Demo
+on:
+  push:
+    branches: [codex/ui-demo-20261021]
+permissions:
+  contents: read
+env:
+  LEGACY_SHA: cd3ed54166878b7bd7b57e8d2624faa008378ea2
+  MODERN_SHA: ba521c4104100db04a0b58640f1cd2a96f2a843b
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - side: legacy
+            ref: cd3ed54166878b7bd7b57e8d2624faa008378ea2
+          - side: modern
+            ref: ba521c4104100db04a0b58640f1cd2a96f2a843b
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+      - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-build-${{ matrix.side }}
+          path: frontend/build
+          if-no-files-found: error
+          retention-days: 7
+  record:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: app/frontend
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: harness
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.MODERN_SHA }}
+          path: app
+      - name: Install isolated recording scripts
+        run: |
+          cp ../../harness/frontend/scripts/record-demo.mjs scripts/
+          cp ../../harness/frontend/scripts/demo-scenes.json scripts/
+          cp ../../harness/frontend/scripts/demo-server.ts scripts/
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: app/frontend/.nvmrc
+      - run: npm install --global "$(node -p 'require("./package.json").packageManager')"
+      - run: npm ci --ignore-scripts
+      - run: npm ci --prefix mock-backend --ignore-scripts
+      - run: npm ci --prefix server --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          name: demo-build-legacy
+          path: demo-builds/legacy
+      - uses: actions/download-artifact@v8
+        with:
+          name: demo-build-modern
+          path: app/frontend/build
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Record synchronized walkthrough
+        run: node scripts/record-demo.mjs
+        env:
+          KFP_DEMO_LEGACY_BUILD: ${{ github.workspace }}/demo-builds/legacy
+          KFP_DEMO_MODERN_BUILD: ${{ github.workspace }}/app/frontend/build
+          KFP_DEMO_OUTPUT: ${{ github.workspace }}/demo-output
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-side-by-side-demo
+          path: demo-output
+          if-no-files-found: error
+          retention-days: 30
