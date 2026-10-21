@@ -6,8 +6,15 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
     class="kfp-confusion-matrix"
   >
     <table>
+      <caption
+        class="sr-only"
+      >
+        Confusion matrix. Rows: test y axis. Columns: test x axis.
+      </caption>
       <tbody>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td
             class="kfp-confusion-y-axis-label"
           >
@@ -15,16 +22,21 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
           </td>
         </tr>
         <tr>
-          <td>
+          <th
+            class="kfp-confusion-row-header"
+            id="react-use-id-0-row-0"
+            scope="row"
+          >
             <div
               class="kfp-confusion-ylabel "
               style="line-height: 79px; min-width: 79px;"
             >
               label2
             </div>
-          </td>
+          </th>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-0 react-use-id-0-col-0"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 12.5%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -35,6 +47,7 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
           </td>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-0 react-use-id-0-col-1"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 21.875%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -45,16 +58,21 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
           </td>
         </tr>
         <tr>
-          <td>
+          <th
+            class="kfp-confusion-row-header"
+            id="react-use-id-0-row-1"
+            scope="row"
+          >
             <div
               class="kfp-confusion-ylabel "
               style="line-height: 79px; min-width: 79px;"
             >
               label1
             </div>
-          </td>
+          </th>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-1 react-use-id-0-col-0"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 9.375%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -65,6 +83,7 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
           </td>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-1 react-use-id-0-col-1"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 18.75%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -75,9 +94,10 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
           </td>
         </tr>
         <tr>
-          <th />
+          <td />
           <th
             class="kfp-confusion-xlabel"
+            id="react-use-id-0-col-0"
             scope="col"
           >
             <div
@@ -89,6 +109,7 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
           </th>
           <th
             class="kfp-confusion-xlabel"
+            id="react-use-id-0-col-1"
             scope="col"
           >
             <div
@@ -99,7 +120,9 @@ exports[`ConfusionMatrix > does not break on asymetric data 1`] = `
             </div>
           </th>
         </tr>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td />
           <td
             class="kfp-confusion-x-axis-label"
@@ -185,8 +208,15 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
     class="kfp-confusion-matrix"
   >
     <table>
+      <caption
+        class="sr-only"
+      >
+        Confusion matrix. Rows: test y axis. Columns: test x axis.
+      </caption>
       <tbody>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td
             class="kfp-confusion-y-axis-label"
           >
@@ -194,16 +224,21 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
           </td>
         </tr>
         <tr>
-          <td>
+          <th
+            class="kfp-confusion-row-header"
+            id="react-use-id-0-row-0"
+            scope="row"
+          >
             <div
               class="kfp-confusion-ylabel "
               style="line-height: 79px; min-width: 79px;"
             >
               label2
             </div>
-          </td>
+          </th>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-0 react-use-id-0-col-0"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 3.125%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -214,6 +249,7 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
           </td>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-0 react-use-id-0-col-1"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 12.5%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -224,16 +260,21 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
           </td>
         </tr>
         <tr>
-          <td>
+          <th
+            class="kfp-confusion-row-header"
+            id="react-use-id-0-row-1"
+            scope="row"
+          >
             <div
               class="kfp-confusion-ylabel "
               style="line-height: 79px; min-width: 79px;"
             >
               label1
             </div>
-          </td>
+          </th>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-1 react-use-id-0-col-0"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 0%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -244,6 +285,7 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
           </td>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-1 react-use-id-0-col-1"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 9.375%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -254,9 +296,10 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
           </td>
         </tr>
         <tr>
-          <th />
+          <td />
           <th
             class="kfp-confusion-xlabel"
+            id="react-use-id-0-col-0"
             scope="col"
           >
             <div
@@ -268,6 +311,7 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
           </th>
           <th
             class="kfp-confusion-xlabel"
+            id="react-use-id-0-col-1"
             scope="col"
           >
             <div
@@ -278,7 +322,9 @@ exports[`ConfusionMatrix > renders a basic confusion matrix 1`] = `
             </div>
           </th>
         </tr>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td />
           <td
             class="kfp-confusion-x-axis-label"
@@ -365,6 +411,11 @@ exports[`ConfusionMatrix > renders a small confusion matrix snapshot, with no la
     data-small="true"
   >
     <table>
+      <caption
+        class="sr-only"
+      >
+        Confusion matrix. Rows: test y axis. Columns: test x axis.
+      </caption>
       <tbody>
         <tr>
           <td
@@ -422,8 +473,15 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
     class="kfp-confusion-matrix"
   >
     <table>
+      <caption
+        class="sr-only"
+      >
+        Confusion matrix. Rows: test y axis. Columns: test x axis.
+      </caption>
       <tbody>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td
             class="kfp-confusion-y-axis-label"
           >
@@ -431,16 +489,21 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
           </td>
         </tr>
         <tr>
-          <td>
+          <th
+            class="kfp-confusion-row-header"
+            id="react-use-id-0-row-0"
+            scope="row"
+          >
             <div
               class="kfp-confusion-ylabel "
               style="line-height: 79px; min-width: 79px;"
             >
               label2
             </div>
-          </td>
+          </th>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-0 react-use-id-0-col-0"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 3.125%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -451,6 +514,7 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
           </td>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-0 react-use-id-0-col-1"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 12.5%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -461,16 +525,21 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
           </td>
         </tr>
         <tr>
-          <td>
+          <th
+            class="kfp-confusion-row-header"
+            id="react-use-id-0-row-1"
+            scope="row"
+          >
             <div
               class="kfp-confusion-ylabel "
               style="line-height: 79px; min-width: 79px;"
             >
               label1
             </div>
-          </td>
+          </th>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-1 react-use-id-0-col-0"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 0%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -481,6 +550,7 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
           </td>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-1 react-use-id-0-col-1"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 9.375%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -491,9 +561,10 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
           </td>
         </tr>
         <tr>
-          <th />
+          <td />
           <th
             class="kfp-confusion-xlabel"
+            id="react-use-id-0-col-0"
             scope="col"
           >
             <div
@@ -505,6 +576,7 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
           </th>
           <th
             class="kfp-confusion-xlabel"
+            id="react-use-id-0-col-1"
             scope="col"
           >
             <div
@@ -515,7 +587,9 @@ exports[`ConfusionMatrix > renders only one of the given list of configs 1`] = `
             </div>
           </th>
         </tr>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td />
           <td
             class="kfp-confusion-x-axis-label"

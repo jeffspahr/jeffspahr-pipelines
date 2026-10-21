@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { fireEvent, render, waitFor, within } from '@testing-library/react';
 import ConfusionMatrix, { ConfusionMatrixConfig } from './ConfusionMatrix';
 import { PlotType } from './Viewer';
+import { stableSnapshotFragment } from 'src/testUtils/snapshot';
 
 describe('ConfusionMatrix', () => {
   const data = [
@@ -38,23 +39,23 @@ describe('ConfusionMatrix', () => {
 
   it('renders a basic confusion matrix', () => {
     const { asFragment } = render(<ConfusionMatrix configs={[config]} />);
-    expect(asFragment()).toMatchSnapshot();
+    expect(stableSnapshotFragment(asFragment())).toMatchSnapshot();
   });
 
   it('does not break on asymetric data', () => {
     const testConfig = { ...config, data: data.slice(1) };
     const { asFragment } = render(<ConfusionMatrix configs={[testConfig]} />);
-    expect(asFragment()).toMatchSnapshot();
+    expect(stableSnapshotFragment(asFragment())).toMatchSnapshot();
   });
 
   it('renders only one of the given list of configs', () => {
     const { asFragment } = render(<ConfusionMatrix configs={[config, config, config]} />);
-    expect(asFragment()).toMatchSnapshot();
+    expect(stableSnapshotFragment(asFragment())).toMatchSnapshot();
   });
 
   it('renders a small confusion matrix snapshot, with no labels or footer', () => {
     const { asFragment } = render(<ConfusionMatrix configs={[config]} maxDimension={100} />);
-    expect(asFragment()).toMatchSnapshot();
+    expect(stableSnapshotFragment(asFragment())).toMatchSnapshot();
   });
 
   it('keeps long column labels and the axis caption in the table flow', () => {
@@ -117,9 +118,9 @@ describe('ConfusionMatrix', () => {
 
   it('activates row/column on cell hover', () => {
     const { container } = render(<ConfusionMatrix configs={[config]} />);
-    const cells = container.querySelectorAll('td');
-    expect(cells.length).toBeGreaterThan(2);
-    const targetCell = cells[2];
+    const cells = container.querySelectorAll('.kfp-confusion-cell');
+    expect(cells.length).toBeGreaterThan(0);
+    const targetCell = cells[0];
     fireEvent.mouseOver(targetCell);
     const overlay = targetCell.querySelector('div');
     expect(overlay).not.toBeNull();
@@ -128,7 +129,7 @@ describe('ConfusionMatrix', () => {
 
   it('applies refreshed data without resetting the active cell', async () => {
     const { container, rerender } = render(<ConfusionMatrix configs={[config]} />);
-    const targetCell = container.querySelectorAll('td')[2];
+    const targetCell = container.querySelectorAll('.kfp-confusion-cell')[0];
     fireEvent.mouseOver(targetCell);
 
     rerender(
@@ -137,9 +138,107 @@ describe('ConfusionMatrix', () => {
       />,
     );
 
-    await waitFor(() => expect(container.querySelectorAll('td')[2]).toHaveTextContent('11'));
-    const refreshedTarget = container.querySelectorAll('td')[2];
+    await waitFor(() =>
+      expect(container.querySelectorAll('.kfp-confusion-cell')[0]).toHaveTextContent('11'),
+    );
+    const refreshedTarget = container.querySelectorAll('.kfp-confusion-cell')[0];
     expect(refreshedTarget.querySelector('div')).toHaveStyle('opacity: 0.05');
+  });
+
+  it('associates every count with its row and column headers', () => {
+    const labels = ['cat', 'dog'];
+    const matrix = {
+      ...config,
+      data: [
+        [42, 8],
+        [3, 47],
+      ],
+      labels,
+    };
+    const { container, getAllByRole } = render(
+      <>
+        <ConfusionMatrix configs={[matrix]} />
+        <ConfusionMatrix configs={[matrix]} />
+      </>,
+    );
+
+    const [table] = getAllByRole('table', {
+      name: 'Confusion matrix. Rows: test y axis. Columns: test x axis.',
+    });
+    const { getAllByRole: getAllInTable } = within(table);
+    expect(getAllInTable('columnheader').map((header) => header.textContent)).toEqual(labels);
+    expect(getAllInTable('rowheader').map((header) => header.textContent)).toEqual(['dog', 'cat']);
+    expect(container.querySelectorAll('th:empty')).toHaveLength(0);
+
+    const headersFor = (value: string) => {
+      const cell = getAllInTable('cell').find((candidate) => candidate.textContent === value)!;
+      return cell
+        .getAttribute('headers')!
+        .split(' ')
+        .map((id) => {
+          const header = document.getElementById(id);
+          expect(table).toContainElement(header);
+          return header?.textContent;
+        });
+    };
+    expect(headersFor('8')).toEqual(['dog', 'cat']);
+    expect(headersFor('3')).toEqual(['cat', 'dog']);
+    expect(headersFor('47')).toEqual(['dog', 'dog']);
+    // Column labels stay after the counts in the DOM, matching their position below the matrix.
+    const countCell = getAllInTable('cell').find((cell) => cell.textContent === '8')!;
+    expect(
+      countCell.compareDocumentPosition(getAllInTable('columnheader')[0]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    const ids = Array.from(container.querySelectorAll('th[id]')).map((header) => header.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('names the matrix only with the axis titles that are provided', () => {
+    const { getByRole, rerender } = render(<ConfusionMatrix configs={[{ ...config, axes: [] }]} />);
+    expect(getByRole('table', { name: 'Confusion matrix.' })).toBeInTheDocument();
+
+    rerender(<ConfusionMatrix configs={[{ ...config, axes: [' ', '.'] }]} />);
+    expect(getByRole('table', { name: 'Confusion matrix.' })).toBeInTheDocument();
+
+    rerender(<ConfusionMatrix configs={[{ ...config, axes: ['test x axis'] }]} />);
+    expect(
+      getByRole('table', { name: 'Confusion matrix. Columns: test x axis.' }),
+    ).toBeInTheDocument();
+  });
+
+  it('trims axis titles in the name without doubling punctuation', () => {
+    const { getByRole } = render(
+      <ConfusionMatrix configs={[{ ...config, axes: [' Predicted. ', 'Actual.'] }]} />,
+    );
+    expect(
+      getByRole('table', { name: 'Confusion matrix. Rows: Actual. Columns: Predicted.' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the axis titles out of the header grid', () => {
+    const { getByRole, getByText } = render(<ConfusionMatrix configs={[config]} />);
+    const cells = within(getByRole('table'))
+      .getAllByRole('cell')
+      .map((cell) => cell.textContent);
+
+    config.axes.forEach((title) => {
+      expect(getByText(title).closest('tr')).toHaveAttribute('aria-hidden', 'true');
+      expect(cells).not.toContain(title);
+    });
+  });
+
+  it('names the small matrix without rendering label headers', () => {
+    const { getByRole, queryAllByRole } = render(
+      <ConfusionMatrix configs={[config]} maxDimension={100} />,
+    );
+    expect(
+      getByRole('table', { name: 'Confusion matrix. Rows: test y axis. Columns: test x axis.' }),
+    ).toBeInTheDocument();
+    expect(queryAllByRole('columnheader')).toHaveLength(0);
+    expect(queryAllByRole('rowheader')).toHaveLength(0);
+    expect(document.querySelector('[headers]')).toBeNull();
   });
 
   it('returns a user friendly display name', () => {

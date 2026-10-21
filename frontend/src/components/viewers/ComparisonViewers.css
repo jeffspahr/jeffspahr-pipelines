@@ -215,6 +215,9 @@
   padding-top: 12px;
   text-align: center;
 }
+.kfp-confusion-row-header {
+  font-weight: 400;
+}
 .kfp-confusion-xlabel {
   font-weight: 400;
   padding-top: 8px;

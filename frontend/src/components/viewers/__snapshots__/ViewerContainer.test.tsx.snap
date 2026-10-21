@@ -6,8 +6,15 @@ exports[`ViewerContainer > renders a viewer of type CONFUSION_MATRIX 1`] = `
     class="kfp-confusion-matrix"
   >
     <table>
+      <caption
+        class="sr-only"
+      >
+        Confusion matrix. Rows: y. Columns: x.
+      </caption>
       <tbody>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td
             class="kfp-confusion-y-axis-label"
           >
@@ -15,16 +22,21 @@ exports[`ViewerContainer > renders a viewer of type CONFUSION_MATRIX 1`] = `
           </td>
         </tr>
         <tr>
-          <td>
+          <th
+            class="kfp-confusion-row-header"
+            id="react-use-id-0-row-0"
+            scope="row"
+          >
             <div
               class="kfp-confusion-ylabel "
               style="line-height: 79px; min-width: 79px;"
             >
               label
             </div>
-          </td>
+          </th>
           <td
             class="kfp-confusion-cell"
+            headers="react-use-id-0-row-0 react-use-id-0-col-0"
             style="background-color: color-mix(in srgb, var(--primary, #2563d9) 25%, var(--card, #fff)); color: var(--foreground, #15171e); height: 79px; min-height: 79px; min-width: 79px; width: 79px;"
           >
             <div
@@ -35,9 +47,10 @@ exports[`ViewerContainer > renders a viewer of type CONFUSION_MATRIX 1`] = `
           </td>
         </tr>
         <tr>
-          <th />
+          <td />
           <th
             class="kfp-confusion-xlabel"
+            id="react-use-id-0-col-0"
             scope="col"
           >
             <div
@@ -48,7 +61,9 @@ exports[`ViewerContainer > renders a viewer of type CONFUSION_MATRIX 1`] = `
             </div>
           </th>
         </tr>
-        <tr>
+        <tr
+          aria-hidden="true"
+        >
           <td />
           <td
             class="kfp-confusion-x-axis-label"

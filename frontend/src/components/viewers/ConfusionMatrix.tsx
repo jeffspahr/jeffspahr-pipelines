@@ -15,6 +15,7 @@
  */
 
 import type * as React from 'react';
+import { useId } from 'react';
 import Viewer, { ViewerConfig, PlotType } from './Viewer';
 import './ComparisonViewers.css';
 
@@ -34,6 +35,11 @@ interface ConfusionMatrixProps {
 
 interface ConfusionMatrixState {
   activeCell: [number, number];
+}
+
+// Viewers are class components, so useId() runs here to give each table unique header ids.
+function WithTableId({ children }: { children: (id: string) => React.ReactNode }) {
+  return children(useId());
 }
 
 class ConfusionMatrix extends Viewer<ConfusionMatrixProps, ConfusionMatrixState> {
@@ -61,94 +67,120 @@ class ConfusionMatrix extends Viewer<ConfusionMatrixProps, ConfusionMatrixState>
     const { cellDimension, max, opacities, uiData } = this._buildViewModel(config);
     const [activeRow, activeCol] = this.state.activeCell;
     const [xAxisLabel, yAxisLabel] = config.axes;
+    const [xAxisTitle, yAxisTitle] = [xAxisLabel, yAxisLabel].map((label) =>
+      label?.trim().replace(/\.+$/, ''),
+    );
+    const caption = [
+      'Confusion matrix',
+      yAxisTitle && `Rows: ${yAxisTitle}`,
+      xAxisTitle && `Columns: ${xAxisTitle}`,
+    ]
+      .filter(Boolean)
+      .join('. ');
     const small = this._isSmall();
 
     return (
       <div className='kfp-confusion-matrix' data-small={small || undefined}>
-        <table>
-          <tbody>
-            {!small && (
-              <tr>
-                <td className='kfp-confusion-y-axis-label'>{yAxisLabel}</td>
-              </tr>
-            )}
-            {uiData.map((row, r) => (
-              <tr key={r}>
+        <WithTableId>
+          {(tableId) => (
+            <table>
+              <caption className='sr-only'>{`${caption}.`}</caption>
+              <tbody>
+                {/* The caption names both axes, so the axis title rows stay out of the table grid. */}
                 {!small && (
-                  <td>
-                    <div
-                      className={`kfp-confusion-ylabel ${r === activeRow ? 'kfp-confusion-active-label' : ''}`}
-                      style={{ lineHeight: `${cellDimension}px`, minWidth: cellDimension }}
-                    >
-                      {
-                        config.labels[
-                          config.labels.length - 1 - r
-                        ] /* uiData's ith's row corresponds to the reverse ordered label */
-                      }
-                    </div>
-                  </td>
+                  <tr aria-hidden='true'>
+                    <td className='kfp-confusion-y-axis-label'>{yAxisLabel}</td>
+                  </tr>
                 )}
-                {row.map((cell, c) => (
-                  <td
-                    key={c}
-                    className='kfp-confusion-cell'
-                    style={{
-                      backgroundColor: `color-mix(in srgb, var(--primary, #2563d9) ${opacities[r][c] * 25}%, var(--card, #fff))`,
-                      color: 'var(--foreground, #15171e)',
-                      height: cellDimension,
-                      minHeight: cellDimension,
-                      minWidth: cellDimension,
-                      width: cellDimension,
-                    }}
-                    onMouseOver={() => this.setState({ activeCell: [r, c] })}
-                    onMouseLeave={() =>
-                      this.setState((state) => ({
-                        // Remove active cell if it's still the one active
-                        activeCell:
-                          state.activeCell[0] === r && state.activeCell[1] === c
-                            ? [-1, -1]
-                            : state.activeCell,
-                      }))
-                    }
-                  >
-                    <div
-                      className='kfp-confusion-overlay'
-                      style={{
-                        opacity: r === activeRow || c === activeCol ? 0.05 : 0,
-                      }}
-                    />
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-
-            {/* Footer */}
-            {!small && (
-              <>
-                <tr>
-                  <th />
-                  {config.labels.map((label, i) => (
-                    <th key={i} scope='col' className='kfp-confusion-xlabel'>
-                      <div
-                        className={i === activeCol ? 'kfp-confusion-active-label' : ''}
-                        style={{ overflowWrap: 'anywhere', width: cellDimension }}
+                {uiData.map((row, r) => (
+                  <tr key={r}>
+                    {!small && (
+                      <th
+                        id={`${tableId}-row-${r}`}
+                        scope='row'
+                        className='kfp-confusion-row-header'
                       >
-                        {label}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-                <tr>
-                  <td />
-                  <td colSpan={config.labels.length} className='kfp-confusion-x-axis-label'>
-                    {xAxisLabel}
-                  </td>
-                </tr>
-              </>
-            )}
-          </tbody>
-        </table>
+                        <div
+                          className={`kfp-confusion-ylabel ${r === activeRow ? 'kfp-confusion-active-label' : ''}`}
+                          style={{ lineHeight: `${cellDimension}px`, minWidth: cellDimension }}
+                        >
+                          {
+                            config.labels[
+                              config.labels.length - 1 - r
+                            ] /* uiData's ith's row corresponds to the reverse ordered label */
+                          }
+                        </div>
+                      </th>
+                    )}
+                    {row.map((cell, c) => (
+                      <td
+                        key={c}
+                        className='kfp-confusion-cell'
+                        headers={small ? undefined : `${tableId}-row-${r} ${tableId}-col-${c}`}
+                        style={{
+                          backgroundColor: `color-mix(in srgb, var(--primary, #2563d9) ${opacities[r][c] * 25}%, var(--card, #fff))`,
+                          color: 'var(--foreground, #15171e)',
+                          height: cellDimension,
+                          minHeight: cellDimension,
+                          minWidth: cellDimension,
+                          width: cellDimension,
+                        }}
+                        onMouseOver={() => this.setState({ activeCell: [r, c] })}
+                        onMouseLeave={() =>
+                          this.setState((state) => ({
+                            // Remove active cell if it's still the one active
+                            activeCell:
+                              state.activeCell[0] === r && state.activeCell[1] === c
+                                ? [-1, -1]
+                                : state.activeCell,
+                          }))
+                        }
+                      >
+                        <div
+                          className='kfp-confusion-overlay'
+                          style={{
+                            opacity: r === activeRow || c === activeCol ? 0.05 : 0,
+                          }}
+                        />
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+
+                {/* Footer */}
+                {!small && (
+                  <>
+                    <tr>
+                      <td />
+                      {config.labels.map((label, i) => (
+                        <th
+                          key={i}
+                          id={`${tableId}-col-${i}`}
+                          scope='col'
+                          className='kfp-confusion-xlabel'
+                        >
+                          <div
+                            className={i === activeCol ? 'kfp-confusion-active-label' : ''}
+                            style={{ overflowWrap: 'anywhere', width: cellDimension }}
+                          >
+                            {label}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                    <tr aria-hidden='true'>
+                      <td />
+                      <td colSpan={config.labels.length} className='kfp-confusion-x-axis-label'>
+                        {xAxisLabel}
+                      </td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          )}
+        </WithTableId>
 
         {!small && (
           <div
