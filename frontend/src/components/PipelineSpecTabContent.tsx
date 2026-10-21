@@ -37,6 +37,10 @@ export function PipelineSpecTabContent(props: PipelineSpecTabContentProps) {
       mode='yaml'
       theme='github'
       editorProps={{ $blockScrolling: true }}
+      setOptions={{ textInputAriaLabel: 'Pipeline spec YAML' }}
+      // Ace applies textInputAriaLabel only when the selection changes, which happens
+      // before react-ace sets options. Apply it now so the first focus is announced.
+      onLoad={(editor) => editor.textInput.setAriaLabel()}
       readOnly={true}
       highlightActiveLine={true}
       showGutter={true}

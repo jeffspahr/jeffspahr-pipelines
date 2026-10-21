@@ -14,21 +14,34 @@
  * limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { PipelineSpecTabContent } from './PipelineSpecTabContent';
 
-// Mock Editor to capture the value prop passed to it
-vi.mock('./Editor', () => ({
-  __esModule: true,
-  default: (props: { value: string; mode: string; readOnly: boolean }) => (
-    <pre data-testid='editor-mock' data-mode={props.mode} data-readonly={props.readOnly}>
-      {props.value}
-    </pre>
-  ),
-}));
+const editorMock = vi.hoisted(() => ({ useAce: false }));
+
+// Mock Editor to capture the value prop passed to it, unless a test needs Ace's
+// own textbox semantics.
+vi.mock('./Editor', async (importOriginal) => {
+  const { default: AceEditor } = await importOriginal<typeof import('./Editor')>();
+  return {
+    __esModule: true,
+    default: (props: { value: string; mode: string; readOnly: boolean }) =>
+      editorMock.useAce ? (
+        <AceEditor {...props} />
+      ) : (
+        <pre data-testid='editor-mock' data-mode={props.mode} data-readonly={props.readOnly}>
+          {props.value}
+        </pre>
+      ),
+  };
+});
 
 describe('PipelineSpecTabContent', () => {
+  afterEach(() => {
+    editorMock.useAce = false;
+  });
+
   it('converts JSON template to YAML and passes to editor', async () => {
     const jsonTemplate = JSON.stringify({ key: 'value', nested: { a: 1 } });
     const { findByTestId } = render(<PipelineSpecTabContent templateString={jsonTemplate} />);
@@ -63,5 +76,13 @@ describe('PipelineSpecTabContent', () => {
     const editor = await findByTestId('editor-mock');
     expect(editor).toHaveAttribute('data-mode', 'yaml');
     expect(editor).toHaveAttribute('data-readonly', 'true');
+  });
+
+  it('exposes the spec as a named textbox in the tab order', async () => {
+    editorMock.useAce = true;
+    const { container } = render(<PipelineSpecTabContent templateString='name: test' />);
+    const textbox = await screen.findByRole('textbox', { name: /^Pipeline spec YAML/ });
+    expect(textbox).not.toHaveAttribute('tabindex', '-1');
+    expect(container.querySelector('.ace_content')).not.toHaveAttribute('aria-hidden');
   });
 });
