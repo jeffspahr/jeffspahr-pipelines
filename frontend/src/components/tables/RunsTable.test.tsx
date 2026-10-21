@@ -20,7 +20,7 @@ import { Link, MemoryRouter, useLocation } from 'react-router';
 import type { CustomTableRenderModel } from '../CustomTable';
 import { RunsTable } from './RunsTable';
 import { RunStatus } from '../runs/RunStatus';
-import { V2beta1RuntimeState } from 'src/apisv2beta1/run';
+import { V2RuntimeState } from 'src/apisv2/run';
 
 function model(overrides: Partial<CustomTableRenderModel> = {}): CustomTableRenderModel {
   return {
@@ -194,7 +194,7 @@ it.each([
 it('renders missing and unrecognized runtime states as Unknown', () => {
   const view = render(<RunStatus />);
   expect(screen.getByText('Unknown')).toBeVisible();
-  view.rerender(<RunStatus state={'FUTURE_STATE' as V2beta1RuntimeState} />);
+  view.rerender(<RunStatus state={'FUTURE_STATE' as V2RuntimeState} />);
   expect(screen.getByText('Unknown')).toBeVisible();
 });
 

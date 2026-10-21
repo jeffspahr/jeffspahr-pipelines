@@ -27,9 +27,9 @@ import {
   useNavigate,
   useParams,
 } from 'react-router';
-import { ArtifactArtifactType, V2beta1Artifact, V2beta1IOType } from 'src/apisv2beta1/artifact';
-import { V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
-import { PipelineTaskTaskType } from 'src/apisv2beta1/run';
+import { ArtifactArtifactType, V2Artifact, V2IOType } from 'src/apisv2/artifact';
+import { V2PredicateOperation } from 'src/apisv2/filter';
+import { PipelineTaskTaskType } from 'src/apisv2/run';
 import { RoutePage, RouteParams } from 'src/components/Router';
 import { PlotType } from 'src/components/viewers/Viewer';
 import { ThemeProvider } from 'src/components/shell/ThemeProvider';
@@ -49,7 +49,7 @@ describe('ArtifactDetails', () => {
   const updateBannerSpy = vi.fn();
   const updateToolbarSpy = vi.fn();
   const navigateSpy = vi.fn();
-  const artifact: V2beta1Artifact = {
+  const artifact: V2Artifact = {
     artifact_id: TEST_ARTIFACT_ID,
     name: 'test-artifact',
     description: 'A native artifact',
@@ -132,7 +132,7 @@ describe('ArtifactDetails', () => {
           run_id: 'run-1',
           task_id: 'task-1',
           key: 'dataset',
-          type: V2beta1IOType.OUTPUT,
+          type: V2IOType.OUTPUT,
         },
       ],
     });
@@ -166,13 +166,13 @@ describe('ArtifactDetails', () => {
     });
     vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockImplementation(
       async (_taskIds, _runIds, _artifactIds, type) =>
-        type === V2beta1IOType.OUTPUT
+        type === V2IOType.OUTPUT
           ? {
               artifact_tasks: [
                 {
                   artifact_id: TEST_ARTIFACT_ID,
                   key: 'mlpipeline_ui_metadata',
-                  type: V2beta1IOType.OUTPUT,
+                  type: V2IOType.OUTPUT,
                 },
               ],
             }
@@ -191,7 +191,7 @@ describe('ArtifactDetails', () => {
       undefined,
       undefined,
       [TEST_ARTIFACT_ID],
-      V2beta1IOType.OUTPUT,
+      V2IOType.OUTPUT,
       undefined,
       1,
       'id asc',
@@ -202,7 +202,7 @@ describe('ArtifactDetails', () => {
       predicates: [
         {
           key: 'key',
-          operation: V2beta1PredicateOperation.IN,
+          operation: V2PredicateOperation.IN,
           string_values: {
             values: ['mlpipeline-ui-metadata', 'mlpipeline_ui_metadata'],
           },
@@ -212,10 +212,10 @@ describe('ArtifactDetails', () => {
     expect(
       vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mock.calls.map((call) => call[3]),
     ).toEqual([
-      V2beta1IOType.OUTPUT,
-      V2beta1IOType.ITERATOR_OUTPUT,
-      V2beta1IOType.ONE_OF_OUTPUT,
-      V2beta1IOType.TASK_FINAL_STATUS_OUTPUT,
+      V2IOType.OUTPUT,
+      V2IOType.ITERATOR_OUTPUT,
+      V2IOType.ONE_OF_OUTPUT,
+      V2IOType.TASK_FINAL_STATUS_OUTPUT,
     ]);
     expect(loadSpy).toHaveBeenCalledTimes(1);
   });
@@ -233,7 +233,7 @@ describe('ArtifactDetails', () => {
       let outputChecks = 0;
       vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockImplementation(
         async (_taskIds, _runIds, _artifactIds, type) => {
-          if (type !== V2beta1IOType.OUTPUT || ++outputChecks === 1) {
+          if (type !== V2IOType.OUTPUT || ++outputChecks === 1) {
             return { artifact_tasks: [] };
           }
           return {
@@ -241,7 +241,7 @@ describe('ArtifactDetails', () => {
               {
                 artifact_id: TEST_ARTIFACT_ID,
                 key: 'mlpipeline_ui_metadata',
-                type: V2beta1IOType.OUTPUT,
+                type: V2IOType.OUTPUT,
               },
             ],
           };
@@ -278,13 +278,13 @@ describe('ArtifactDetails', () => {
       let relationshipAvailable = false;
       vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockImplementation(
         async (_taskIds, _runIds, _artifactIds, type) =>
-          type === V2beta1IOType.OUTPUT && relationshipAvailable
+          type === V2IOType.OUTPUT && relationshipAvailable
             ? {
                 artifact_tasks: [
                   {
                     artifact_id: TEST_ARTIFACT_ID,
                     key: 'mlpipeline_ui_metadata',
-                    type: V2beta1IOType.OUTPUT,
+                    type: V2IOType.OUTPUT,
                   },
                 ],
               }
@@ -355,16 +355,16 @@ describe('ArtifactDetails', () => {
       let iteratorChecks = 0;
       vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockImplementation(
         async (_taskIds, _runIds, _artifactIds, type) => {
-          if (type === V2beta1IOType.ITERATOR_OUTPUT && ++iteratorChecks === 1) {
+          if (type === V2IOType.ITERATOR_OUTPUT && ++iteratorChecks === 1) {
             throw new Error('temporary relationship failure');
           }
-          return type === V2beta1IOType.OUTPUT
+          return type === V2IOType.OUTPUT
             ? {
                 artifact_tasks: [
                   {
                     artifact_id: TEST_ARTIFACT_ID,
                     key: 'mlpipeline_ui_metadata',
-                    type: V2beta1IOType.OUTPUT,
+                    type: V2IOType.OUTPUT,
                   },
                 ],
               }
@@ -403,7 +403,7 @@ describe('ArtifactDetails', () => {
     let outputChecks = 0;
     vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockImplementation(
       async (_taskIds, _runIds, _artifactIds, type) => {
-        if (type !== V2beta1IOType.OUTPUT) {
+        if (type !== V2IOType.OUTPUT) {
           return { artifact_tasks: [] };
         }
         outputChecks += 1;
@@ -417,7 +417,7 @@ describe('ArtifactDetails', () => {
                   {
                     artifact_id: TEST_ARTIFACT_ID,
                     key: 'mlpipeline_ui_metadata',
-                    type: V2beta1IOType.OUTPUT,
+                    type: V2IOType.OUTPUT,
                   },
                 ]
               : [],
@@ -469,7 +469,7 @@ describe('ArtifactDetails', () => {
         {
           artifact_id: TEST_ARTIFACT_ID,
           key: 'mlpipeline-ui-metadata',
-          type: V2beta1IOType.TASK_OUTPUT_INPUT,
+          type: V2IOType.TASK_OUTPUT_INPUT,
         },
       ],
     });
@@ -490,13 +490,13 @@ describe('ArtifactDetails', () => {
     });
     vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockImplementation(
       async (_taskIds, _runIds, _artifactIds, type) => {
-        if (type === V2beta1IOType.OUTPUT) {
+        if (type === V2IOType.OUTPUT) {
           return {
             artifact_tasks: [
               {
                 artifact_id: TEST_ARTIFACT_ID,
                 key: 'mlpipeline-ui-metadata',
-                type: V2beta1IOType.OUTPUT,
+                type: V2IOType.OUTPUT,
               },
             ],
           };
@@ -577,7 +577,7 @@ describe('ArtifactDetails', () => {
         run_id: 'run-1',
         task_id: taskId,
         key: 'scalar_metrics',
-        type: V2beta1IOType.OUTPUT,
+        type: V2IOType.OUTPUT,
       })),
     });
 
@@ -592,8 +592,8 @@ describe('ArtifactDetails', () => {
   });
 
   it.each([
-    [V2beta1IOType.OUTPUT, 'Run output (root)'],
-    [V2beta1IOType.COMPONENT_INPUT, 'Root task'],
+    [V2IOType.OUTPUT, 'Run output (root)'],
+    [V2IOType.COMPONENT_INPUT, 'Root task'],
   ] as const)(
     'labels unnamed root tasks for %s relationships with a run ID fallback',
     async (type, label) => {
@@ -620,7 +620,7 @@ describe('ArtifactDetails', () => {
           run_id: 'run-1',
           task_id: 'task-1',
           key: 'dataset',
-          type: V2beta1IOType.OUTPUT,
+          type: V2IOType.OUTPUT,
           producer: { task_name: 'write-metrics' },
         },
       ],
@@ -657,7 +657,7 @@ describe('ArtifactDetails', () => {
                   run_id: 'run-2',
                   task_id: 'task-2',
                   key: 'consumer-input',
-                  type: V2beta1IOType.TASK_OUTPUT_INPUT,
+                  type: V2IOType.TASK_OUTPUT_INPUT,
                 },
               ],
             }
@@ -668,7 +668,7 @@ describe('ArtifactDetails', () => {
                   run_id: 'run-1',
                   task_id: 'task-1',
                   key: 'producer-output',
-                  type: V2beta1IOType.OUTPUT,
+                  type: V2IOType.OUTPUT,
                 },
               ],
               next_page_token: 'next-page',
@@ -730,7 +730,7 @@ describe('ArtifactDetails', () => {
                 {
                   id: 'relationship-2',
                   key: 'second-page',
-                  type: V2beta1IOType.TASK_OUTPUT_INPUT,
+                  type: V2IOType.TASK_OUTPUT_INPUT,
                 },
               ],
             }
@@ -739,7 +739,7 @@ describe('ArtifactDetails', () => {
                 {
                   id: 'relationship-1',
                   key: 'cached-first-page',
-                  type: V2beta1IOType.TASK_OUTPUT_INPUT,
+                  type: V2IOType.TASK_OUTPUT_INPUT,
                 },
               ],
               next_page_token: 'next-page',
@@ -766,7 +766,7 @@ describe('ArtifactDetails', () => {
           {
             id: pageToken || 'first',
             key: pageToken || 'first',
-            type: V2beta1IOType.TASK_OUTPUT_INPUT,
+            type: V2IOType.TASK_OUTPUT_INPUT,
           },
         ],
         next_page_token: pageToken || 'repeated-page',
@@ -786,11 +786,11 @@ describe('ArtifactDetails', () => {
 
   it('does not replace a newer page-size result when an older request finishes later', async () => {
     let resolveFirstPage!: (value: {
-      artifact_tasks: Array<{ id: string; key: string; type?: V2beta1IOType }>;
+      artifact_tasks: Array<{ id: string; key: string; type?: V2IOType }>;
       next_page_token: string;
     }) => void;
     const firstPage = new Promise<{
-      artifact_tasks: Array<{ id: string; key: string; type?: V2beta1IOType }>;
+      artifact_tasks: Array<{ id: string; key: string; type?: V2IOType }>;
       next_page_token: string;
     }>((resolve) => {
       resolveFirstPage = resolve;
@@ -804,7 +804,7 @@ describe('ArtifactDetails', () => {
                 {
                   id: 'newer',
                   key: 'newer-page-size',
-                  type: V2beta1IOType.TASK_OUTPUT_INPUT,
+                  type: V2IOType.TASK_OUTPUT_INPUT,
                 },
               ],
             },
@@ -824,7 +824,7 @@ describe('ArtifactDetails', () => {
           {
             id: 'older',
             key: 'older-page-size',
-            type: V2beta1IOType.TASK_OUTPUT_INPUT,
+            type: V2IOType.TASK_OUTPUT_INPUT,
           },
         ],
         next_page_token: 'older-next-page',
@@ -837,21 +837,20 @@ describe('ArtifactDetails', () => {
     expect(screen.getByTestId('next-page-btn')).toBeDisabled();
   });
 
-  it.each([
-    V2beta1IOType.ITERATOR_OUTPUT,
-    V2beta1IOType.ONE_OF_OUTPUT,
-    V2beta1IOType.TASK_FINAL_STATUS_OUTPUT,
-  ])('labels %s relationships as produced', async (type) => {
-    vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockResolvedValue({
-      artifact_tasks: [{ id: type, key: type, type }],
-    });
+  it.each([V2IOType.ITERATOR_OUTPUT, V2IOType.ONE_OF_OUTPUT, V2IOType.TASK_FINAL_STATUS_OUTPUT])(
+    'labels %s relationships as produced',
+    async (type) => {
+      vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockResolvedValue({
+        artifact_tasks: [{ id: type, key: type, type }],
+      });
 
-    renderPage(`/artifacts/${TEST_ARTIFACT_ID}/lineage`);
+      renderPage(`/artifacts/${TEST_ARTIFACT_ID}/lineage`);
 
-    await screen.findByText(`Produced as ${type}`);
-  });
+      await screen.findByText(`Produced as ${type}`);
+    },
+  );
 
-  it.each([undefined, V2beta1IOType.UNSPECIFIED])(
+  it.each([undefined, V2IOType.UNSPECIFIED])(
     'labels %s relationships as unknown instead of consumed',
     async (type) => {
       vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockResolvedValue({
@@ -867,9 +866,7 @@ describe('ArtifactDetails', () => {
 
   it('preserves a future relationship type instead of classifying it as consumed', async () => {
     vi.mocked(Apis.artifactServiceApiV2.artifactTasks).mockResolvedValue({
-      artifact_tasks: [
-        { id: 'future', key: 'dataset', type: 'FUTURE_RELATIONSHIP' as V2beta1IOType },
-      ],
+      artifact_tasks: [{ id: 'future', key: 'dataset', type: 'FUTURE_RELATIONSHIP' as V2IOType }],
     });
 
     renderPage(`/artifacts/${TEST_ARTIFACT_ID}/lineage`);

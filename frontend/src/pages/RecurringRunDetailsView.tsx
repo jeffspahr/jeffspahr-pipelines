@@ -19,8 +19,8 @@ import { RecurringRunOverview } from 'src/components/runs/RecurringRunOverview';
 import type * as React from 'react';
 import Buttons, { ButtonKeys } from 'src/lib/Buttons';
 import 'src/components/runs/ExperimentWorkflows.css';
-import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
-import { V2beta1RecurringRun, V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
+import { V2Experiment } from 'src/apisv2/experiment';
+import { V2RecurringRun, V2RecurringRunStatus } from 'src/apisv2/recurringrun';
 import { Apis } from 'src/lib/Apis';
 import { Page } from './Page';
 import { RoutePage, RouteParams } from 'src/components/Router';
@@ -28,7 +28,7 @@ import { Breadcrumb, ToolbarProps } from 'src/lib/PageChromeTypes';
 import { errorToMessage } from 'src/lib/Utils';
 
 interface RecurringRunConfigState {
-  run: V2beta1RecurringRun | null;
+  run: V2RecurringRun | null;
 }
 
 class RecurringRunDetailsView extends Page<{}, RecurringRunConfigState> {
@@ -77,7 +77,7 @@ class RecurringRunDetailsView extends Page<{}, RecurringRunConfigState> {
     this.clearBanner();
     const recurringRunId = this.props.params[RouteParams.recurringRunId] ?? '';
 
-    let run: V2beta1RecurringRun;
+    let run: V2RecurringRun;
     try {
       run = await Apis.recurringRunServiceApi.getRecurringRun(recurringRunId);
     } catch (err) {
@@ -90,7 +90,7 @@ class RecurringRunDetailsView extends Page<{}, RecurringRunConfigState> {
     }
 
     const relatedExperimentId = run.experiment_id;
-    let experiment: V2beta1Experiment | undefined;
+    let experiment: V2Experiment | undefined;
     if (relatedExperimentId) {
       try {
         experiment = await Apis.experimentServiceApiV2.getExperiment(relatedExperimentId);
@@ -122,9 +122,9 @@ class RecurringRunDetailsView extends Page<{}, RecurringRunConfigState> {
 
     const toolbarActions = this.props.toolbarProps.actions;
     toolbarActions[ButtonKeys.ENABLE_RECURRING_RUN].disabled =
-      run.status === V2beta1RecurringRunStatus.ENABLED;
+      run.status === V2RecurringRunStatus.ENABLED;
     toolbarActions[ButtonKeys.DISABLE_RECURRING_RUN].disabled =
-      run.status !== V2beta1RecurringRunStatus.ENABLED;
+      run.status !== V2RecurringRunStatus.ENABLED;
 
     if (!this._isMounted) {
       return;

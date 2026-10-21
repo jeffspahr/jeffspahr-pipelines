@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-import { V2beta1RuntimeState } from 'src/apisv2beta1/run';
+import { V2RuntimeState } from 'src/apisv2/run';
 import { getRunStatus } from 'src/lib/StatusUtils';
 import '../tables/RunsTable.css';
 
-export function RunStatus({ state }: { state?: V2beta1RuntimeState }) {
+export function RunStatus({ state }: { state?: V2RuntimeState }) {
   const status = getRunStatus(state);
   return (
     <span className='kfp-run-status' data-tone={status.tone}>

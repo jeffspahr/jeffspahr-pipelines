@@ -20,7 +20,7 @@ import { PageNotification } from '../shell/PageChrome';
 import { useTheme } from '../shell/ThemeProvider';
 import { Button } from '../ui/button';
 import { NoticeDetails } from '../ui/notice-details';
-import { V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
+import { V2RecurringRunStatus } from 'src/apisv2/recurringrun';
 import { Apis } from 'src/lib/Apis';
 import { errorToMessage } from 'src/lib/Utils';
 import { ScheduleSwitch } from './ScheduleSwitch';
@@ -34,7 +34,7 @@ export function RecurringRunSwitch({
 }: {
   id: string;
   name: string;
-  status?: V2beta1RecurringRunStatus;
+  status?: V2RecurringRunStatus;
   onUpdated: () => Promise<void>;
 }) {
   const errorId = useId();
@@ -61,8 +61,8 @@ export function RecurringRunSwitch({
   }
   const { confirmedStatus, error } = state;
   const knownStatus =
-    confirmedStatus === V2beta1RecurringRunStatus.ENABLED ||
-    confirmedStatus === V2beta1RecurringRunStatus.DISABLED;
+    confirmedStatus === V2RecurringRunStatus.ENABLED ||
+    confirmedStatus === V2RecurringRunStatus.DISABLED;
   const refresh = async () => {
     try {
       await onUpdated();
@@ -98,9 +98,7 @@ export function RecurringRunSwitch({
       current.id === id
         ? {
             ...current,
-            confirmedStatus: enabled
-              ? V2beta1RecurringRunStatus.ENABLED
-              : V2beta1RecurringRunStatus.DISABLED,
+            confirmedStatus: enabled ? V2RecurringRunStatus.ENABLED : V2RecurringRunStatus.DISABLED,
           }
         : current,
     );
@@ -114,7 +112,7 @@ export function RecurringRunSwitch({
     setState((current) => ({ ...current, error: '' }));
     try {
       if (refreshOnly) await refresh();
-      else await changeEnabled(confirmedStatus !== V2beta1RecurringRunStatus.ENABLED);
+      else await changeEnabled(confirmedStatus !== V2RecurringRunStatus.ENABLED);
     } finally {
       inFlight.current = false;
       setRetrying(false);
@@ -124,12 +122,12 @@ export function RecurringRunSwitch({
     <div className='kfp-schedule-control' onClick={(event) => event.stopPropagation()}>
       <ScheduleSwitch
         name={name}
-        checked={confirmedStatus === V2beta1RecurringRunStatus.ENABLED}
+        checked={confirmedStatus === V2RecurringRunStatus.ENABLED}
         disabled={!knownStatus || !id || retrying}
         errorId={error ? errorId : undefined}
         status={
           knownStatus
-            ? confirmedStatus === V2beta1RecurringRunStatus.ENABLED
+            ? confirmedStatus === V2RecurringRunStatus.ENABLED
               ? 'Enabled'
               : 'Disabled'
             : 'Unknown'

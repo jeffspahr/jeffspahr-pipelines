@@ -18,7 +18,7 @@ import * as React from 'react';
 import { TextField } from 'src/components/ui/text-field';
 import { Button } from 'src/components/ui/button';
 import 'src/components/runs/ExperimentWorkflows.css';
-import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
+import { V2Experiment } from 'src/apisv2/experiment';
 import { Apis } from 'src/lib/Apis';
 import { Page, PageProps } from 'src/pages/Page';
 import { RoutePage, QUERY_PARAMS } from 'src/components/Router';
@@ -139,7 +139,7 @@ export class CreateExperimentController extends Page<
   };
 
   private _create(): void {
-    const newExperiment: V2beta1Experiment = {
+    const newExperiment: V2Experiment = {
       description: this.state.description,
       display_name: this.state.experimentName,
       namespace: this.props.namespace,

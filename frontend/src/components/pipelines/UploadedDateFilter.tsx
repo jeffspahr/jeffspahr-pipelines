@@ -17,17 +17,17 @@
 import { Menu } from '@base-ui/react/menu';
 import { Check } from 'lucide-react';
 import { ColumnFilter, DATE_OPTIONS } from '../tables/ColumnFilter';
-import { V2beta1PredicateOperation, type V2beta1Predicate } from '../../apisv2beta1/filter';
+import { V2PredicateOperation, type V2Predicate } from '../../apisv2/filter';
 
 export type UploadedPeriod = 'all' | '7' | '30' | '90';
 type Props = { value: UploadedPeriod; onChange: (value: UploadedPeriod) => void };
 
-export function uploadedDatePredicates(since?: Date): V2beta1Predicate[] {
+export function uploadedDatePredicates(since?: Date): V2Predicate[] {
   return since
     ? [
         {
           key: 'created_at',
-          operation: V2beta1PredicateOperation.GREATER_THAN_EQUALS,
+          operation: V2PredicateOperation.GREATER_THAN_EQUALS,
           timestamp_value: since,
         },
       ]

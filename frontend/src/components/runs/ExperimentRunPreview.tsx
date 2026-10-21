@@ -16,8 +16,8 @@
 
 import * as React from 'react';
 import { Link } from 'react-router';
-import { V2beta1Run, V2beta1RunStorageState } from 'src/apisv2beta1/run';
-import { V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+import { V2Run, V2RunStorageState } from 'src/apisv2/run';
+import { V2PredicateOperation } from 'src/apisv2/filter';
 import { Apis, RunSortKeys } from 'src/lib/Apis';
 import { formatDateString } from 'src/lib/Utils';
 import { RoutePageFactory } from '../Router';
@@ -28,12 +28,12 @@ import './ExperimentRunPreview.css';
 interface Props {
   experimentId: string;
   archived?: boolean;
-  runs?: V2beta1Run[];
+  runs?: V2Run[];
   error?: string;
 }
 
 export function ExperimentRunPreview({ experimentId, archived = false, runs, error }: Props) {
-  const [loaded, setLoaded] = React.useState<V2beta1Run[]>();
+  const [loaded, setLoaded] = React.useState<V2Run[]>();
   const [loadError, setLoadError] = React.useState(false);
   // External synchronization: archived lists fetch their preview when expanded.
   // Active lists already fetched the same five runs for their health summary.
@@ -52,10 +52,8 @@ export function ExperimentRunPreview({ experimentId, archived = false, runs, err
             predicates: [
               {
                 key: 'storage_state',
-                operation: archived
-                  ? V2beta1PredicateOperation.EQUALS
-                  : V2beta1PredicateOperation.NOT_EQUALS,
-                string_value: V2beta1RunStorageState.ARCHIVED,
+                operation: archived ? V2PredicateOperation.EQUALS : V2PredicateOperation.NOT_EQUALS,
+                string_value: V2RunStorageState.ARCHIVED,
               },
             ],
           }),

@@ -15,11 +15,11 @@
  */
 
 import { Link } from 'react-router';
-import type { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
+import type { V2RecurringRun } from 'src/apisv2/recurringrun';
 import { QUERY_PARAMS, RoutePageFactory } from 'src/components/Router';
 
 /** Link the saved reference without fetching a version just to render schedule metadata. */
-export function RecurringRunPipeline({ run }: { run: V2beta1RecurringRun }) {
+export function RecurringRunPipeline({ run }: { run: V2RecurringRun }) {
   const reference = run.pipeline_version_reference;
   const pipelineId = reference?.pipeline_id;
   const versionId = reference?.pipeline_version_id;

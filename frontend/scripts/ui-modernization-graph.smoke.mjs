@@ -241,10 +241,10 @@ async function withFixture(data, exercise) {
                 : 'application/octet-stream',
         });
       }
-      if (path === '/apis/v2beta1/healthz') return json({ apiServerTagName: 'fixture' });
+      if (path === '/apis/v2/healthz') return json({ apiServerTagName: 'fixture' });
       if (path === '/system/cluster-name' || path === '/system/project-id')
         return route.fulfill({ body: '' });
-      if (path === `/apis/v2beta1/runs/${runId}`)
+      if (path === `/apis/v2/runs/${runId}`)
         return json({
           run_id: runId,
           display_name: data.spec.pipelineInfo.name,
@@ -254,7 +254,7 @@ async function withFixture(data, exercise) {
           created_at: createdAt,
           finished_at: finishedAt,
         });
-      if (path === `/apis/v2beta1/runs/${runId}/tasks`) {
+      if (path === `/apis/v2/runs/${runId}/tasks`) {
         if (data.waitForTasks) await data.waitForTasks();
         if (data.tasksDelayMs) await new Promise((resolve) => setTimeout(resolve, data.tasksDelayMs));
         assert.equal(url.searchParams.get('page_size'), '200');

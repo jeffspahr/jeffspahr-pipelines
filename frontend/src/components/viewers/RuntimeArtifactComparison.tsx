@@ -19,7 +19,7 @@ import { Input } from 'src/components/ui/input';
 import { InspectionTabs } from 'src/components/inspection/InspectionTabs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { V2beta1Artifact } from 'src/apisv2beta1/run';
+import { V2Artifact } from 'src/apisv2/run';
 import { VisualizationNotice } from './VisualizationNotice';
 import PlotCard from 'src/components/PlotCard';
 import {
@@ -46,7 +46,7 @@ const MAX_ROC_SELECTOR_OPTIONS = 100;
 export type RuntimeArtifactComparisonKind = 'classification' | 'html' | 'markdown';
 
 export interface RuntimeComparisonArtifact {
-  artifact: V2beta1Artifact;
+  artifact: V2Artifact;
   key: string;
   label: string;
   namespace?: string;
@@ -54,7 +54,7 @@ export interface RuntimeComparisonArtifact {
 }
 
 interface ComparisonPanelEntry {
-  artifact?: V2beta1Artifact;
+  artifact?: V2Artifact;
   configs?: ConfusionMatrixConfig[];
   key: string;
   label: string;

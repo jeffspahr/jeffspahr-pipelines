@@ -26,12 +26,12 @@ import CustomTable, {
 import { ExperimentRunPreview } from 'src/components/runs/ExperimentRunPreview';
 import { produce as immerProduce } from 'immer';
 import {
-  V2beta1ListExperimentsResponse,
-  V2beta1Experiment,
-  V2beta1ExperimentStorageState,
-} from 'src/apisv2beta1/experiment';
-import { V2beta1Filter, V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
-import { V2beta1Run, V2beta1RunStorageState } from 'src/apisv2beta1/run';
+  V2ListExperimentsResponse,
+  V2Experiment,
+  V2ExperimentStorageState,
+} from 'src/apisv2/experiment';
+import { V2Filter, V2PredicateOperation } from 'src/apisv2/filter';
+import { V2Run, V2RunStorageState } from 'src/apisv2/run';
 import { Apis, ExperimentSortKeys, ListRequest, RunSortKeys } from 'src/lib/Apis';
 import { Link } from 'react-router';
 import { Page, PageProps } from './Page';
@@ -45,8 +45,8 @@ import 'src/components/runs/ExperimentWorkflows.css';
 
 import { DateListFilter } from 'src/components/tables/ColumnFilter';
 
-interface DisplayExperiment extends V2beta1Experiment {
-  last5Runs?: V2beta1Run[];
+interface DisplayExperiment extends V2Experiment {
+  last5Runs?: V2Run[];
   error?: string;
   expandState?: ExpandState;
 }
@@ -178,15 +178,15 @@ export class ExperimentList extends Page<
     );
   };
 
-  public _last5RunsCustomRenderer: React.FC<CustomRendererProps<V2beta1Run[]>> = (
-    props: CustomRendererProps<V2beta1Run[]>,
+  public _last5RunsCustomRenderer: React.FC<CustomRendererProps<V2Run[]>> = (
+    props: CustomRendererProps<V2Run[]>,
   ) => {
     return props.value ? <RecentRunHealth runs={props.value} /> : null;
   };
 
   private async _reload(request: ListRequest): Promise<string> {
     // Fetch the list of experiments
-    let response: V2beta1ListExperimentsResponse;
+    let response: V2ListExperimentsResponse;
     let displayExperiments: DisplayExperiment[];
     try {
       // This ExperimentList page is used as the "All experiments" tab
@@ -194,12 +194,12 @@ export class ExperimentList extends Page<
       // Archived experiments are listed in "Archive" page.
       const filter = JSON.parse(
         decodeURIComponent(request.filter || '{"predicates": []}'),
-      ) as V2beta1Filter;
+      ) as V2Filter;
       filter.predicates = (filter.predicates || []).concat([
         {
           key: 'storage_state',
-          operation: V2beta1PredicateOperation.NOT_EQUALS,
-          string_value: V2beta1ExperimentStorageState.ARCHIVED.toString(),
+          operation: V2PredicateOperation.NOT_EQUALS,
+          string_value: V2ExperimentStorageState.ARCHIVED.toString(),
         },
       ]);
       request.filter = encodeURIComponent(JSON.stringify(filter));
@@ -235,11 +235,11 @@ export class ExperimentList extends Page<
                 predicates: [
                   {
                     key: 'storage_state',
-                    operation: V2beta1PredicateOperation.NOT_EQUALS,
-                    string_value: V2beta1RunStorageState.ARCHIVED.toString(),
+                    operation: V2PredicateOperation.NOT_EQUALS,
+                    string_value: V2RunStorageState.ARCHIVED.toString(),
                   },
                 ],
-              } as V2beta1Filter),
+              } as V2Filter),
             ),
             /* skip_count */ true, // this page never displays the total run count
           );

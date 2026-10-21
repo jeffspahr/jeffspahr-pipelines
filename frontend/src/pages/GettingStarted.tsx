@@ -16,7 +16,7 @@
 
 import type * as React from 'react';
 import { Markdown } from 'markdown-to-jsx/react';
-import { V2beta1Filter, V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+import { V2Filter, V2PredicateOperation } from 'src/apisv2/filter';
 import { AutoLink } from 'src/atoms/ExternalLink';
 import { RoutePageFactory } from 'src/components/Router';
 import { ToolbarProps } from 'src/lib/PageChromeTypes';
@@ -118,11 +118,11 @@ function getPipelineLink(id: string) {
 }
 
 function createAndEncodeFilter(filterString: string): string {
-  const filter: V2beta1Filter = {
+  const filter: V2Filter = {
     predicates: [
       {
         key: 'name',
-        operation: V2beta1PredicateOperation.EQUALS,
+        operation: V2PredicateOperation.EQUALS,
         string_value: filterString,
       },
     ],

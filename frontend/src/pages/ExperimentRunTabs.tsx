@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { V2beta1RunStorageState } from 'src/apisv2beta1/run';
+import { V2RunStorageState } from 'src/apisv2/run';
 import { CollectionScopeToggle } from 'src/components/tables/CollectionScopeToggle';
 import RunList, { RunListProps } from './RunList';
 
@@ -25,7 +25,7 @@ export enum RunListsGroupTab {
 }
 
 export type ExperimentRunTabsProps = RunListProps & {
-  storageState: V2beta1RunStorageState;
+  storageState: V2RunStorageState;
   refreshCount: number;
   onTabSwitch?: (tab: RunListsGroupTab) => void;
 };
@@ -87,7 +87,7 @@ class ExperimentRunTabs extends React.PureComponent<ExperimentRunTabsProps> {
   }
 
   private _getSelectedTab() {
-    return this.props.storageState === V2beta1RunStorageState.ARCHIVED
+    return this.props.storageState === V2RunStorageState.ARCHIVED
       ? RunListsGroupTab.ARCHIVE
       : RunListsGroupTab.ACTIVE;
   }

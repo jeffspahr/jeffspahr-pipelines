@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Alert } from 'src/components/ui/alert';
 import { Button } from 'src/components/ui/button';
-import { PipelineTaskTaskState, V2beta1PipelineTask, V2beta1Run } from 'src/apisv2beta1/run';
+import { PipelineTaskTaskState, V2PipelineTask, V2Run } from 'src/apisv2/run';
 import { getTaskStatus, getTaskTimelineTone, hasFinishedV2 } from 'src/lib/StatusUtils';
 import { formatDateString } from 'src/lib/Utils';
 import {
@@ -31,8 +31,8 @@ function Status({ state }: { state?: PipelineTaskTaskState }) {
 }
 
 export interface RunTimelineProps {
-  run: V2beta1Run;
-  tasks: V2beta1PipelineTask[];
+  run: V2Run;
+  tasks: V2PipelineTask[];
   loading: boolean;
   error?: Error | null;
   onOpenTask: (taskId: string) => void;

@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import type { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
+import type { V2RecurringRun } from 'src/apisv2/recurringrun';
 import { InspectionFields } from 'src/components/inspection/InspectionFields';
 import { RecurringRunPipeline } from './RecurringRunPipeline';
 import { formatDateString, enabledDisplayStringV2 } from 'src/lib/Utils';
 import { scheduleDescription } from 'src/lib/ScheduleDisplay';
 import type { KeyValue } from 'src/lib/DetailsTableTypes';
 
-export function RecurringRunOverview({ run }: { run: V2beta1RecurringRun }) {
+export function RecurringRunOverview({ run }: { run: V2RecurringRun }) {
   const schedule = run.trigger?.cron_schedule || run.trigger?.periodic_schedule;
   const scheduleFields: Array<KeyValue<string>> = [
     ['Enabled', enabledDisplayStringV2(run.trigger, run.status!)],

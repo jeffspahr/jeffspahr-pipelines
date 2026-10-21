@@ -17,10 +17,10 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { RecurringRunPipeline } from './RecurringRunPipeline';
-import type { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
+import type { V2RecurringRun } from 'src/apisv2/recurringrun';
 import { RoutePageFactory } from '../Router';
 afterEach(cleanup);
-const show = (run: V2beta1RecurringRun) =>
+const show = (run: V2RecurringRun) =>
   render(
     <MemoryRouter>
       <RecurringRunPipeline run={run} />

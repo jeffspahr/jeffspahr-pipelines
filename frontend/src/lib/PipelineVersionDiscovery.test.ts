@@ -14,7 +14,7 @@ import {
   discoverUploadedPipelineVersion,
   VERSION_DISCOVERY_TIMEOUT_MS,
 } from './PipelineVersionDiscovery';
-import { V2beta1ListPipelineVersionsResponse } from '../apisv2beta1/pipeline';
+import { V2ListPipelineVersionsResponse } from '../apisv2/pipeline';
 
 const version = { pipeline_id: 'uploaded', pipeline_version_id: 'version' };
 
@@ -37,7 +37,7 @@ describe('discoverUploadedPipelineVersion', () => {
 
   it('bounds a stalled request and aborts its signal', async () => {
     const read = vi.fn(
-      (_signal: AbortSignal) => new Promise<V2beta1ListPipelineVersionsResponse>(() => {}),
+      (_signal: AbortSignal) => new Promise<V2ListPipelineVersionsResponse>(() => {}),
     );
     const result = discoverUploadedPipelineVersion('uploaded', read, new AbortController().signal);
     const rejected = expect(result).rejects.toThrow('not available yet');

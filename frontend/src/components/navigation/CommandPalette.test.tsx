@@ -19,7 +19,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router';
 import { PlayCircle, Workflow } from 'lucide-react';
 import { Apis } from 'src/lib/Apis';
-import type { V2beta1ListRunsResponse } from 'src/apisv2beta1/run';
+import type { V2ListRunsResponse } from 'src/apisv2/run';
 import { CommandPalette } from './CommandPalette';
 import { ThemeProvider } from '../shell/ThemeProvider';
 
@@ -192,7 +192,7 @@ describe('CommandPalette', () => {
   });
 
   it('announces completed asynchronous results without moving focus from the query', async () => {
-    const response = deferred<V2beta1ListRunsResponse>();
+    const response = deferred<V2ListRunsResponse>();
     vi.mocked(Apis.runServiceApiV2.listRuns).mockReturnValue(response.promise);
     render(<Fixture />);
     const input = screen.getByRole('searchbox');
@@ -238,7 +238,7 @@ describe('CommandPalette', () => {
   });
 
   it('hides old results immediately, aborts obsolete reads, and rejects late query responses', async () => {
-    const slow = deferred<V2beta1ListRunsResponse>();
+    const slow = deferred<V2ListRunsResponse>();
     vi.mocked(Apis.runServiceApiV2.listRuns)
       .mockResolvedValueOnce({ runs: [{ run_id: 'old', display_name: 'Earlier match' }] })
       .mockReturnValueOnce(slow.promise)
@@ -264,7 +264,7 @@ describe('CommandPalette', () => {
   });
 
   it('preserves the query across namespace changes but never exposes matches from the old namespace', async () => {
-    const slow = deferred<V2beta1ListRunsResponse>();
+    const slow = deferred<V2ListRunsResponse>();
     vi.mocked(Apis.runServiceApiV2.listRuns)
       .mockReturnValueOnce(slow.promise)
       .mockResolvedValue({ runs: [{ run_id: 'new', display_name: 'New namespace match' }] });

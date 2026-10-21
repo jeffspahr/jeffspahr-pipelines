@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useEffect, useState } from 'react';
-import { V2beta1Run, V2beta1RuntimeState } from 'src/apisv2beta1/run';
+import { V2Run, V2RuntimeState } from 'src/apisv2/run';
 import { hasFinishedV2 } from 'src/lib/StatusUtils';
 import { getRunDurationFromRunV2 } from 'src/lib/Utils';
 
@@ -12,10 +12,9 @@ function timestamp(value?: Date): number | undefined {
 }
 
 /** Keep the clock local to the header so ticking does not rerender the graph. */
-export function RunElapsed({ run }: { run: V2beta1Run }) {
+export function RunElapsed({ run }: { run: V2Run }) {
   const [now, setNow] = useState(Date.now);
-  const active =
-    run.state === V2beta1RuntimeState.RUNNING || run.state === V2beta1RuntimeState.CANCELING;
+  const active = run.state === V2RuntimeState.RUNNING || run.state === V2RuntimeState.CANCELING;
   // External sync: the timer exists only while the run is active.
   useEffect(() => {
     if (!active) return;
@@ -24,14 +23,14 @@ export function RunElapsed({ run }: { run: V2beta1Run }) {
   }, [active]);
 
   const starts = (run.state_history || [])
-    .filter((status) => status.state === V2beta1RuntimeState.RUNNING)
+    .filter((status) => status.state === V2RuntimeState.RUNNING)
     .map((status) => timestamp(status.update_time))
     .filter((time): time is number => time !== undefined);
   const started = starts.length ? Math.min(...starts) : undefined;
   const start = started ?? timestamp(run.created_at);
   const end = hasFinishedV2(run.state) ? timestamp(run.finished_at) : active ? now : undefined;
   let text = 'Elapsed unavailable';
-  if (run.state === V2beta1RuntimeState.PENDING) {
+  if (run.state === V2RuntimeState.PENDING) {
     text = 'Not started';
   } else if (start !== undefined && end !== undefined && end >= start) {
     const duration = getRunDurationFromRunV2({

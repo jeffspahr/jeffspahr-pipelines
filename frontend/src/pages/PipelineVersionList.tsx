@@ -18,10 +18,7 @@ import { NavigationProps } from 'src/lib/Navigation';
 import CustomTable, { Column, CustomRendererProps, Row } from 'src/components/CustomTable';
 import * as React from 'react';
 import { Link } from 'react-router';
-import {
-  V2beta1PipelineVersion,
-  V2beta1ListPipelineVersionsResponse,
-} from 'src/apisv2beta1/pipeline';
+import { V2PipelineVersion, V2ListPipelineVersionsResponse } from 'src/apisv2/pipeline';
 import { Description } from 'src/components/Description';
 import { Apis, ListRequest, PipelineVersionSortKeys } from 'src/lib/Apis';
 import { errorToMessage, formatDateString } from 'src/lib/Utils';
@@ -42,7 +39,7 @@ export interface PipelineVersionListProps extends NavigationProps {
 }
 
 interface PipelineVersionListState {
-  pipelineVersions: V2beta1PipelineVersion[];
+  pipelineVersions: V2PipelineVersion[];
   loadError: boolean;
 }
 
@@ -164,7 +161,7 @@ class PipelineVersionList extends React.PureComponent<
     const generation = ++this._loadGeneration;
     if (!this.props.pipelineId) return '';
     try {
-      const response: V2beta1ListPipelineVersionsResponse =
+      const response: V2ListPipelineVersionsResponse =
         await Apis.pipelineServiceApiV2.listPipelineVersions(
           this.props.pipelineId,
           request.pageToken,

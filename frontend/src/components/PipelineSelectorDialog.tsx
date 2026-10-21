@@ -18,7 +18,7 @@ import * as React from 'react';
 import ResourceSelector from 'src/pages/ResourceSelector';
 import { Apis, PipelineSortKeys } from 'src/lib/Apis';
 import { Column } from './CustomTable';
-import { V2beta1Pipeline } from 'src/apisv2beta1/pipeline';
+import { V2Pipeline } from 'src/apisv2/pipeline';
 import Buttons from 'src/lib/Buttons';
 import { PageProps } from 'src/pages/Page';
 import { InspectionTabs } from './inspection/InspectionTabs';
@@ -39,7 +39,7 @@ enum NamespacedAndSharedTab {
 
 export interface PipelineSelectorDialogProps extends PageProps {
   open: boolean;
-  onClose: (confirmed: boolean, selectedPipeline?: V2beta1Pipeline) => void;
+  onClose: (confirmed: boolean, selectedPipeline?: V2Pipeline) => void;
   namespace: string | undefined; // use context or make it optional?
   pipelineSelectorColumns: Column[];
   toolbarActionMap?: ToolbarActionMap;
@@ -61,7 +61,7 @@ function PipelineSelectionSession(props: PipelineSelectorDialogProps) {
   const buildInfo = React.useContext(BuildInfoContext);
   const [view, setView] = React.useState(NamespacedAndSharedTab.NAMESPACED);
   const [unconfirmedSelectedPipeline, setUnconfirmedSelectedPipeline] =
-    React.useState<V2beta1Pipeline>();
+    React.useState<V2Pipeline>();
 
   function getPipelinesList(): React.JSX.Element {
     return (

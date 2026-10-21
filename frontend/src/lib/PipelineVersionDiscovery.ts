@@ -10,10 +10,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {
-  V2beta1ListPipelineVersionsResponse,
-  V2beta1PipelineVersion,
-} from '../apisv2beta1/pipeline';
+import { V2ListPipelineVersionsResponse, V2PipelineVersion } from '../apisv2/pipeline';
 
 export const VERSION_DISCOVERY_TIMEOUT_MS = 10_000;
 export const VERSION_DISCOVERY_INTERVAL_MS = 500;
@@ -49,9 +46,9 @@ function pause(signal: AbortSignal): Promise<void> {
 /** Poll only empty successful reads; uploads and API errors are never retried here. */
 export async function discoverUploadedPipelineVersion(
   pipelineId: string,
-  readVersions: (signal: AbortSignal) => Promise<V2beta1ListPipelineVersionsResponse>,
+  readVersions: (signal: AbortSignal) => Promise<V2ListPipelineVersionsResponse>,
   signal: AbortSignal,
-): Promise<V2beta1PipelineVersion> {
+): Promise<V2PipelineVersion> {
   const controller = new AbortController();
   const cancel = () => controller.abort();
   signal.addEventListener('abort', cancel, { once: true });

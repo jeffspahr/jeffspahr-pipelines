@@ -198,11 +198,11 @@ async function withFixture(exercise, { checkHeaderLayout = false, checkEmptyLayo
                 : 'application/octet-stream',
         });
       }
-      if (path === '/apis/v2beta1/healthz') return json({ apiServerTagName: 'fixture' });
-      if (path === '/apis/v2beta1/experiments') return json({ experiments: [] });
+      if (path === '/apis/v2/healthz') return json({ apiServerTagName: 'fixture' });
+      if (path === '/apis/v2/experiments') return json({ experiments: [] });
       if (path === '/system/cluster-name' || path === '/system/project-id')
         return route.fulfill({ body: '' });
-      const runPath = /^\/apis\/v2beta1\/runs\/([^/]+)(\/tasks)?$/.exec(path);
+      const runPath = /^\/apis\/v2\/runs\/([^/]+)(\/tasks)?$/.exec(path);
       if (runPath) {
         const id = decodeURIComponent(runPath[1]);
         assert.ok([alphaId, betaId].includes(id), `unexpected run id ${id}`);
@@ -476,7 +476,7 @@ test('Comparison keeps empty section geometry stable during slow initial data an
         display_name: `${run.display_name} updated`,
       }));
       const requested = page.waitForRequest((request) =>
-        /\/apis\/v2beta1\/runs\/[^/]+$/.test(new URL(request.url()).pathname),
+        /\/apis\/v2\/runs\/[^/]+$/.test(new URL(request.url()).pathname),
       );
       await page.getByRole('button', { name: 'Refresh', exact: true }).click();
       await requested;

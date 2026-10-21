@@ -15,7 +15,7 @@
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
-import { V2beta1RuntimeState as State } from 'src/apisv2beta1/run';
+import { V2RuntimeState as State } from 'src/apisv2/run';
 import { RecentRunHealth } from './RecentRunHealth';
 
 afterEach(cleanup);

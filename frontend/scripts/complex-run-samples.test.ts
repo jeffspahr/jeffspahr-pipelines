@@ -9,8 +9,8 @@ import {
   complexRunSamples,
   complexRunTasks,
 } from '../mock-backend/complex-run-samples';
-import { V2beta1Run } from '../src/apisv2beta1/run';
-const runs: V2beta1Run[] = complexRunSamples.map((sample) => ({
+import { V2Run } from '../src/apisv2/run';
+const runs: V2Run[] = complexRunSamples.map((sample) => ({
   run_id: `sample-run-${sample.id}`,
   pipeline_version_reference: { pipeline_id: sample.id, pipeline_version_id: `${sample.id}-v1` },
   pipeline_spec: complexPipelineSpec(sample),
@@ -108,7 +108,7 @@ describe('complex review runs', () => {
   it('provides a 32-component overview and leaves queued runs empty', () => {
     const run = runs.find((entry) => entry.run_id === 'sample-run-regional-training')!;
     expect(sampleRunTasks(run).filter((task) => task.type === 'RUNTIME')).toHaveLength(32);
-    const queued: V2beta1Run = { run_id: 'sample-run-validation-pending', state: 'PENDING' };
+    const queued: V2Run = { run_id: 'sample-run-validation-pending', state: 'PENDING' };
     expect(sampleRunTasks(queued)).toEqual([]);
     expect(complexRunTasks({ run_id: 'unknown' })).toBeUndefined();
   });

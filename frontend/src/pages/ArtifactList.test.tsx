@@ -22,7 +22,7 @@ vi.mock('src/components/shell/ThemeProvider', () => ({
 
 import * as React from 'react';
 import { MemoryRouter } from 'react-router';
-import { ArtifactArtifactType, V2beta1Artifact } from 'src/apisv2beta1/artifact';
+import { ArtifactArtifactType, V2Artifact } from 'src/apisv2/artifact';
 import { RoutePage } from 'src/components/Router';
 import { Apis } from 'src/lib/Apis';
 import { ArtifactList } from 'src/pages/ArtifactList';
@@ -35,7 +35,7 @@ describe('ArtifactList', () => {
   const updateBannerSpy = vi.fn();
   const navigateSpy = vi.fn();
 
-  function generateArtifacts(count: number): V2beta1Artifact[] {
+  function generateArtifacts(count: number): V2Artifact[] {
     return Array.from({ length: count }, (_, index) => ({
       artifact_id: `artifact-${index + 1}`,
       name: `test artifact ${index + 1}`,
@@ -348,8 +348,8 @@ describe('ArtifactList', () => {
   });
 
   it('ignores an older response when reload requests overlap', async () => {
-    const first = deferred<{ artifacts: V2beta1Artifact[] }>();
-    const second = deferred<{ artifacts: V2beta1Artifact[] }>();
+    const first = deferred<{ artifacts: V2Artifact[] }>();
+    const second = deferred<{ artifacts: V2Artifact[] }>();
     vi.mocked(Apis.artifactServiceApiV2.artifacts)
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
@@ -413,7 +413,7 @@ describe('ArtifactList', () => {
   });
 
   it('does not allow an old type response to replace the new type and encodes artifact IDs', async () => {
-    const old = deferred<{ artifacts: V2beta1Artifact[] }>();
+    const old = deferred<{ artifacts: V2Artifact[] }>();
     const api = vi
       .mocked(Apis.artifactServiceApiV2.artifacts)
       .mockImplementation(async (_namespace, _token, _size, _sort, filter) =>

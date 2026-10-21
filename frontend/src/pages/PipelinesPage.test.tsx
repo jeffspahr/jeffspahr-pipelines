@@ -18,7 +18,7 @@ import { ThemeProvider } from 'src/components/shell/ThemeProvider';
 import { render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { PageProps } from './Page';
 import { Apis } from 'src/lib/Apis';
-import { V2beta1Pipeline, V2beta1ListPipelinesResponse } from 'src/apisv2beta1/pipeline';
+import { V2Pipeline, V2ListPipelinesResponse } from 'src/apisv2/pipeline';
 import { flushPromisesInAct } from 'src/TestUtils';
 import { BuildInfoContext } from 'src/lib/BuildInfo';
 import PipelinesPage, { PrivateAndSharedProps, PrivateAndSharedTab } from './PipelinesPage';
@@ -64,7 +64,7 @@ const newPipeline = {
   display_name: 'new pipeline name',
 };
 
-function newMockPipeline(): V2beta1Pipeline {
+function newMockPipeline(): V2Pipeline {
   return {
     pipeline_id: 'run-pipeline-id',
     display_name: 'mock pipeline name',
@@ -94,7 +94,7 @@ describe('PrivateAndSharedPipelines', () => {
     });
     let listPipelineSpy = vi.spyOn(Apis.pipelineServiceApiV2, 'listPipelines');
     listPipelineSpy.mockImplementation((...args) => {
-      const response: V2beta1ListPipelinesResponse = {
+      const response: V2ListPipelinesResponse = {
         pipelines: [oldPipeline, newPipeline],
         total_size: 2,
       };
@@ -154,7 +154,7 @@ describe('PrivateAndSharedPipelines', () => {
     );
   });
   it('reloads private pipelines when the namespace changes and ignores the old namespace response', async () => {
-    let finishOld: (value: V2beta1ListPipelinesResponse) => void = () => {};
+    let finishOld: (value: V2ListPipelinesResponse) => void = () => {};
     vi.mocked(Apis.pipelineServiceApiV2.listPipelines).mockImplementation((namespace) =>
       namespace === 'old'
         ? new Promise((resolve) => {

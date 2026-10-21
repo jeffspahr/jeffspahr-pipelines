@@ -4,7 +4,7 @@
 // You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 import { complexRunTasks } from './complex-run-samples';
-import { PipelineTaskTaskState, V2beta1PipelineTask, V2beta1Run } from '../src/apisv2beta1/run';
+import { PipelineTaskTaskState, V2PipelineTask, V2Run } from '../src/apisv2/run';
 
 const steps = [
   { name: 'prepare-data', label: 'Prepare taxi data', dependencies: [], start: 10, end: 120 },
@@ -72,7 +72,7 @@ export const sampleRunPipelineSpec = {
   },
 };
 
-export function sampleRunTasks(run: V2beta1Run): V2beta1PipelineTask[] {
+export function sampleRunTasks(run: V2Run): V2PipelineTask[] {
   const complex = complexRunTasks(run);
   if (complex) return complex;
   if (!run.run_id?.startsWith('sample-run-') || run.state === 'PENDING') return [];
@@ -82,7 +82,7 @@ export function sampleRunTasks(run: V2beta1Run): V2beta1PipelineTask[] {
   const interrupted = run.state === 'FAILED' || run.state === 'CANCELED';
   const rootId = `${run.run_id}-root`;
   const rootState = active ? 'RUNNING' : interrupted ? 'FAILED' : 'SUCCEEDED';
-  const tasks: V2beta1PipelineTask[] = [
+  const tasks: V2PipelineTask[] = [
     {
       run_id: run.run_id,
       task_id: rootId,
@@ -194,7 +194,7 @@ export function sampleRunTasks(run: V2beta1Run): V2beta1PipelineTask[] {
 // Verbatim INFO message templates from backend/src/v2/driver/container.go.
 // These fixtures model cache-disabled driver setup, not component execution:
 // a component may fail later even though its driver completed successfully.
-export function sampleDriverLogs(task: V2beta1PipelineTask, namespace: string): string {
+export function sampleDriverLogs(task: V2PipelineTask, namespace: string): string {
   const time = task.create_time!.toISOString();
   return [
     `time="${time}" level=info msg="Cache disabled globally at the server level."`,
@@ -204,7 +204,7 @@ export function sampleDriverLogs(task: V2beta1PipelineTask, namespace: string): 
 }
 
 // Synthetic component stdout for UI review; these are not KFP driver messages.
-export function sampleTaskLogs(task: V2beta1PipelineTask, run: V2beta1Run): string {
+export function sampleTaskLogs(task: V2PipelineTask, run: V2Run): string {
   const name = task.name || 'component';
   const start = task.create_time!.getTime();
   const end = task.end_time?.getTime();
@@ -303,11 +303,7 @@ export function sampleTaskLogs(task: V2beta1PipelineTask, run: V2beta1Run): stri
 }
 
 // Earlier automatic attempt fails before training; the latest attempt reaches feature validation.
-export function sampleRetryTaskLogs(
-  task: V2beta1PipelineTask,
-  run: V2beta1Run,
-  attempt: number,
-): string {
+export function sampleRetryTaskLogs(task: V2PipelineTask, run: V2Run, attempt: number): string {
   if (attempt !== 0) return sampleTaskLogs(task, run);
   return [
     `${task.create_time!.toISOString()} INFO Synthetic preview output for ${task.name}`,

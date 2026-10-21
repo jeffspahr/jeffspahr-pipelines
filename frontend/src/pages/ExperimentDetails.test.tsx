@@ -21,7 +21,7 @@ vi.mock('src/components/shell/ThemeProvider', async (importOriginal) => ({
 }));
 
 import TestUtils, { RouterLocation, flushPromisesInAct, invokeAndFlush } from 'src/TestUtils';
-import { V2beta1Experiment, V2beta1ExperimentStorageState } from 'src/apisv2beta1/experiment';
+import { V2Experiment, V2ExperimentStorageState } from 'src/apisv2/experiment';
 import { Apis } from 'src/lib/Apis';
 import { PageProps } from './Page';
 import { RoutePage, RouteParams, QUERY_PARAMS } from 'src/components/Router';
@@ -32,8 +32,8 @@ import { ThemeProvider } from 'src/components/shell/ThemeProvider';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { NamespaceContext } from 'src/lib/KubeflowClient';
 import { MemoryRouter } from 'react-router';
-import { V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
-import { V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+import { V2RecurringRunStatus } from 'src/apisv2/recurringrun';
+import { V2PredicateOperation } from 'src/apisv2/filter';
 import { vi } from 'vitest';
 import { stableSnapshotFragment } from 'src/testUtils/snapshot';
 
@@ -52,7 +52,7 @@ describe('ExperimentDetails', () => {
 
   const MOCK_EXPERIMENT = newMockExperiment();
 
-  function newMockExperiment(): V2beta1Experiment {
+  function newMockExperiment(): V2Experiment {
     return {
       description: 'mock experiment description',
       experiment_id: 'some-mock-experiment-id',
@@ -79,7 +79,7 @@ describe('ExperimentDetails', () => {
       recurringRuns: range(n).map((i) => ({
         display_name: 'test job name' + i,
         recurring_run_id: 'test-recurringrun-id' + i,
-        status: V2beta1RecurringRunStatus.ENABLED,
+        status: V2RecurringRunStatus.ENABLED,
       })),
     }));
   }
@@ -129,7 +129,7 @@ describe('ExperimentDetails', () => {
     return JSON.parse(filterString) as { predicates?: Array<{ key: string; operation: string }> };
   }
 
-  function expectRunStorageFilter(operation: V2beta1PredicateOperation) {
+  function expectRunStorageFilter(operation: V2PredicateOperation) {
     const filter = getRunListFilter();
     const predicate = (filter.predicates || []).find((p) => p.key === 'storage_state');
     expect(predicate).toBeDefined();
@@ -289,7 +289,7 @@ describe('ExperimentDetails', () => {
     await mockNRecurringRuns(1);
     await renderExperimentDetails();
     await waitFor(() => expect(listRunsSpy).toHaveBeenCalled());
-    expectRunStorageFilter(V2beta1PredicateOperation.NOT_EQUALS);
+    expectRunStorageFilter(V2PredicateOperation.NOT_EQUALS);
   });
 
   it('shows a list of archived runs', async () => {
@@ -297,13 +297,13 @@ describe('ExperimentDetails', () => {
 
     getExperimentSpy.mockImplementation(() => {
       const apiExperiment = newMockExperiment();
-      apiExperiment['storage_state'] = V2beta1ExperimentStorageState.ARCHIVED;
+      apiExperiment['storage_state'] = V2ExperimentStorageState.ARCHIVED;
       return apiExperiment;
     });
 
     await renderExperimentDetails();
     await waitFor(() => expect(listRunsSpy).toHaveBeenCalled());
-    expectRunStorageFilter(V2beta1PredicateOperation.EQUALS);
+    expectRunStorageFilter(V2PredicateOperation.EQUALS);
   });
 
   it("fetches this experiment's recurring runs", async () => {
@@ -351,17 +351,17 @@ describe('ExperimentDetails', () => {
     const recurringRuns = [
       {
         recurring_run_id: 'enabled-recurringrun-1-id',
-        status: V2beta1RecurringRunStatus.ENABLED,
+        status: V2RecurringRunStatus.ENABLED,
         display_name: 'enabled-recurringrun-1',
       },
       {
         recurring_run_id: 'enabled-recurringrun-2-id',
-        status: V2beta1RecurringRunStatus.ENABLED,
+        status: V2RecurringRunStatus.ENABLED,
         display_name: 'enabled-recurringrun-2',
       },
       {
         recurring_run_id: 'disabled-recurringrun-1-id',
-        status: V2beta1RecurringRunStatus.DISABLED,
+        status: V2RecurringRunStatus.DISABLED,
         display_name: 'disabled-recurringrun-1',
       },
     ];

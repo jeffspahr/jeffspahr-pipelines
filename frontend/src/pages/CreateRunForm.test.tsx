@@ -22,19 +22,19 @@ import { testBestPractices } from 'src/TestUtils';
 import { CommonTestWrapper } from 'src/TestWrapper';
 import { ThemeProvider } from 'src/components/shell/ThemeProvider';
 import {
-  V2beta1Experiment,
-  V2beta1ExperimentStorageState,
-  V2beta1ListExperimentsResponse,
-} from 'src/apisv2beta1/experiment';
-import { V2beta1Filter, V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+  V2Experiment,
+  V2ExperimentStorageState,
+  V2ListExperimentsResponse,
+} from 'src/apisv2/experiment';
+import { V2Filter, V2PredicateOperation } from 'src/apisv2/filter';
 import {
-  V2beta1Pipeline,
-  V2beta1PipelineVersion,
-  V2beta1ListPipelinesResponse,
-  V2beta1ListPipelineVersionsResponse,
-} from 'src/apisv2beta1/pipeline';
-import { V2beta1Run, V2beta1RuntimeState } from 'src/apisv2beta1/run';
-import { V2beta1RecurringRun, RecurringRunMode } from 'src/apisv2beta1/recurringrun';
+  V2Pipeline,
+  V2PipelineVersion,
+  V2ListPipelinesResponse,
+  V2ListPipelineVersionsResponse,
+} from 'src/apisv2/pipeline';
+import { V2Run, V2RuntimeState } from 'src/apisv2/run';
+import { V2RecurringRun, RecurringRunMode } from 'src/apisv2/recurringrun';
 import { QUERY_PARAMS, RoutePage } from 'src/components/Router';
 import { Apis } from 'src/lib/Apis';
 import { convertYamlToV2PipelineSpec } from 'src/lib/v2/WorkflowUtils';
@@ -66,7 +66,7 @@ describe('NewRunV2', () => {
   const TEST_RECURRING_RUN_ID = 'test-recurring-run-id';
   const OTHER_TEST_PIPELINE_VERSION_ID = 'other-test-pipeline-version-id';
   const OTHER_TEST_PIPELINE_VERSION_NAME = 'other-test-pipeline-version';
-  const OTHER_TEST_PIPELINE_VERSION: V2beta1PipelineVersion = {
+  const OTHER_TEST_PIPELINE_VERSION: V2PipelineVersion = {
     description: '',
     display_name: OTHER_TEST_PIPELINE_VERSION_NAME,
     pipeline_id: ORIGINAL_TEST_PIPELINE_ID,
@@ -77,14 +77,14 @@ describe('NewRunV2', () => {
   const NEW_TEST_PIPELINE_NAME = 'new-test-pipeline';
   const NEW_TEST_PIPELINE_VERSION_ID = 'new-test-pipeline-version-id';
   const NEW_TEST_PIPELINE_VERSION_NAME = 'new-test-pipeline-version';
-  const NEW_TEST_PIPELINE: V2beta1Pipeline = {
+  const NEW_TEST_PIPELINE: V2Pipeline = {
     created_at: new Date(2018, 8, 7, 6, 5, 4),
     description: '',
     display_name: NEW_TEST_PIPELINE_NAME,
     pipeline_id: NEW_TEST_PIPELINE_ID,
   };
 
-  const NEW_TEST_PIPELINE_VERSION: V2beta1PipelineVersion = {
+  const NEW_TEST_PIPELINE_VERSION: V2PipelineVersion = {
     description: '',
     display_name: NEW_TEST_PIPELINE_VERSION_NAME,
     pipeline_id: NEW_TEST_PIPELINE_ID,
@@ -93,7 +93,7 @@ describe('NewRunV2', () => {
   };
 
   // Reponse from BE while POST a run for creating New UI-Run
-  const API_UI_CREATED_NEW_RUN_DETAILS: V2beta1Run = {
+  const API_UI_CREATED_NEW_RUN_DETAILS: V2Run = {
     created_at: new Date('2021-05-17T20:58:23.000Z'),
     description: 'V2 xgboost',
     finished_at: new Date('2021-05-18T21:01:23.000Z'),
@@ -105,11 +105,11 @@ describe('NewRunV2', () => {
     },
     runtime_config: { parameters: { intParam: 123 }, pipeline_root: 'gs://dummy_pipeline_root' },
     scheduled_at: new Date('2021-05-17T20:58:23.000Z'),
-    state: V2beta1RuntimeState.SUCCEEDED,
+    state: V2RuntimeState.SUCCEEDED,
   };
 
   // Reponse from BE while POST a run for cloning UI-Run
-  const API_UI_CREATED_CLONING_RUN_DETAILS: V2beta1Run = {
+  const API_UI_CREATED_CLONING_RUN_DETAILS: V2Run = {
     created_at: new Date('2022-08-12T20:58:23.000Z'),
     description: 'V2 xgboost',
     finished_at: new Date('2022-08-12T21:01:23.000Z'),
@@ -121,11 +121,11 @@ describe('NewRunV2', () => {
     },
     runtime_config: { parameters: { intParam: 123 }, pipeline_root: 'gs://dummy_pipeline_root' },
     scheduled_at: new Date('2022-08-12T20:58:23.000Z'),
-    state: V2beta1RuntimeState.SUCCEEDED,
+    state: V2RuntimeState.SUCCEEDED,
   };
 
   // Reponse from BE while SDK POST a new run for Creating run
-  const API_SDK_CREATED_NEW_RUN_DETAILS: V2beta1Run = {
+  const API_SDK_CREATED_NEW_RUN_DETAILS: V2Run = {
     created_at: new Date('2021-05-17T20:58:23.000Z'),
     description: 'V2 xgboost',
     finished_at: new Date('2021-05-17T21:01:23.000Z'),
@@ -134,11 +134,11 @@ describe('NewRunV2', () => {
     pipeline_spec: v2XGPipelineSpec,
     runtime_config: { parameters: { intParam: 123 }, pipeline_root: 'gs://dummy_pipeline_root' },
     scheduled_at: new Date('2021-05-17T20:58:23.000Z'),
-    state: V2beta1RuntimeState.SUCCEEDED,
+    state: V2RuntimeState.SUCCEEDED,
   };
 
   // Reponse from BE while POST a run for cloning SDK-Run
-  const API_SDK_CREATED_CLONING_RUN_DETAILS: V2beta1Run = {
+  const API_SDK_CREATED_CLONING_RUN_DETAILS: V2Run = {
     created_at: new Date('2022-08-12T20:58:23.000Z'),
     description: 'V2 xgboost',
     finished_at: new Date('2022-08-12T21:01:23.000Z'),
@@ -147,10 +147,10 @@ describe('NewRunV2', () => {
     pipeline_spec: v2XGPipelineSpec,
     runtime_config: { parameters: { intParam: 123 }, pipeline_root: 'gs://dummy_pipeline_root' },
     scheduled_at: new Date('2022-08-12T20:58:23.000Z'),
-    state: V2beta1RuntimeState.SUCCEEDED,
+    state: V2RuntimeState.SUCCEEDED,
   };
 
-  const API_UI_CREATED_NEW_RECURRING_RUN_DETAILS: V2beta1RecurringRun = {
+  const API_UI_CREATED_NEW_RECURRING_RUN_DETAILS: V2RecurringRun = {
     created_at: new Date('2021-05-17T20:58:23.000Z'),
     description: 'V2 xgboost',
     display_name: 'Run of v2-xgboost-ilbo',
@@ -166,7 +166,7 @@ describe('NewRunV2', () => {
     max_concurrency: '10',
   };
 
-  const API_UI_CREATED_CLONING_RECURRING_RUN_DETAILS: V2beta1RecurringRun = {
+  const API_UI_CREATED_CLONING_RECURRING_RUN_DETAILS: V2RecurringRun = {
     created_at: new Date('2023-01-04T20:58:23.000Z'),
     description: 'V2 xgboost',
     display_name: 'Clone of Run of v2-xgboost-ilbo',
@@ -182,7 +182,7 @@ describe('NewRunV2', () => {
     max_concurrency: '10',
   };
 
-  const API_SDK_CREATED_NEW_RECURRING_RUN_DETAILS: V2beta1RecurringRun = {
+  const API_SDK_CREATED_NEW_RECURRING_RUN_DETAILS: V2RecurringRun = {
     created_at: new Date('2021-05-17T20:58:23.000Z'),
     description: 'V2 xgboost',
     display_name: 'Run of v2-xgboost-ilbo',
@@ -195,7 +195,7 @@ describe('NewRunV2', () => {
     max_concurrency: '10',
   };
 
-  const API_SDK_CREATED_CLONING_RECURRING_RUN_DETAILS: V2beta1RecurringRun = {
+  const API_SDK_CREATED_CLONING_RECURRING_RUN_DETAILS: V2RecurringRun = {
     created_at: new Date('2023-01-04T20:58:23.000Z'),
     description: 'V2 xgboost',
     display_name: 'Clone of Run of v2-xgboost-ilbo',
@@ -208,11 +208,11 @@ describe('NewRunV2', () => {
     max_concurrency: '10',
   };
 
-  const DEFAULT_EXPERIMENT: V2beta1Experiment = {
+  const DEFAULT_EXPERIMENT: V2Experiment = {
     created_at: new Date('2022-07-14T21:26:58Z'),
     experiment_id: 'default-experiment-id',
     display_name: 'Default',
-    storage_state: V2beta1ExperimentStorageState.AVAILABLE,
+    storage_state: V2ExperimentStorageState.AVAILABLE,
   };
 
   const navigateSpy = vi.fn();
@@ -646,7 +646,7 @@ describe('NewRunV2', () => {
     it('sets the pipeline from the selector modal when confirmed', async () => {
       const listPipelineSpy = vi.spyOn(Apis.pipelineServiceApiV2, 'listPipelines');
       listPipelineSpy.mockImplementation(() => {
-        const response: V2beta1ListPipelinesResponse = {
+        const response: V2ListPipelinesResponse = {
           pipelines: [ORIGINAL_TEST_PIPELINE, NEW_TEST_PIPELINE],
           total_size: 2,
         };
@@ -657,7 +657,7 @@ describe('NewRunV2', () => {
 
       const listPipelineVersionsSpy = vi.spyOn(Apis.pipelineServiceApiV2, 'listPipelineVersions');
       listPipelineVersionsSpy.mockImplementation(() => {
-        const response: V2beta1ListPipelinesResponse = {
+        const response: V2ListPipelinesResponse = {
           pipeline_versions: [NEW_TEST_PIPELINE_VERSION],
           total_size: 1,
         };
@@ -702,7 +702,7 @@ describe('NewRunV2', () => {
     it('sets the pipeline version from the selector modal when confirmed', async () => {
       const listPipelineVersionSpy = vi.spyOn(Apis.pipelineServiceApiV2, 'listPipelineVersions');
       listPipelineVersionSpy.mockImplementation(() => {
-        const response: V2beta1ListPipelineVersionsResponse = {
+        const response: V2ListPipelineVersionsResponse = {
           pipeline_versions: [ORIGINAL_TEST_PIPELINE_VERSION, OTHER_TEST_PIPELINE_VERSION],
           total_size: 2,
         };
@@ -734,7 +734,7 @@ describe('NewRunV2', () => {
     it('lists available experiments by namespace if available', async () => {
       const listExperimentSpy = vi.spyOn(Apis.experimentServiceApiV2, 'listExperiments');
       listExperimentSpy.mockImplementation(() => {
-        const response: V2beta1ListPipelinesResponse = {
+        const response: V2ListPipelinesResponse = {
           experiments: [DEFAULT_EXPERIMENT, NEW_EXPERIMENT],
           total_size: 2,
         };
@@ -756,11 +756,11 @@ describe('NewRunV2', () => {
               predicates: [
                 {
                   key: 'storage_state',
-                  operation: V2beta1PredicateOperation.NOT_EQUALS,
-                  string_value: V2beta1ExperimentStorageState.ARCHIVED.toString(),
+                  operation: V2PredicateOperation.NOT_EQUALS,
+                  string_value: V2ExperimentStorageState.ARCHIVED.toString(),
                 },
               ],
-            } as V2beta1Filter),
+            } as V2Filter),
           ),
           'test-ns',
         );
@@ -770,7 +770,7 @@ describe('NewRunV2', () => {
     it('sets the experiment from the selector modal when confirmed', async () => {
       const listExperimentSpy = vi.spyOn(Apis.experimentServiceApiV2, 'listExperiments');
       listExperimentSpy.mockImplementation(() => {
-        const response: V2beta1ListExperimentsResponse = {
+        const response: V2ListExperimentsResponse = {
           experiments: [DEFAULT_EXPERIMENT, NEW_EXPERIMENT],
           total_size: 2,
         };
@@ -825,7 +825,7 @@ describe('NewRunV2', () => {
       'keeps the latest version choice after an older %s',
       async (result) => {
         mockVersionList();
-        const old = deferred<V2beta1PipelineVersion>();
+        const old = deferred<V2PipelineVersion>();
         vi.spyOn(Apis.pipelineServiceApiV2, 'getPipelineVersion')
           .mockReturnValueOnce(old.promise)
           .mockResolvedValueOnce(OTHER_TEST_PIPELINE_VERSION);
@@ -854,7 +854,7 @@ describe('NewRunV2', () => {
 
     it('discards a version choice when canceled and when its pipeline changes', async () => {
       mockVersionList();
-      const old = deferred<V2beta1PipelineVersion>();
+      const old = deferred<V2PipelineVersion>();
       vi.spyOn(Apis.pipelineServiceApiV2, 'getPipelineVersion')
         .mockResolvedValueOnce(OTHER_TEST_PIPELINE_VERSION)
         .mockReturnValueOnce(old.promise);
@@ -883,7 +883,7 @@ describe('NewRunV2', () => {
 
     it('keeps the latest experiment choice when detail reads finish in reverse order', async () => {
       mockExperimentList();
-      const old = deferred<V2beta1Experiment>();
+      const old = deferred<V2Experiment>();
       vi.spyOn(Apis.experimentServiceApiV2, 'getExperiment')
         .mockReturnValueOnce(old.promise)
         .mockResolvedValueOnce(NEW_EXPERIMENT);
@@ -903,8 +903,8 @@ describe('NewRunV2', () => {
 
     it('invalidates experiment reads on cancel/reopen and namespace change', async () => {
       mockExperimentList();
-      const canceled = deferred<V2beta1Experiment>();
-      const oldScope = deferred<V2beta1Experiment>();
+      const canceled = deferred<V2Experiment>();
+      const oldScope = deferred<V2Experiment>();
       vi.spyOn(Apis.experimentServiceApiV2, 'getExperiment')
         .mockReturnValueOnce(canceled.promise)
         .mockReturnValueOnce(oldScope.promise);
@@ -958,7 +958,7 @@ describe('NewRunV2', () => {
       vi.spyOn(Apis.pipelineServiceApiV2, 'getPipeline').mockImplementation(async (id) =>
         id === ORIGINAL_TEST_PIPELINE_ID ? ORIGINAL_TEST_PIPELINE : NEW_TEST_PIPELINE,
       );
-      const old = deferred<V2beta1ListPipelineVersionsResponse>();
+      const old = deferred<V2ListPipelineVersionsResponse>();
       vi.spyOn(Apis.pipelineServiceApiV2, 'listPipelineVersions')
         .mockReturnValueOnce(old.promise)
         .mockResolvedValueOnce({ pipeline_versions: [NEW_TEST_PIPELINE_VERSION] });
@@ -989,7 +989,7 @@ describe('NewRunV2', () => {
           pipelines: [NEW_TEST_PIPELINE],
         });
         vi.spyOn(Apis.pipelineServiceApiV2, 'getPipeline').mockResolvedValue(NEW_TEST_PIPELINE);
-        const pending = deferred<V2beta1ListPipelineVersionsResponse>();
+        const pending = deferred<V2ListPipelineVersionsResponse>();
         const versions = vi
           .spyOn(Apis.pipelineServiceApiV2, 'listPipelineVersions')
           .mockReturnValueOnce(pending.promise);

@@ -19,7 +19,7 @@ import { Menu } from '@base-ui/react/menu';
 import { Check, Filter, X } from 'lucide-react';
 import { useTheme } from '../shell/ThemeProvider';
 import { Button } from '../ui/button';
-import { V2beta1PredicateOperation, type V2beta1Predicate } from '../../apisv2beta1/filter';
+import { V2PredicateOperation, type V2Predicate } from '../../apisv2/filter';
 
 export type FilterOption = { value: string; label: string };
 export function ColumnFilter({
@@ -100,7 +100,7 @@ export function DateListFilter({
   field?: string;
   disabled?: boolean;
   children: (filter: {
-    predicates: V2beta1Predicate[];
+    predicates: V2Predicate[];
     control: ReactNode;
     chip: ReactNode;
     active: boolean;
@@ -119,7 +119,7 @@ export function DateListFilter({
       ? [
           {
             key: field,
-            operation: V2beta1PredicateOperation.GREATER_THAN_EQUALS,
+            operation: V2PredicateOperation.GREATER_THAN_EQUALS,
             timestamp_value: selection.since,
           },
         ]

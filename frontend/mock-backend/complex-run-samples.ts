@@ -3,7 +3,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
-import { V2beta1PipelineTask, V2beta1Run } from '../src/apisv2beta1/run';
+import { V2PipelineTask, V2Run } from '../src/apisv2/run';
 
 type Step = {
   name: string;
@@ -157,20 +157,20 @@ export function complexPipelineSpec(sample: (typeof complexRunSamples)[number]) 
   };
 }
 
-export function complexRunTasks(run: V2beta1Run): V2beta1PipelineTask[] | undefined {
+export function complexRunTasks(run: V2Run): V2PipelineTask[] | undefined {
   const sample = complexRunSamples.find((entry) => run.run_id === `sample-run-${entry.id}`);
   if (!sample) return undefined;
-  const tasks: V2beta1PipelineTask[] = [];
+  const tasks: V2PipelineTask[] = [];
   const at = (seconds: number) => new Date(run.created_at!.getTime() + seconds * 1000);
   function add(
     name: string,
-    parent: V2beta1PipelineTask | undefined,
-    type: V2beta1PipelineTask['type'],
+    parent: V2PipelineTask | undefined,
+    type: V2PipelineTask['type'],
     start: number,
     iteration?: number,
   ) {
     const scope = parent ? `${parent.scope_path}.${name}` : name;
-    const task: V2beta1PipelineTask = {
+    const task: V2PipelineTask = {
       run_id: run.run_id,
       task_id: `${run.run_id}-${scope}${iteration === undefined ? '' : `-${iteration}`}`,
       parent_task_id: parent?.task_id,
@@ -189,7 +189,7 @@ export function complexRunTasks(run: V2beta1Run): V2beta1PipelineTask[] | undefi
     tasks.push(task);
     return task;
   }
-  function visit(steps: Step[], parent: V2beta1PipelineTask, origin: number): number {
+  function visit(steps: Step[], parent: V2PipelineTask, origin: number): number {
     const ends = new Map<string, number>();
     for (const step of steps) {
       const start = Math.max(origin, ...(step.after || []).map((name) => ends.get(name)! + 5));

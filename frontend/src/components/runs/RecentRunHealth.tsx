@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-import { V2beta1Run } from 'src/apisv2beta1/run';
+import { V2Run } from 'src/apisv2/run';
 import { getRunStatus } from 'src/lib/StatusUtils';
 import './ExperimentWorkflows.css';
 
-export function RecentRunHealth({ runs }: { runs: V2beta1Run[] }) {
+export function RecentRunHealth({ runs }: { runs: V2Run[] }) {
   if (!runs.length) return <span className='kfp-workflow-muted'>No recent runs</span>;
   const summary = `Last ${runs.length} ${runs.length === 1 ? 'run' : 'runs'}: ${runs.map((run) => run.state || 'Unknown').join(', ')}`;
   return (

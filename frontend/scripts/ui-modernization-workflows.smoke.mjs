@@ -215,7 +215,7 @@ async function withFixture(options, exercise) {
               : 'application/octet-stream';
         return route.fulfill({ body, contentType });
       }
-      if (path === '/apis/v2beta1/healthz') return json({ apiServerTagName: 'fixture' });
+      if (path === '/apis/v2/healthz') return json({ apiServerTagName: 'fixture' });
       if (path === '/system/cluster-name' || path === '/system/project-id')
         return route.fulfill({ body: '' });
       if (method === 'POST') {
@@ -225,7 +225,7 @@ async function withFixture(options, exercise) {
         if (fixture.held.has(action)) await fixture.held.get(action).promise;
         if (fixture.failNext.delete(action))
           return json({ code: 14, message: 'Fixture mutation temporarily unavailable' }, 503);
-        if (path === '/apis/v2beta1/experiments') {
+        if (path === '/apis/v2/experiments') {
           const experiment = {
             ...body,
             experiment_id: 'experiment-created',
@@ -235,12 +235,12 @@ async function withFixture(options, exercise) {
           fixture.experiments.push(experiment);
           return json(experiment);
         }
-        if (path === '/apis/v2beta1/runs') {
+        if (path === '/apis/v2/runs') {
           const run = { ...makeRun(20), ...body, run_id: 'run-created', state: 'SUCCEEDED' };
           fixture.runs.push(run);
           return json(run);
         }
-        if (path === '/apis/v2beta1/recurringruns') {
+        if (path === '/apis/v2/recurringruns') {
           const schedule = {
             ...body,
             recurring_run_id: 'schedule-created',
@@ -250,7 +250,7 @@ async function withFixture(options, exercise) {
           fixture.schedules.push(schedule);
           return json(schedule);
         }
-        const scheduleAction = /^\/apis\/v2beta1\/recurringruns\/([^/:]+):(enable|disable)$/.exec(
+        const scheduleAction = /^\/apis\/v2\/recurringruns\/([^/:]+):(enable|disable)$/.exec(
           path,
         );
         if (scheduleAction) {
@@ -262,7 +262,7 @@ async function withFixture(options, exercise) {
           schedule.status = scheduleAction[2] === 'enable' ? 'ENABLED' : 'DISABLED';
           return json({});
         }
-        const runAction = /^\/apis\/v2beta1\/runs\/([^/:]+):(archive|unarchive)$/.exec(path);
+        const runAction = /^\/apis\/v2\/runs\/([^/:]+):(archive|unarchive)$/.exec(path);
         if (runAction) {
           assert.equal(body, null, 'run archive actions have no body');
           const run = fixture.runs.find((item) => item.run_id === runAction[1]);
@@ -272,7 +272,7 @@ async function withFixture(options, exercise) {
         }
       }
       assert.equal(method, 'GET', `Unexpected method for ${path}`);
-      if (path === '/apis/v2beta1/experiments') {
+      if (path === '/apis/v2/experiments') {
         const predicates = decodeFilter(query.filter).predicates || [];
         let experiments = fixture.experiments.filter(
           (item) => !query.namespace || item.namespace === query.namespace,
@@ -294,7 +294,7 @@ async function withFixture(options, exercise) {
         }
         return json({ experiments, total_size: experiments.length });
       }
-      const experimentMatch = /^\/apis\/v2beta1\/experiments\/([^/]+)$/.exec(path);
+      const experimentMatch = /^\/apis\/v2\/experiments\/([^/]+)$/.exec(path);
       if (experimentMatch) {
         const experiment = fixture.experiments.find(
           (item) => item.experiment_id === decodeURIComponent(experimentMatch[1]),
@@ -302,7 +302,7 @@ async function withFixture(options, exercise) {
         assert.ok(experiment);
         return json(experiment);
       }
-      if (path === '/apis/v2beta1/runs') {
+      if (path === '/apis/v2/runs') {
         assert.equal(query.skip_count, 'true');
         const predicates = decodeFilter(query.filter).predicates || [];
         let runs = fixture.runs.filter(
@@ -336,13 +336,13 @@ async function withFixture(options, exercise) {
         runs.sort((a, b) => b.created_at.localeCompare(a.created_at));
         return json({ runs: runs.slice(0, Number(query.page_size || 100)) });
       }
-      const runMatch = /^\/apis\/v2beta1\/runs\/([^/]+)(\/tasks)?$/.exec(path);
+      const runMatch = /^\/apis\/v2\/runs\/([^/]+)(\/tasks)?$/.exec(path);
       if (runMatch) {
         const run = fixture.runs.find((item) => item.run_id === runMatch[1]);
         assert.ok(run);
         return json(runMatch[2] ? { tasks: [] } : run);
       }
-      if (path === '/apis/v2beta1/recurringruns') {
+      if (path === '/apis/v2/recurringruns') {
         const schedules = fixture.schedules.filter(
           (item) =>
             (!query.namespace || item.namespace === query.namespace) &&
@@ -350,7 +350,7 @@ async function withFixture(options, exercise) {
         );
         return json({ recurringRuns: schedules, total_size: schedules.length });
       }
-      const scheduleMatch = /^\/apis\/v2beta1\/recurringruns\/([^/]+)$/.exec(path);
+      const scheduleMatch = /^\/apis\/v2\/recurringruns\/([^/]+)$/.exec(path);
       if (scheduleMatch) {
         const schedule = fixture.schedules.find(
           (item) => item.recurring_run_id === scheduleMatch[1],
@@ -358,7 +358,7 @@ async function withFixture(options, exercise) {
         assert.ok(schedule);
         return json(schedule);
       }
-      if (path === '/apis/v2beta1/pipelines') {
+      if (path === '/apis/v2/pipelines') {
         if (options.secondaryRoutes && query.filter) {
           const predicates = decodeFilter(query.filter).predicates;
           assert.equal(query.page_size, '10');
@@ -373,17 +373,17 @@ async function withFixture(options, exercise) {
         }
         return json({ pipelines: [pipeline] });
       }
-      if (path === '/apis/v2beta1/pipelines/pipeline-a') return json(pipeline);
-      if (path === '/apis/v2beta1/pipelines/pipeline-a/versions') {
+      if (path === '/apis/v2/pipelines/pipeline-a') return json(pipeline);
+      if (path === '/apis/v2/pipelines/pipeline-a/versions') {
         if (query.page_size === '1') assert.equal(query.sort_by, 'created_at desc');
         return json({
           pipeline_versions: [latestVersion, version].slice(0, Number(query.page_size || 2)),
         });
       }
-      if (path === '/apis/v2beta1/pipelines/pipeline-a/versions/version-a') return json(version);
-      if (path === '/apis/v2beta1/pipelines/pipeline-a/versions/version-latest')
+      if (path === '/apis/v2/pipelines/pipeline-a/versions/version-a') return json(version);
+      if (path === '/apis/v2/pipelines/pipeline-a/versions/version-latest')
         return json(latestVersion);
-      if (path === '/apis/v2beta1/artifacts' || path === '/apis/v2beta1/artifact_tasks')
+      if (path === '/apis/v2/artifacts' || path === '/apis/v2/artifact_tasks')
         return json({});
       throw new Error(`Unexpected fixture request: ${method} ${path}`);
     } catch (error) {
@@ -502,7 +502,7 @@ test('Experiments: bounded recent-run samples, expansion, archive navigation, na
     await tableReady(page, 'Experiments');
     await page.getByRole('img', { name: /^Last 5 runs:/ }).waitFor();
     assert.equal(
-      fixture.requests.filter((r) => r.path === '/apis/v2beta1/runs' && r.query.page_size === '5')
+      fixture.requests.filter((r) => r.path === '/apis/v2/runs' && r.query.page_size === '5')
         .length,
       1,
     );
@@ -551,7 +551,7 @@ test('Experiments: bounded recent-run samples, expansion, archive navigation, na
     );
     assert.ok(
       fixture.requests.some(
-        (r) => r.path === '/apis/v2beta1/experiments' && r.query.namespace === 'team-b',
+        (r) => r.path === '/apis/v2/experiments' && r.query.namespace === 'team-b',
       ),
     );
     assert.equal(
@@ -596,7 +596,7 @@ test('Recurring workflows: keyboard toggle failure/recovery, detail navigation a
   await withFixture({ namespace: 'team-a' }, async (page, fixture) => {
     await page.goto(`${origin}/#/recurringruns`);
     await tableReady(page, 'Recurring runs');
-    const action = '/apis/v2beta1/recurringruns/schedule-a:disable';
+    const action = '/apis/v2/recurringruns/schedule-a:disable';
     const held = gate();
     fixture.held.set(`POST ${action}`, held);
     fixture.failNext.add(`POST ${action}`);
@@ -646,7 +646,7 @@ test('Recurring workflows: keyboard toggle failure/recovery, detail navigation a
         document.querySelector('[role="dialog"] [role="switch"]')?.getAttribute('aria-checked') ===
         'true',
     );
-    assert.equal(mutation(fixture, '/apis/v2beta1/recurringruns/schedule-a:enable').length, 1);
+    assert.equal(mutation(fixture, '/apis/v2/recurringruns/schedule-a:enable').length, 1);
     await dialog.locator('#closeExperimentRecurringRunManagerBtn').click();
     await dialog.waitFor({ state: 'hidden' });
     await focused(page, manage);
@@ -668,7 +668,7 @@ test('New experiment: validation, held failure/retry, namespace and latest-versi
       .getByRole('textbox', { name: 'Experiment name', exact: true })
       .fill('Created experiment');
     await page.getByLabel('Description', { exact: true }).fill('Browser-created description');
-    const action = '/apis/v2beta1/experiments';
+    const action = '/apis/v2/experiments';
     const held = gate();
     fixture.held.set(`POST ${action}`, held);
     fixture.failNext.add(`POST ${action}`);
@@ -752,7 +752,7 @@ test('One-off creation: typed falsy parameters, validation, responsive themes an
       'narrow form must not overflow the viewport',
     );
     await page.setViewportSize({ width: 1440, height: 960 });
-    const action = '/apis/v2beta1/runs';
+    const action = '/apis/v2/runs';
     const held = gate();
     fixture.held.set(`POST ${action}`, held);
     fixture.failNext.add(`POST ${action}`);
@@ -779,7 +779,7 @@ test('One-off creation: typed falsy parameters, validation, responsive themes an
     assert.equal(body.service_account, 'pipeline-runner');
     for (const key of ['mode', 'max_concurrency', 'no_catchup', 'trigger'])
       assert.equal(body[key], undefined, `one-off payload excludes ${key}`);
-    assert.equal(mutation(fixture, '/apis/v2beta1/recurringruns').length, 0);
+    assert.equal(mutation(fixture, '/apis/v2/recurringruns').length, 0);
   });
 });
 
@@ -809,11 +809,11 @@ test('Recurring creation: periodic bounds, concurrency validation, catchup and l
     await page.getByLabel('End time', { exact: true }).fill('18:45');
     await theme(page, 'dark');
     await screenshot(page, 'new-recurring-dark');
-    await submit(page, '/apis/v2beta1/recurringruns');
+    await submit(page, '/apis/v2/recurringruns');
     await page.waitForURL(/#\/recurringrun\/details\/schedule-created$/);
-    assert.equal(mutation(fixture, '/apis/v2beta1/recurringruns').length, 1);
-    assert.equal(mutation(fixture, '/apis/v2beta1/runs').length, 0);
-    const body = mutation(fixture, '/apis/v2beta1/recurringruns')[0].body;
+    assert.equal(mutation(fixture, '/apis/v2/recurringruns').length, 1);
+    assert.equal(mutation(fixture, '/apis/v2/runs').length, 0);
+    const body = mutation(fixture, '/apis/v2/recurringruns')[0].body;
     assertRunBody(body, 'Periodic browser schedule', null);
     assert.equal(body.mode, 'ENABLE');
     assert.equal(body.max_concurrency, '3');
@@ -849,7 +849,7 @@ test('Inline experiment and cron creation preserve selected pipeline, typed para
       await page.getByRole('textbox', { name: 'Pipeline', exact: true }).inputValue(),
       'Workflow pipeline',
     );
-    assert.equal(mutation(fixture, '/apis/v2beta1/experiments').length, 1);
+    assert.equal(mutation(fixture, '/apis/v2/experiments').length, 1);
     await page.getByRole('radio', { name: 'Recurring', exact: true }).check();
     await page
       .getByRole('textbox', { name: 'Recurring run config name', exact: true })
@@ -861,16 +861,16 @@ test('Inline experiment and cron creation preserve selected pipeline, typed para
     assert.equal(await monday.getAttribute('aria-pressed'), 'false');
     await page.getByRole('combobox', { name: 'Repeat', exact: true }).selectOption('custom');
     await page.getByLabel('Cron expression', { exact: true }).fill('0 15 8 ? * 1-5');
-    await submit(page, '/apis/v2beta1/recurringruns');
+    await submit(page, '/apis/v2/recurringruns');
     await page.waitForURL(/#\/recurringrun\/details\/schedule-created$/);
-    const body = mutation(fixture, '/apis/v2beta1/recurringruns')[0].body;
+    const body = mutation(fixture, '/apis/v2/recurringruns')[0].body;
     assertRunBody(body, 'Cron browser schedule', 'version-latest', 'experiment-created');
     assert.equal(body.mode, 'ENABLE');
     assert.equal(body.max_concurrency, '10');
     assert.equal(body.no_catchup, false);
     assert.deepEqual(body.trigger, { cron_schedule: { cron: '0 15 8 ? * 1-5' } });
-    assert.equal(mutation(fixture, '/apis/v2beta1/recurringruns').length, 1);
-    assert.equal(mutation(fixture, '/apis/v2beta1/runs').length, 0);
+    assert.equal(mutation(fixture, '/apis/v2/recurringruns').length, 1);
+    assert.equal(mutation(fixture, '/apis/v2/runs').length, 0);
   });
 });
 
@@ -910,7 +910,7 @@ test('Secondary routes preserve tutorial links, feature draft save/reset/persist
     assert.match(await sdk.getAttribute('rel'), /noopener/);
     assert.equal(
       fixture.requests.filter(
-        (request) => request.path === '/apis/v2beta1/pipelines' && request.query.filter,
+        (request) => request.path === '/apis/v2/pipelines' && request.query.filter,
       ).length,
       2,
     );

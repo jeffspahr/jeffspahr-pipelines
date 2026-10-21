@@ -23,9 +23,9 @@ import {
   PipelineTaskTaskPod,
   PipelineTaskTaskPodType,
   PipelineTaskTaskState,
-  V2beta1PipelineTask,
-  V2beta1Artifact,
-} from 'src/apisv2beta1/run';
+  V2PipelineTask,
+  V2Artifact,
+} from 'src/apisv2/run';
 import { InspectionTabs } from '../inspection/InspectionTabs';
 import { buildRuntimeArtifactRows, RuntimeArtifactValue } from 'src/components/RuntimeArtifactRows';
 import { InspectionNotice as Banner } from '../inspection/InspectionNotice';
@@ -155,7 +155,7 @@ interface TaskNodeDetailProps {
   pipelineJobString?: string;
   runId?: string;
   element?: PipelineFlowElement | null;
-  task?: V2beta1PipelineTask;
+  task?: V2PipelineTask;
   layers: string[];
   namespace?: string;
   namespacePending?: boolean;
@@ -163,7 +163,7 @@ interface TaskNodeDetailProps {
 }
 
 function getLatestTaskPod(
-  task: V2beta1PipelineTask | undefined,
+  task: V2PipelineTask | undefined,
   type: PipelineTaskTaskPodType,
 ): PipelineTaskTaskPod | undefined {
   const pods = task?.pods || [];
@@ -178,12 +178,12 @@ function getLatestTaskPod(
 interface TaskLogSource {
   key: string;
   label: string;
-  artifact?: V2beta1Artifact;
+  artifact?: V2Artifact;
   pod?: PipelineTaskTaskPod;
 }
 
 export function getTaskLogSources(
-  task: V2beta1PipelineTask | undefined,
+  task: V2PipelineTask | undefined,
   type: PipelineTaskTaskPodType = PipelineTaskTaskPodType.EXECUTOR,
 ): TaskLogSource[] {
   const key =
@@ -524,7 +524,7 @@ function TaskNodeDetail({
 
 export function getTaskDetailsFields(
   element?: PipelineFlowElement | null,
-  task?: V2beta1PipelineTask,
+  task?: V2PipelineTask,
 ): Array<KeyValue<string>> {
   if (!element) {
     return [];
@@ -597,7 +597,7 @@ function RuntimeTaskDetails({
   task,
 }: {
   element?: PipelineFlowElement | null;
-  task?: V2beta1PipelineTask;
+  task?: V2PipelineTask;
 }) {
   return (
     <>
@@ -823,7 +823,7 @@ function LogsTabPanel({
 }
 
 /** Location of the driver (system) log artifact recorded by the centralized driver, if any. */
-export function getDriverLogUri(task?: V2beta1PipelineTask): string | undefined {
+export function getDriverLogUri(task?: V2PipelineTask): string | undefined {
   const driverLogUri = task?.status_metadata?.custom_properties?.driver_logs_uri;
   return typeof driverLogUri === 'string' && driverLogUri ? driverLogUri : undefined;
 }
@@ -850,7 +850,7 @@ export async function getDriverLogsInfo(
 
 /** Keep orchestration output out of the task's executor stream. */
 export async function getTaskDriverLogsInfo(
-  task: V2beta1PipelineTask,
+  task: V2PipelineTask,
   runId?: string,
   namespace?: string,
   source?: TaskLogSource,
@@ -889,7 +889,7 @@ export async function getTaskDriverLogsInfo(
 }
 
 export async function getLogsInfo(
-  task: V2beta1PipelineTask,
+  task: V2PipelineTask,
   runId?: string,
   namespace?: string,
   source?: TaskLogSource,
@@ -960,7 +960,7 @@ export async function getLogsInfo(
 }
 
 interface ArtifactNodeDetailProps {
-  task?: V2beta1PipelineTask;
+  task?: V2PipelineTask;
   artifactGroup?: InputOutputsIOArtifact;
   namespace?: string;
   namespacePending?: boolean;
@@ -1057,7 +1057,7 @@ function ArtifactInfo({
 
 interface SubDAGNodeDetailProps {
   element: PipelineFlowElement;
-  task?: V2beta1PipelineTask;
+  task?: V2PipelineTask;
   namespace?: string;
   namespacePending?: boolean;
 }

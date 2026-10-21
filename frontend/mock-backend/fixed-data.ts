@@ -7,10 +7,10 @@ import fs from 'fs';
 import { complexPipelineSpec, complexRunSamples } from './complex-run-samples';
 import { sampleRunPipelineSpec } from './sample-run-tasks';
 import YAML from 'yaml';
-import { V2beta1Experiment } from '../src/apisv2beta1/experiment';
-import { V2beta1Pipeline, V2beta1PipelineVersion } from '../src/apisv2beta1/pipeline';
-import { V2beta1Run, V2beta1RuntimeState } from '../src/apisv2beta1/run';
-import { V2beta1RecurringRun } from '../src/apisv2beta1/recurringrun';
+import { V2Experiment } from '../src/apisv2/experiment';
+import { V2Pipeline, V2PipelineVersion } from '../src/apisv2/pipeline';
+import { V2Run, V2RuntimeState } from '../src/apisv2/run';
+import { V2RecurringRun } from '../src/apisv2/recurringrun';
 
 const examples = [
   [
@@ -30,13 +30,13 @@ const examples = [
     'pipeline_with_various_io_types.yaml',
   ],
 ];
-const pipelines: V2beta1Pipeline[] = examples.map(([id, name]) => ({
+const pipelines: V2Pipeline[] = examples.map(([id, name]) => ({
   pipeline_id: id,
   name,
   display_name: name,
   created_at: new Date('2026-01-01'),
 }));
-const versions: V2beta1PipelineVersion[] = examples.map(([id, , file]) => ({
+const versions: V2PipelineVersion[] = examples.map(([id, , file]) => ({
   pipeline_id: id,
   pipeline_version_id: id,
   display_name: 'default version',
@@ -100,7 +100,7 @@ for (const sample of complexRunSamples) {
   });
 }
 
-const experiments: V2beta1Experiment[] = [
+const experiments: V2Experiment[] = [
   {
     experiment_id: '275ea11d-ac63-4ce3-bc33-ec81981ed56b',
     display_name: 'Default',
@@ -114,7 +114,7 @@ const experiments: V2beta1Experiment[] = [
   { experiment_id: 'empty-experiment', display_name: 'No runs', storage_state: 'AVAILABLE' },
   { experiment_id: 'archived-experiment', display_name: 'Archived', storage_state: 'ARCHIVED' },
 ];
-const runs: V2beta1Run[] = examples.map(([, name], i) => ({
+const runs: V2Run[] = examples.map(([, name], i) => ({
   run_id: i === 2 ? 'e0115ac1-0479-4194-a22d-01e65e09a32b' : `mock-run-${i}`,
   display_name: i === 2 ? 'v2-xgboost-ilbo' : name,
   pipeline_spec: versions[i].pipeline_spec,
@@ -124,7 +124,7 @@ const runs: V2beta1Run[] = examples.map(([, name], i) => ({
   state: 'SUCCEEDED',
   storage_state: 'AVAILABLE',
 }));
-const recurringRuns: V2beta1RecurringRun[] = [0, 1].map((i) => ({
+const recurringRuns: V2RecurringRun[] = [0, 1].map((i) => ({
   recurring_run_id: `mock-recurring-${i}`,
   created_at: new Date('2026-01-01T00:00:00Z'),
   display_name: `Scheduled ${examples[i][1]}`,
@@ -134,11 +134,11 @@ const recurringRuns: V2beta1RecurringRun[] = [0, 1].map((i) => ({
   trigger: { periodic_schedule: { interval_second: '3600' } },
 }));
 // Relative windows keep review examples visibly scheduled/expired over time.
-function reviewSchedules(): V2beta1RecurringRun[] {
+function reviewSchedules(): V2RecurringRun[] {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const offset = (days: number) => new Date(today.getTime() + days * 86_400_000);
-  const schedules: Pick<V2beta1RecurringRun, 'display_name' | 'status' | 'trigger'>[] = [
+  const schedules: Pick<V2RecurringRun, 'display_name' | 'status' | 'trigger'>[] = [
     {
       display_name: 'Daily taxi training',
       status: 'ENABLED',
@@ -189,7 +189,7 @@ function reviewSchedules(): V2beta1RecurringRun[] {
 const sampleRuns: {
   id: string;
   name: string;
-  state: V2beta1RuntimeState;
+  state: V2RuntimeState;
   daysAgo: number;
   archived?: boolean;
 }[] = [
@@ -223,7 +223,7 @@ const sampleRuns: {
 
 // Roll review samples forward daily so the relative-date filters remain useful.
 // The original fixed runs above retain their IDs, dates, and task relationships.
-function reviewRuns(): V2beta1Run[] {
+function reviewRuns(): V2Run[] {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   return sampleRuns.map((sample) => {
@@ -277,7 +277,7 @@ export const data = {
     return [
       ...runs,
       ...reviewRuns(),
-      ...complexRunSamples.map((sample): V2beta1Run => {
+      ...complexRunSamples.map((sample): V2Run => {
         const created = new Date();
         created.setUTCHours(0, 0, 0, 0);
         const finished = new Date(created.getTime() + 12 * 60_000);

@@ -16,7 +16,7 @@
 import 'src/pages/DetailLayouts.css';
 import { useLocation, useNavigate } from 'react-router';
 import { useCallback, useMemo, useState } from 'react';
-import { V2beta1Pipeline, V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
+import { V2Pipeline, V2PipelineVersion } from 'src/apisv2/pipeline';
 import { InspectionTabs } from 'src/components/inspection/InspectionTabs';
 import { PipelineVersionCard } from 'src/components/navigators/PipelineVersionCard';
 import { PipelineSpecTabContent } from 'src/components/PipelineSpecTabContent';
@@ -45,9 +45,9 @@ interface PipelineDetailsViewProps {
   manageVersionsHref?: string;
   definitionSource?: PipelineDefinitionSource;
   pipelineFlowElements: PipelineFlowElement[];
-  pipeline: V2beta1Pipeline | null;
-  selectedVersion: V2beta1PipelineVersion | undefined;
-  versions: V2beta1PipelineVersion[];
+  pipeline: V2Pipeline | null;
+  selectedVersion: V2PipelineVersion | undefined;
+  versions: V2PipelineVersion[];
   handleVersionSelected: (versionId: string) => Promise<void>;
 }
 

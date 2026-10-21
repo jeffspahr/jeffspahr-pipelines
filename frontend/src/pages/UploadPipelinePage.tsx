@@ -37,7 +37,7 @@ import { Page, PageProps } from './Page';
 import { NamespaceContext } from 'src/lib/KubeflowClient';
 import PrivateSharedSelector from 'src/components/PrivateSharedSelector';
 import { BuildInfoContext } from 'src/lib/BuildInfo';
-import { V2beta1Pipeline, V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
+import { V2Pipeline, V2PipelineVersion } from 'src/apisv2/pipeline';
 import PipelineSelectorDialog from 'src/components/PipelineSelectorDialog';
 import { discoverUploadedPipelineVersion } from 'src/lib/PipelineVersionDiscovery';
 
@@ -58,7 +58,7 @@ interface UploadPipelineControllerState {
   pipelineVersionName: string;
   pipelineVersionDisplayName: string;
   pipelineVersionDescription: string;
-  pipeline?: V2beta1Pipeline;
+  pipeline?: V2Pipeline;
 
   codeSourceUrl: string;
 
@@ -74,7 +74,7 @@ interface UploadPipelineControllerState {
 
   // Select existing pipeline
   pipelineSelectorOpen: boolean;
-  unconfirmedSelectedPipeline?: V2beta1Pipeline;
+  unconfirmedSelectedPipeline?: V2Pipeline;
 
   isPrivate: boolean;
 }
@@ -347,7 +347,7 @@ export class UploadPipelineController extends Page<
                   open={pipelineSelectorOpen}
                   namespace={this.props.namespace}
                   pipelineSelectorColumns={this.pipelineSelectorColumns}
-                  onClose={(confirmed, selectedPipeline?: V2beta1Pipeline) =>
+                  onClose={(confirmed, selectedPipeline?: V2Pipeline) =>
                     this.setStateSafe({ unconfirmedSelectedPipeline: selectedPipeline }, () =>
                       this._pipelineSelectorClosed(confirmed),
                     )
@@ -594,7 +594,7 @@ export class UploadPipelineController extends Page<
         // (1) new pipeline (and a default version) from local file
         // (2) new pipeline (and a default version) from url
         // (3) new pipeline version (under an existing pipeline) from url
-        let pipelineVersionResponse: V2beta1PipelineVersion;
+        let pipelineVersionResponse: V2PipelineVersion;
         if (this.state.newPipeline && this.state.importMethod === ImportMethod.LOCAL) {
           const intent = this._uploadIntent();
           this._activeUploadIntent = intent;
@@ -631,7 +631,7 @@ export class UploadPipelineController extends Page<
           if (controller.signal.aborted || !this._isMounted || !this._sameUploadIntent(intent))
             return;
         } else if (this.state.newPipeline && this.state.importMethod === ImportMethod.URL) {
-          const newPipeline: V2beta1Pipeline = {
+          const newPipeline: V2Pipeline = {
             description: this.state.pipelineDescription,
             display_name: this.state.pipelineName,
             name: this.state.pipelineName,
@@ -687,7 +687,7 @@ export class UploadPipelineController extends Page<
     });
   }
 
-  private async _createPipelineVersion(pipelineId: string): Promise<V2beta1PipelineVersion> {
+  private async _createPipelineVersion(pipelineId: string): Promise<V2PipelineVersion> {
     if (this.state.importMethod === ImportMethod.LOCAL) {
       if (!this.state.file) {
         throw new Error('File should be selected');
@@ -702,7 +702,7 @@ export class UploadPipelineController extends Page<
       );
     } else {
       // this.state.importMethod === ImportMethod.URL
-      let newPipeline: V2beta1PipelineVersion = {
+      let newPipeline: V2PipelineVersion = {
         pipeline_id: pipelineId,
         display_name: this.state.pipelineVersionDisplayName,
         name: this.state.pipelineVersionName,

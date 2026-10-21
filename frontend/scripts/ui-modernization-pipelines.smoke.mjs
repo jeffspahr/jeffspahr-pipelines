@@ -198,7 +198,7 @@ async function withFixture(options, exercise) {
   async function uploadResponse(route, createResource) {
     const original = new URL(route.request().url());
     assert.ok(
-      ['/apis/v2beta1/pipelines/upload', '/apis/v2beta1/pipelines/upload_version'].includes(
+      ['/apis/v2/pipelines/upload', '/apis/v2/pipelines/upload_version'].includes(
         original.pathname,
       ),
     );
@@ -257,7 +257,7 @@ async function withFixture(options, exercise) {
                 : 'application/octet-stream',
         });
       }
-      if (path === '/apis/v2beta1/healthz')
+      if (path === '/apis/v2/healthz')
         return json({
           apiServerTagName: 'fixture',
           apiServerMultiUser: !!options.namespace,
@@ -265,7 +265,7 @@ async function withFixture(options, exercise) {
         });
       if (path === '/system/cluster-name' || path === '/system/project-id')
         return route.fulfill({ body: '' });
-      if (path === '/apis/v2beta1/pipelines' && method === 'GET') {
+      if (path === '/apis/v2/pipelines' && method === 'GET') {
         fixture.lists.push({ resource: 'pipelines', ...query });
         let rows = fixture.pipelines;
         if (query.namespace === 'team-b') rows = rows.slice(0, 2);
@@ -274,7 +274,7 @@ async function withFixture(options, exercise) {
         return json({ pipelines: result.rows, next_page_token: result.next_page_token });
       }
       if (
-        (path === '/apis/v2beta1/pipelines' || path === '/apis/v2beta1/pipelines/upload') &&
+        (path === '/apis/v2/pipelines' || path === '/apis/v2/pipelines/upload') &&
         method === 'POST'
       ) {
         const upload = path.endsWith('/upload');
@@ -295,7 +295,7 @@ async function withFixture(options, exercise) {
         };
         return upload ? await uploadResponse(route, createPipeline) : json(createPipeline());
       }
-      if (path === '/apis/v2beta1/pipelines/upload_version' && method === 'POST') {
+      if (path === '/apis/v2/pipelines/upload_version' && method === 'POST') {
         return await uploadResponse(route, () => {
           const version = {
             ...versions(query.pipelineid)[0],
@@ -308,7 +308,7 @@ async function withFixture(options, exercise) {
           return version;
         });
       }
-      const versionList = path.match(/^\/apis\/v2beta1\/pipelines\/([^/]+)\/versions$/);
+      const versionList = path.match(/^\/apis\/v2\/pipelines\/([^/]+)\/versions$/);
       if (versionList) {
         const pipelineId = decodeURIComponent(versionList[1]);
         assert.ok(
@@ -332,7 +332,7 @@ async function withFixture(options, exercise) {
         const result = listPage(fixture.versionMap.get(pipelineId), query, pipelineId);
         return json({ pipeline_versions: result.rows, next_page_token: result.next_page_token });
       }
-      const detail = path.match(/^\/apis\/v2beta1\/pipelines\/([^/]+)(?:\/versions\/([^/]+))?$/);
+      const detail = path.match(/^\/apis\/v2\/pipelines\/([^/]+)(?:\/versions\/([^/]+))?$/);
       if (detail) {
         const pipelineId = decodeURIComponent(detail[1]);
         const versionId = detail[2] && decodeURIComponent(detail[2]);

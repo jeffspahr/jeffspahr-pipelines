@@ -23,8 +23,8 @@ import { createRef } from 'react';
 import { MemoryRouter } from 'react-router';
 import RunList, { RunListProps } from './RunList';
 import { Apis, ListRequest } from 'src/lib/Apis';
-import { V2beta1ListRunsResponse, V2beta1Run } from 'src/apisv2beta1/run';
-import { V2beta1PipelineVersion, ResponseError } from 'src/apisv2beta1/pipeline';
+import { V2ListRunsResponse, V2Run } from 'src/apisv2/run';
+import { V2PipelineVersion, ResponseError } from 'src/apisv2/pipeline';
 
 class TestRunList extends RunList {
   load(request: ListRequest) {
@@ -40,8 +40,8 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
-const initial: V2beta1Run = { run_id: 'initial', display_name: 'Initial run', state: 'SUCCEEDED' };
-const latest: V2beta1Run = { run_id: 'latest', display_name: 'Latest run', state: 'PAUSED' };
+const initial: V2Run = { run_id: 'initial', display_name: 'Initial run', state: 'SUCCEEDED' };
+const latest: V2Run = { run_id: 'latest', display_name: 'Latest run', state: 'PAUSED' };
 function renderList(overrides: Partial<RunListProps> = {}) {
   const ref = createRef<TestRunList>();
   const props: RunListProps = {
@@ -69,7 +69,7 @@ afterEach(() => {
 it('keeps the newest rows when an older list response finishes later', async () => {
   const { ref } = renderList();
   await screen.findByRole('link', { name: 'Initial run' });
-  const old = deferred<V2beta1ListRunsResponse>();
+  const old = deferred<V2ListRunsResponse>();
   vi.mocked(Apis.runServiceApiV2.listRuns)
     .mockImplementationOnce(() => old.promise)
     .mockResolvedValueOnce({ runs: [latest] });
@@ -92,7 +92,7 @@ it('keeps the newest rows when an older list response finishes later', async () 
 it('does not let slow related-resource enrichment replace newer runs', async () => {
   const { ref } = renderList();
   await screen.findByRole('link', { name: 'Initial run' });
-  const oldVersion = deferred<V2beta1PipelineVersion>();
+  const oldVersion = deferred<V2PipelineVersion>();
   const versionSpy = vi
     .spyOn(Apis.pipelineServiceApiV2, 'getPipelineVersion')
     .mockImplementation(() => oldVersion.promise);
@@ -129,7 +129,7 @@ it('does not let slow related-resource enrichment replace newer runs', async () 
 it('does not report a stale list failure after a newer request succeeds', async () => {
   const { ref, props } = renderList();
   await screen.findByRole('link', { name: 'Initial run' });
-  const old = deferred<V2beta1ListRunsResponse>();
+  const old = deferred<V2ListRunsResponse>();
   vi.mocked(Apis.runServiceApiV2.listRuns)
     .mockImplementationOnce(() => old.promise)
     .mockResolvedValueOnce({ runs: [latest] });

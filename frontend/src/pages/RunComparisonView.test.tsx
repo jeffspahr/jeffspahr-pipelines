@@ -22,10 +22,10 @@ import {
   ArtifactArtifactType,
   PipelineTaskTaskState,
   PipelineTaskTaskType,
-  V2beta1PipelineTask,
-  V2beta1Run,
-  V2beta1RuntimeState,
-} from 'src/apisv2beta1/run';
+  V2PipelineTask,
+  V2Run,
+  V2RuntimeState,
+} from 'src/apisv2/run';
 import { Apis } from 'src/lib/Apis';
 import { ButtonKeys } from 'src/lib/Buttons';
 import { queryKeys } from 'src/hooks/queryKeys';
@@ -110,7 +110,7 @@ testBestPractices();
 describe('CompareV2', () => {
   const updateBannerSpy = vi.fn();
   const updateToolbarSpy = vi.fn();
-  const runs: V2beta1Run[] = [
+  const runs: V2Run[] = [
     {
       run_id: 'run-1',
       display_name: 'First run',
@@ -122,12 +122,12 @@ describe('CompareV2', () => {
       runtime_config: { parameters: { epochs: 10 } },
     },
   ];
-  const thirdRun: V2beta1Run = {
+  const thirdRun: V2Run = {
     run_id: 'run-3',
     display_name: 'Third run',
     runtime_config: { parameters: { epochs: 15 } },
   };
-  const tasksByRun: Record<string, V2beta1PipelineTask[]> = {
+  const tasksByRun: Record<string, V2PipelineTask[]> = {
     'run-1': [
       {
         task_id: 'task-1',
@@ -291,7 +291,7 @@ describe('CompareV2', () => {
   });
 
   it('expands multi-key scalar metadata and retains a dash fallback', () => {
-    const tasks: V2beta1PipelineTask[] = [
+    const tasks: V2PipelineTask[] = [
       {
         name: 'evaluate',
         outputs: {
@@ -382,7 +382,7 @@ describe('CompareV2', () => {
   });
 
   it('keeps metrics from separate loop iterations distinct', () => {
-    const iterationTasks: V2beta1PipelineTask[] = [0, 1].map((iteration) => ({
+    const iterationTasks: V2PipelineTask[] = [0, 1].map((iteration) => ({
       task_id: `task-${iteration}`,
       name: 'train',
       display_name: 'Train',
@@ -488,7 +488,7 @@ describe('CompareV2', () => {
   });
 
   it('keeps duplicate same-named metrics within one artifact group', () => {
-    const tasks: V2beta1PipelineTask[] = [
+    const tasks: V2PipelineTask[] = [
       {
         name: 'evaluate',
         outputs: {
@@ -536,7 +536,7 @@ describe('CompareV2', () => {
         },
       ],
     };
-    const tasks: V2beta1PipelineTask[] = [
+    const tasks: V2PipelineTask[] = [
       { task_id: 'root', name: 'First run', type: PipelineTaskTaskType.ROOT, outputs },
       {
         task_id: 'dag',
@@ -573,7 +573,7 @@ describe('CompareV2', () => {
   });
 
   it('retains distinct artifacts sharing a URI and independent sibling producers', () => {
-    const tasks: V2beta1PipelineTask[] = [
+    const tasks: V2PipelineTask[] = [
       {
         task_id: 'root',
         outputs: {
@@ -655,7 +655,7 @@ describe('CompareV2', () => {
       ...tasksByRun['run-1'][0],
       state: PipelineTaskTaskState.RUNNING,
     };
-    const terminalRun = { ...runs[0], state: V2beta1RuntimeState.FAILED };
+    const terminalRun = { ...runs[0], state: V2RuntimeState.FAILED };
 
     expect(
       collectRuntimeComparisonArtifacts([
@@ -695,7 +695,7 @@ describe('CompareV2', () => {
 
   it('preserves URL column order, encoded run links, and missing versus empty parameters', async () => {
     const specialRunId = 'run/one%value';
-    const specialRun: V2beta1Run = {
+    const specialRun: V2Run = {
       run_id: specialRunId,
       display_name: 'Special run',
       runtime_config: { parameters: { optional: '', zero: 0 } },
@@ -723,7 +723,7 @@ describe('CompareV2', () => {
   it('loads comparison data for a paused run', async () => {
     vi.mocked(Apis.runServiceApiV2.getRun).mockResolvedValue({
       ...runs[0],
-      state: V2beta1RuntimeState.PAUSED,
+      state: V2RuntimeState.PAUSED,
     });
 
     render(
@@ -738,8 +738,8 @@ describe('CompareV2', () => {
 
   it('polls active comparisons and stops after observing a terminal run state', async () => {
     vi.useFakeTimers();
-    const runningRun = { ...runs[0], state: V2beta1RuntimeState.RUNNING };
-    const succeededRun = { ...runs[0], state: V2beta1RuntimeState.SUCCEEDED };
+    const runningRun = { ...runs[0], state: V2RuntimeState.RUNNING };
+    const succeededRun = { ...runs[0], state: V2RuntimeState.SUCCEEDED };
     vi.mocked(Apis.runServiceApiV2.tasks).mockResolvedValue({
       tasks: [{ ...tasksByRun['run-1'][0], state: PipelineTaskTaskState.SUCCEEDED }],
     });
@@ -772,7 +772,7 @@ describe('CompareV2', () => {
     vi.useFakeTimers();
     vi.mocked(Apis.runServiceApiV2.getRun).mockResolvedValue({
       ...runs[0],
-      state: V2beta1RuntimeState.SUCCEEDED,
+      state: V2RuntimeState.SUCCEEDED,
     });
     vi.mocked(Apis.runServiceApiV2.tasks).mockResolvedValue({ tasks: [] });
 
@@ -795,8 +795,8 @@ describe('CompareV2', () => {
     const runningTask = { ...tasksByRun['run-1'][0], state: PipelineTaskTaskState.RUNNING };
     const succeededTask = { ...runningTask, state: PipelineTaskTaskState.SUCCEEDED };
     vi.mocked(Apis.runServiceApiV2.getRun)
-      .mockResolvedValueOnce({ ...runs[0], state: V2beta1RuntimeState.RUNNING })
-      .mockResolvedValue({ ...runs[0], state: V2beta1RuntimeState.SUCCEEDED });
+      .mockResolvedValueOnce({ ...runs[0], state: V2RuntimeState.RUNNING })
+      .mockResolvedValue({ ...runs[0], state: V2RuntimeState.SUCCEEDED });
     vi.mocked(Apis.runServiceApiV2.tasks)
       .mockResolvedValueOnce({ tasks: [runningTask] })
       .mockResolvedValueOnce({ tasks: [runningTask] })
@@ -834,8 +834,8 @@ describe('CompareV2', () => {
     vi.useFakeTimers();
     const runningTask = { ...tasksByRun['run-1'][0], state: PipelineTaskTaskState.RUNNING };
     vi.mocked(Apis.runServiceApiV2.getRun)
-      .mockResolvedValueOnce({ ...runs[0], state: V2beta1RuntimeState.RUNNING })
-      .mockResolvedValue({ ...runs[0], state: V2beta1RuntimeState.FAILED });
+      .mockResolvedValueOnce({ ...runs[0], state: V2RuntimeState.RUNNING })
+      .mockResolvedValue({ ...runs[0], state: V2RuntimeState.FAILED });
     vi.mocked(Apis.runServiceApiV2.tasks).mockResolvedValue({ tasks: [runningTask] });
 
     render(
@@ -862,7 +862,7 @@ describe('CompareV2', () => {
     vi.useFakeTimers();
     const refetchQueriesSpy = vi.spyOn(QueryClient.prototype, 'refetchQueries');
     const runningTask = { ...tasksByRun['run-1'][0], state: PipelineTaskTaskState.RUNNING };
-    const finalTask: V2beta1PipelineTask = {
+    const finalTask: V2PipelineTask = {
       ...runningTask,
       state: PipelineTaskTaskState.SUCCEEDED,
       outputs: {
@@ -881,9 +881,9 @@ describe('CompareV2', () => {
         ],
       },
     };
-    const terminalRun = { ...runs[0], state: V2beta1RuntimeState.SUCCEEDED };
+    const terminalRun = { ...runs[0], state: V2RuntimeState.SUCCEEDED };
     vi.mocked(Apis.runServiceApiV2.getRun)
-      .mockResolvedValueOnce({ ...runs[0], state: V2beta1RuntimeState.RUNNING })
+      .mockResolvedValueOnce({ ...runs[0], state: V2RuntimeState.RUNNING })
       .mockResolvedValueOnce(terminalRun)
       .mockRejectedValueOnce(new Error('Run service unavailable'))
       .mockResolvedValue(terminalRun);
@@ -942,8 +942,8 @@ describe('CompareV2', () => {
     const runningTask = { ...tasksByRun['run-1'][0], state: PipelineTaskTaskState.RUNNING };
     const succeededTask = { ...runningTask, state: PipelineTaskTaskState.SUCCEEDED };
     vi.mocked(Apis.runServiceApiV2.getRun)
-      .mockResolvedValueOnce({ ...runs[0], state: V2beta1RuntimeState.RUNNING })
-      .mockResolvedValue({ ...runs[0], state: V2beta1RuntimeState.SUCCEEDED });
+      .mockResolvedValueOnce({ ...runs[0], state: V2RuntimeState.RUNNING })
+      .mockResolvedValue({ ...runs[0], state: V2RuntimeState.SUCCEEDED });
     vi.mocked(Apis.runServiceApiV2.tasks)
       .mockResolvedValueOnce({ tasks: [runningTask] })
       .mockRejectedValueOnce(new Error('Task service unavailable'))
@@ -985,7 +985,7 @@ describe('CompareV2', () => {
     vi.useFakeTimers();
     vi.mocked(Apis.runServiceApiV2.getRun).mockResolvedValue({
       ...runs[0],
-      state: V2beta1RuntimeState.RUNNING,
+      state: V2RuntimeState.RUNNING,
     });
     vi.mocked(Apis.runServiceApiV2.tasks)
       .mockResolvedValueOnce({ tasks: tasksByRun['run-1'] })
@@ -1122,7 +1122,7 @@ describe('CompareV2', () => {
     queryClient.setQueryData(
       queryKeys.v2RunComparison('run-1'),
       {
-        run: { ...runs[0], state: V2beta1RuntimeState.FAILED },
+        run: { ...runs[0], state: V2RuntimeState.FAILED },
         tasks: [{ ...tasksByRun['run-1'][0], state: PipelineTaskTaskState.RUNNING }],
         terminalTaskReconciliationPending: true,
       },

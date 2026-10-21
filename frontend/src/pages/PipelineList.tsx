@@ -16,7 +16,7 @@
 
 import * as React from 'react';
 import { Link } from 'react-router';
-import { V2beta1Pipeline, V2beta1ListPipelinesResponse } from 'src/apisv2beta1/pipeline';
+import { V2Pipeline, V2ListPipelinesResponse } from 'src/apisv2/pipeline';
 import CustomTable, { Column, CustomRendererProps, Row } from 'src/components/CustomTable';
 import { Description } from 'src/components/Description';
 import { RoutePageFactory } from 'src/components/Router';
@@ -34,7 +34,7 @@ import {
   type UploadedPeriod,
 } from 'src/components/pipelines/UploadedDateFilter';
 
-type DisplayPipeline = V2beta1Pipeline;
+type DisplayPipeline = V2Pipeline;
 
 interface PipelineListState {
   uploadedPeriod: UploadedPeriod;
@@ -180,7 +180,7 @@ class PipelineList extends Page<{ namespace?: string }, PipelineListState> {
   private async _reload(request: ListRequest): Promise<string> {
     const generation = ++this._loadGeneration;
     try {
-      const response: V2beta1ListPipelinesResponse = await Apis.pipelineServiceApiV2.listPipelines(
+      const response: V2ListPipelinesResponse = await Apis.pipelineServiceApiV2.listPipelines(
         this.props.namespace,
         request.pageToken,
         request.pageSize,

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
+import { PipelineTaskTaskState } from 'src/apisv2/run';
 
 export type SubDagKind = 'Sub-DAG' | 'Loop' | 'Iteration' | 'Condition';
 // Keep rendered node boxes and layout inputs in the same coordinate space.

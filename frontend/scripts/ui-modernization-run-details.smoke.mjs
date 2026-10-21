@@ -218,10 +218,10 @@ async function withFixture(options, exercise) {
                 : 'application/octet-stream',
         });
       }
-      if (path === '/apis/v2beta1/healthz') return json({ apiServerTagName: 'fixture' });
+      if (path === '/apis/v2/healthz') return json({ apiServerTagName: 'fixture' });
       if (path === '/system/cluster-name' || path === '/system/project-id')
         return route.fulfill({ body: '' });
-      if (path === `/apis/v2beta1/runs/${runId}`) {
+      if (path === `/apis/v2/runs/${runId}`) {
         assert.equal(request.method(), 'GET');
         if (fixture.failRunReads)
           return json({ code: 14, message: 'Fixture run temporarily unavailable' }, 503);
@@ -233,14 +233,14 @@ async function withFixture(options, exercise) {
         }
         return json(snapshot);
       }
-      if (path === `/apis/v2beta1/runs/${runId}/tasks`) {
+      if (path === `/apis/v2/runs/${runId}/tasks`) {
         assert.equal(request.method(), 'GET');
         assert.equal(url.searchParams.get('page_size'), '200');
         assert.equal(url.searchParams.get('order_by'), 'create_time asc');
         if (fixture.tasksGate) await fixture.tasksGate.promise;
         return json({ tasks: fixture.tasks });
       }
-      if (path === `/apis/v2beta1/runs/${runId}:retry`) {
+      if (path === `/apis/v2/runs/${runId}:retry`) {
         assert.equal(request.method(), 'POST');
         assert.equal(request.postData(), null);
         assert.equal(++fixture.retryCount, 1, 'retry must happen exactly once');
@@ -262,7 +262,7 @@ async function withFixture(options, exercise) {
         );
         return json({});
       }
-      if (path === '/apis/v2beta1/experiments/experiment-a') {
+      if (path === '/apis/v2/experiments/experiment-a') {
         if (fixture.experimentGate) await fixture.experimentGate.promise;
         return json({
           experiment_id: 'experiment-a',
@@ -472,7 +472,7 @@ test('Run Details keeps graph space stable and puts metadata in Detail', async (
     await page.setViewportSize({ width: 1280, height: 720 });
     const pendingTasks = gate();
     fixture.tasksGate = pendingTasks;
-    const tasksPath = `/apis/v2beta1/runs/${runId}/tasks`;
+    const tasksPath = `/apis/v2/runs/${runId}/tasks`;
     const requested = page.waitForRequest(
       (request) => new URL(request.url()).pathname === tasksPath,
     );
@@ -533,7 +533,7 @@ test('Run Details preserves nested task links, history, copied URLs, and graph g
     const pendingRun = gate();
     fixture.runGate = pendingRun;
     const requested = page.waitForRequest(
-      (request) => new URL(request.url()).pathname === `/apis/v2beta1/runs/${runId}`,
+      (request) => new URL(request.url()).pathname === `/apis/v2/runs/${runId}`,
     );
     await page.goto(`${origin}/#/runs/details/${runId}?task=task-train&view=graph`);
     await requested;
@@ -868,7 +868,7 @@ test('Run Details recovers a failed initial read and preserves its graph during 
     );
     const original = await graph(page);
     fixture.failRunReads = true;
-    await tick(page, `/apis/v2beta1/runs/${runId}`);
+    await tick(page, `/apis/v2/runs/${runId}`);
     const warning = page.getByText(
       'Unable to refresh this run. The last known run state is still shown. Refresh the page to try again.',
       { exact: true },
@@ -877,7 +877,7 @@ test('Run Details recovers a failed initial read and preserves its graph during 
     await selected(page, 'train');
     sameGraph(original, await graph(page));
     fixture.failRunReads = false;
-    await tick(page, `/apis/v2beta1/runs/${runId}`);
+    await tick(page, `/apis/v2/runs/${runId}`);
     await warning.waitFor({ state: 'hidden' });
     sameGraph(original, await graph(page));
   });
@@ -896,7 +896,7 @@ test('Run Details retries once, preserves prior logs while loading, and rejects 
     fixture.logGates.set('retry-pod', logsPending);
     fixture.logs.set('retry-pod', 'retry attempt output');
     const retryRead = page.waitForRequest(
-      (request) => new URL(request.url()).pathname === `/apis/v2beta1/runs/${runId}`,
+      (request) => new URL(request.url()).pathname === `/apis/v2/runs/${runId}`,
     );
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Retry', exact: true }).click();

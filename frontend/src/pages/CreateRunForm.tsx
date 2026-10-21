@@ -18,10 +18,10 @@ import { ModalDialog } from 'src/components/ui/dialog';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { V2beta1Experiment, V2beta1ExperimentStorageState } from 'src/apisv2beta1/experiment';
-import { V2beta1Pipeline, V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
-import { V2beta1PipelineVersionReference, V2beta1Run } from 'src/apisv2beta1/run';
-import { V2beta1Filter, V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+import { V2Experiment, V2ExperimentStorageState } from 'src/apisv2/experiment';
+import { V2Pipeline, V2PipelineVersion } from 'src/apisv2/pipeline';
+import { V2PipelineVersionReference, V2Run } from 'src/apisv2/run';
+import { V2Filter, V2PredicateOperation } from 'src/apisv2/filter';
 import { Button } from 'src/components/ui/button';
 import { Checkbox } from 'src/components/ui/checkbox';
 import { LoaderCircle, Plus } from 'lucide-react';
@@ -48,7 +48,7 @@ import { errorToMessage, generateRandomString, logger } from 'src/lib/Utils';
 import { convertYamlToV2PipelineSpec } from 'src/lib/v2/WorkflowUtils';
 import { PageProps } from './Page';
 import PipelineSelectorDialog from 'src/components/PipelineSelectorDialog';
-import { V2beta1RecurringRun, RecurringRunMode } from 'src/apisv2beta1/recurringrun';
+import { V2RecurringRun, RecurringRunMode } from 'src/apisv2/recurringrun';
 import ResourceSelector from 'src/pages/ResourceSelector';
 import {
   convertExperimentToResource,
@@ -65,15 +65,15 @@ const descriptionCustomRenderer: React.FC<CustomRendererProps<string>> = (props)
 interface RunV2Props {
   namespace?: string;
   existingRunId: string | null;
-  existingRun?: V2beta1Run;
+  existingRun?: V2Run;
   existingRecurringRunId: string | null;
-  existingRecurringRun?: V2beta1RecurringRun;
-  existingPipeline?: V2beta1Pipeline;
+  existingRecurringRun?: V2RecurringRun;
+  existingPipeline?: V2Pipeline;
   handlePipelineIdChange: (pipelineId: string) => void;
-  existingPipelineVersion?: V2beta1PipelineVersion;
+  existingPipelineVersion?: V2PipelineVersion;
   handlePipelineVersionIdChange: (pipelineVersionId: string) => void;
   templateString?: string;
-  chosenExperiment?: V2beta1Experiment;
+  chosenExperiment?: V2Experiment;
 }
 
 type CreateRunFormProps = RunV2Props & PageProps;
@@ -125,11 +125,11 @@ const getTemplateData = (templateString?: string) => {
 type CloneOrigin = {
   isClone: boolean;
   isRecurring: boolean;
-  run?: V2beta1Run;
-  recurringRun?: V2beta1RecurringRun;
+  run?: V2Run;
+  recurringRun?: V2RecurringRun;
 };
 
-function getCloneOrigin(run?: V2beta1Run, recurringRun?: V2beta1RecurringRun) {
+function getCloneOrigin(run?: V2Run, recurringRun?: V2RecurringRun) {
   let cloneOrigin: CloneOrigin = {
     isClone: run !== undefined || recurringRun !== undefined,
     isRecurring: recurringRun !== undefined,
@@ -183,8 +183,8 @@ export async function getLatestVersion(pipelineId: string) {
 
 function getRunValidationErrorMessage(
   runName: string,
-  existingPipeline?: V2beta1Pipeline,
-  existingPipelineVersion?: V2beta1PipelineVersion,
+  existingPipeline?: V2Pipeline,
+  existingPipelineVersion?: V2PipelineVersion,
   isTemplatePullSuccess?: boolean,
 ) {
   if (isTemplatePullSuccess) {
@@ -272,7 +272,7 @@ function CreateRunForm(props: CreateRunFormProps) {
     existingPipeline?.pipeline_id ?? '',
     existingPipeline?.display_name ?? '',
   );
-  const [selectedExperiment, setSelectedExperiment] = useKeyedState<V2beta1Experiment | undefined>(
+  const [selectedExperiment, setSelectedExperiment] = useKeyedState<V2Experiment | undefined>(
     chosenExperiment?.experiment_id ?? '',
     chosenExperiment,
   );
@@ -357,7 +357,7 @@ function CreateRunForm(props: CreateRunFormProps) {
   const titleAdjective = cloneOrigin.isClone ? '' : 'new';
 
   // Pipeline version reference from selected pipeline (version) when "creating" run
-  const pipelineVersionRefNew: V2beta1PipelineVersionReference | undefined = cloneOrigin.isClone
+  const pipelineVersionRefNew: V2PipelineVersionReference | undefined = cloneOrigin.isClone
     ? undefined
     : {
         pipeline_id: existingPipeline?.pipeline_id,
@@ -394,12 +394,12 @@ function CreateRunForm(props: CreateRunFormProps) {
 
   // Defines the behavior when user clicks `Start` button.
   const newRunMutation = useMutation({
-    mutationFn: (run: V2beta1Run) => {
+    mutationFn: (run: V2Run) => {
       return Apis.runServiceApiV2.createRun(run);
     },
   });
   const newRecurringRunMutation = useMutation({
-    mutationFn: (recurringRun: V2beta1RecurringRun) => {
+    mutationFn: (recurringRun: V2RecurringRun) => {
       return Apis.recurringRunServiceApi.createRecurringRun(recurringRun);
     },
   });
@@ -407,7 +407,7 @@ function CreateRunForm(props: CreateRunFormProps) {
   const startRun = async () => {
     const submittedIsRecurringRun = isRecurringRun;
 
-    let newRun: V2beta1Run = {
+    let newRun: V2Run = {
       description: runDescription,
       display_name: runName,
       experiment_id: selectedExperiment?.experiment_id,
@@ -427,7 +427,7 @@ function CreateRunForm(props: CreateRunFormProps) {
       service_account: serviceAccount,
     };
 
-    let newRecurringRun: V2beta1RecurringRun = Object.assign(
+    let newRecurringRun: V2RecurringRun = Object.assign(
       newRun,
       submittedIsRecurringRun
         ? {
@@ -842,7 +842,7 @@ const EXPERIMENT_SELECTOR_COLUMNS = [
 interface PipelineSelectorSpecificProps {
   namespace?: string;
   pipelineName: string | undefined;
-  handlePipelineChange: (pipeline: V2beta1Pipeline) => void;
+  handlePipelineChange: (pipeline: V2Pipeline) => void;
 }
 type PipelineSelectorProps = PageProps & PipelineSelectorSpecificProps;
 
@@ -871,7 +871,7 @@ function PipelineSelector(props: PipelineSelectorProps) {
       <PipelineSelectorDialog
         {...props}
         open={pipelineSelectorOpen}
-        onClose={(confirmed, selectedPipeline?: V2beta1Pipeline) => {
+        onClose={(confirmed, selectedPipeline?: V2Pipeline) => {
           if (confirmed && selectedPipeline) {
             props.handlePipelineChange(selectedPipeline);
           }
@@ -921,9 +921,9 @@ function usePendingResource<T>(
 
 interface PipelineVersionSelectorSpecificProps {
   namespace?: string;
-  pipeline: V2beta1Pipeline | undefined;
+  pipeline: V2Pipeline | undefined;
   pipelineVersionName: string | undefined;
-  handlePipelineVersionChange: (pipelineVersion: V2beta1PipelineVersion) => void;
+  handlePipelineVersionChange: (pipelineVersion: V2PipelineVersion) => void;
   useLatestVersion: boolean;
   isRecurringRun: boolean;
 }
@@ -1027,7 +1027,7 @@ function PipelineVersionSelector(props: PipelineVersionSelectorProps) {
 interface ExperimentSelectorSpecificProps {
   namespace?: string;
   experimentName: string | undefined;
-  handleExperimentChange: (experiment: V2beta1Experiment) => void;
+  handleExperimentChange: (experiment: V2Experiment) => void;
   toolbarActionMap?: ToolbarActionMap;
   isOpenNewExperiment: boolean;
   onCancelNewExperiment: () => void;
@@ -1097,12 +1097,12 @@ function ExperimentSelector(props: ExperimentSelectorProps) {
                   // only list unarchived experiments.
                   const new_filter = JSON.parse(
                     decodeURIComponent(filter || '{"predicates": []}'),
-                  ) as V2beta1Filter;
+                  ) as V2Filter;
                   new_filter.predicates = (new_filter.predicates || []).concat([
                     {
                       key: 'storage_state',
-                      operation: V2beta1PredicateOperation.NOT_EQUALS,
-                      string_value: V2beta1ExperimentStorageState.ARCHIVED.toString(),
+                      operation: V2PredicateOperation.NOT_EQUALS,
+                      string_value: V2ExperimentStorageState.ARCHIVED.toString(),
                     },
                   ]);
                   const response = await Apis.experimentServiceApiV2.listExperiments(

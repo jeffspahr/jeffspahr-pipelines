@@ -18,7 +18,7 @@ import * as React from 'react';
 import { ListRequest } from '../lib/Apis';
 import { LocalStorage } from '../lib/LocalStorage';
 import { debounce } from 'lodash';
-import type { V2beta1Predicate } from 'src/apisv2beta1/filter';
+import type { V2Predicate } from 'src/apisv2/filter';
 import { encodeNameFilter } from 'src/lib/ApiFilter';
 
 export enum ExpandState {
@@ -90,7 +90,7 @@ interface CustomTableProps {
   errorMessage?: string;
   filterLabel?: string;
   /** Changes reload the first page while preserving the current name filter and sort. */
-  filterPredicates?: V2beta1Predicate[];
+  filterPredicates?: V2Predicate[];
   filterActions?: React.ReactNode;
   getExpandComponent?: (index: number) => React.ReactNode;
   initialSortColumn?: string;

@@ -19,7 +19,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { vi } from 'vitest';
 import CustomTable, { Column, ExpandState, Row } from './CustomTable';
 import TestUtils, { flushPromisesInAct, invokeAndFlush } from '../TestUtils';
-import { V2beta1PredicateOperation } from '../apisv2beta1/filter';
+import { V2PredicateOperation } from '../apisv2/filter';
 import { ResourceTable } from './tables/ResourceTable';
 
 type CustomTableProps = React.ComponentProps<typeof CustomTable>;
@@ -839,7 +839,7 @@ describe('CustomTable', () => {
         predicates: [
           {
             key: 'name',
-            operation: V2beta1PredicateOperation.IS_SUBSTRING,
+            operation: V2PredicateOperation.IS_SUBSTRING,
             string_value: 'test filter',
           },
         ],
@@ -876,7 +876,7 @@ describe('CustomTable', () => {
         predicates: [
           {
             key: 'name',
-            operation: V2beta1PredicateOperation.IS_SUBSTRING,
+            operation: V2PredicateOperation.IS_SUBSTRING,
             string_value: 'test filter',
           },
         ],
@@ -953,7 +953,7 @@ it('reloads changed predicates without remounting or losing the current filter a
   reload.mockClear();
   const predicate = {
     key: 'type',
-    operation: V2beta1PredicateOperation.IN,
+    operation: V2PredicateOperation.IN,
     int_values: { values: [6] },
   };
   wrapper.rerender({ ...props, filterPredicates: [predicate] });
@@ -967,7 +967,7 @@ it('reloads changed predicates without remounting or losing the current filter a
   });
   expect(JSON.parse(decodeURIComponent(reload.mock.lastCall?.[0].filter))).toEqual({
     predicates: [
-      { key: 'name', operation: V2beta1PredicateOperation.IS_SUBSTRING, string_value: 'saved' },
+      { key: 'name', operation: V2PredicateOperation.IS_SUBSTRING, string_value: 'saved' },
       predicate,
     ],
   });

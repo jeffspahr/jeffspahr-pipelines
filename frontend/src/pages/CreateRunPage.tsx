@@ -10,10 +10,10 @@ import { NamespaceContext } from 'src/lib/KubeflowClient';
 import { URLParser } from 'src/lib/URLParser';
 import CreateRunForm from './CreateRunForm';
 import { PageProps } from './Page';
-import { V2beta1Pipeline, V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
-import { V2beta1Run } from 'src/apisv2beta1/run';
-import { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
-import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
+import { V2Pipeline, V2PipelineVersion } from 'src/apisv2/pipeline';
+import { V2Run } from 'src/apisv2/run';
+import { V2RecurringRun } from 'src/apisv2/recurringrun';
+import { V2Experiment } from 'src/apisv2/experiment';
 
 function CreateRunPage(props: PageProps) {
   const namespace = React.useContext(NamespaceContext);
@@ -41,7 +41,7 @@ function CreateRunPage(props: PageProps) {
     isError: v2RunIsError,
     error: v2RunError,
     data: v2Run,
-  } = useQuery<V2beta1Run, Error>({
+  } = useQuery<V2Run, Error>({
     queryKey: queryKeys.v2RunDetailSingle(existingRunId),
     queryFn: () => {
       if (!existingRunId) {
@@ -60,7 +60,7 @@ function CreateRunPage(props: PageProps) {
     isError: recurringRunIsError,
     error: recurringRunError,
     data: recurringRun,
-  } = useQuery<V2beta1RecurringRun, Error>({
+  } = useQuery<V2RecurringRun, Error>({
     queryKey: queryKeys.recurringRun(originalRecurringRunId),
     queryFn: () => {
       if (!originalRecurringRunId) {
@@ -94,7 +94,7 @@ function CreateRunPage(props: PageProps) {
     isError: pipelineIsError,
     error: pipelineError,
     data: pipeline,
-  } = useQuery<V2beta1Pipeline, Error>({
+  } = useQuery<V2Pipeline, Error>({
     queryKey: queryKeys.pipeline(pipelineIdFromPipeline),
     queryFn: () => {
       if (!pipelineIdFromPipeline) {
@@ -115,7 +115,7 @@ function CreateRunPage(props: PageProps) {
     isError: pipelineVersionIsError,
     error: pipelineVersionError,
     data: pipelineVersion,
-  } = useQuery<V2beta1PipelineVersion, Error>({
+  } = useQuery<V2PipelineVersion, Error>({
     queryKey: queryKeys.pipelineVersion(pipelineId, pipelineVersionId),
     queryFn: () => {
       if (!(pipelineId && pipelineVersionId)) {
@@ -135,7 +135,7 @@ function CreateRunPage(props: PageProps) {
     isError: experimentIsError,
     error: experimentError,
     data: experiment,
-  } = useQuery<V2beta1Experiment, Error>({
+  } = useQuery<V2Experiment, Error>({
     queryKey: queryKeys.experiment(experimentId),
     queryFn: async () => {
       if (!experimentId) {

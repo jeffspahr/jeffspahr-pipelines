@@ -22,7 +22,7 @@ import { ScheduleSwitch } from 'src/components/runs/ScheduleSwitch';
 import 'src/components/runs/ExperimentWorkflows.css';
 import CustomTable, { Column, Row, CustomRendererProps } from 'src/components/CustomTable';
 import { Toolbar } from 'src/components/shell/PageChrome';
-import { V2beta1RecurringRun, V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
+import { V2RecurringRun, V2RecurringRunStatus } from 'src/apisv2/recurringrun';
 import { Apis, JobSortKeys, ListRequest } from 'src/lib/Apis';
 import { DialogProps, RoutePage, RouteParams } from 'src/components/Router';
 import { Link } from 'react-router';
@@ -36,7 +36,7 @@ export interface RecurringRunListProps extends NavigationProps {
 }
 
 interface RecurringRunListState {
-  runs: V2beta1RecurringRun[];
+  runs: V2RecurringRun[];
   selectedIds: string[];
   toolbarActionMap: ToolbarActionMap;
 }
@@ -130,10 +130,10 @@ class RecurringRunsManager extends React.Component<RecurringRunListProps, Recurr
     );
   };
 
-  public _enabledCustomRenderer: React.FC<CustomRendererProps<V2beta1RecurringRunStatus>> = (
-    props: CustomRendererProps<V2beta1RecurringRunStatus>,
+  public _enabledCustomRenderer: React.FC<CustomRendererProps<V2RecurringRunStatus>> = (
+    props: CustomRendererProps<V2RecurringRunStatus>,
   ) => {
-    const enabled = props.value === V2beta1RecurringRunStatus.ENABLED;
+    const enabled = props.value === V2RecurringRunStatus.ENABLED;
     return (
       <ScheduleSwitch
         name={
@@ -150,7 +150,7 @@ class RecurringRunsManager extends React.Component<RecurringRunListProps, Recurr
   };
 
   protected async _loadRuns(request: ListRequest): Promise<string> {
-    let runs: V2beta1RecurringRun[] = [];
+    let runs: V2RecurringRun[] = [];
     let nextPageToken = '';
     try {
       const response = await Apis.recurringRunServiceApi.listRecurringRuns(

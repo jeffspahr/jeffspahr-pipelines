@@ -17,7 +17,7 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Apis } from 'src/lib/Apis';
-import { V2beta1RecurringRunStatus as Status } from 'src/apisv2beta1/recurringrun';
+import { V2RecurringRunStatus as Status } from 'src/apisv2/recurringrun';
 import { RecurringRunSwitch } from './RecurringRunSwitch';
 vi.mock('../shell/ThemeProvider', () => ({ useTheme: () => ({ themeClassName: 'kfp-theme' }) }));
 

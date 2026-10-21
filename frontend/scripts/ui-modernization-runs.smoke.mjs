@@ -159,7 +159,7 @@ async function withFixture(options, exercise) {
               : 'application/octet-stream';
         return route.fulfill({ body, contentType });
       }
-      if (path === '/apis/v2beta1/healthz') return json({ apiServerTagName: 'fixture' });
+      if (path === '/apis/v2/healthz') return json({ apiServerTagName: 'fixture' });
       if (path === '/system/cluster-name' || path === '/system/project-id') {
         if (fixture.metadataGate) {
           fixture.metadataGate.enter();
@@ -174,7 +174,7 @@ async function withFixture(options, exercise) {
         });
       }
       if (
-        ['/apis/v2beta1/runs', '/apis/v2beta1/pipelines', '/apis/v2beta1/experiments'].includes(
+        ['/apis/v2/runs', '/apis/v2/pipelines', '/apis/v2/experiments'].includes(
           path,
         ) &&
         url.searchParams.get('page_size') === '5'
@@ -212,8 +212,8 @@ async function withFixture(options, exercise) {
           ].filter(matches),
         });
       }
-      if (path === '/apis/v2beta1/runs' && request.method() === 'GET') {
-        assert.equal(url.pathname, `${options.embedded ? '/pipelines' : ''}/apis/v2beta1/runs`);
+      if (path === '/apis/v2/runs' && request.method() === 'GET') {
+        assert.equal(url.pathname, `${options.embedded ? '/pipelines' : ''}/apis/v2/runs`);
         const query = Object.fromEntries(url.searchParams);
         assert.equal(query.skip_count, 'true');
         assert.ok([10, 20, 50, 100].includes(Number(query.page_size)));
@@ -263,13 +263,13 @@ async function withFixture(options, exercise) {
           next_page_token: end < runs.length ? `fixture-offset-${end}` : '',
         });
       }
-      const tasks = /^\/apis\/v2beta1\/runs\/([^/]+)\/tasks$/.exec(path);
+      const tasks = /^\/apis\/v2\/runs\/([^/]+)\/tasks$/.exec(path);
       if (tasks) {
         assert.equal(request.method(), 'GET');
         assert.ok(fixture.runs.some((run) => run.run_id === tasks[1]));
         return json({ tasks: [] });
       }
-      const run = /^\/apis\/v2beta1\/runs\/([^/:]+)(?::(archive|unarchive))?$/.exec(path);
+      const run = /^\/apis\/v2\/runs\/([^/:]+)(?::(archive|unarchive))?$/.exec(path);
       if (run) {
         const id = decodeURIComponent(run[1]);
         const item = fixture.runs.find((candidate) => candidate.run_id === id);
@@ -286,25 +286,25 @@ async function withFixture(options, exercise) {
         else item.storage_state = action === 'archive' ? 'ARCHIVED' : 'AVAILABLE';
         return json({});
       }
-      if (path === '/apis/v2beta1/experiments')
+      if (path === '/apis/v2/experiments')
         return json({
           experiments: [{ experiment_id: 'experiment-a', display_name: 'Browser experiment' }],
         });
-      if (path === '/apis/v2beta1/experiments/experiment-a')
+      if (path === '/apis/v2/experiments/experiment-a')
         return json({ experiment_id: 'experiment-a', display_name: 'Browser experiment' });
-      if (path === '/apis/v2beta1/pipelines/pipeline-a')
+      if (path === '/apis/v2/pipelines/pipeline-a')
         return json({ pipeline_id: 'pipeline-a', display_name: 'Browser pipeline' });
-      if (path === '/apis/v2beta1/pipelines/pipeline-a/versions/deleted-version') {
+      if (path === '/apis/v2/pipelines/pipeline-a/versions/deleted-version') {
         fixture.versionReads.push(path);
         return json({ code: 5, message: 'Fixture deleted version' }, 404);
       }
-      if (path === '/apis/v2beta1/pipelines/pipeline-a/versions')
+      if (path === '/apis/v2/pipelines/pipeline-a/versions')
         return json({ pipeline_versions: [pipelineVersion] });
-      if (path === '/apis/v2beta1/pipelines/pipeline-a/versions/version-a') {
+      if (path === '/apis/v2/pipelines/pipeline-a/versions/version-a') {
         fixture.versionReads.push(path);
         return json(pipelineVersion);
       }
-      if (path === '/apis/v2beta1/artifacts' || path === '/apis/v2beta1/artifact_tasks')
+      if (path === '/apis/v2/artifacts' || path === '/apis/v2/artifact_tasks')
         return json({});
       throw new Error(`Unexpected fixture request: ${request.method()} ${path}`);
     } catch (error) {
@@ -358,7 +358,7 @@ async function reloadRows(page, action, count = 10) {
   const host = typeof page.page === 'function' ? page.page() : page;
   const response = host.waitForResponse(
     (response) =>
-      new URL(response.url()).pathname.endsWith('/apis/v2beta1/runs') &&
+      new URL(response.url()).pathname.endsWith('/apis/v2/runs') &&
       response.request().method() === 'GET',
   );
   await action();
@@ -415,8 +415,8 @@ test('Runs preserves token paging, filtering, sorting, and page selection contra
     assert.deepEqual(
       fixture.versionReads.toSorted(),
       [
-        '/apis/v2beta1/pipelines/pipeline-a/versions/deleted-version',
-        '/apis/v2beta1/pipelines/pipeline-a/versions/version-a',
+        '/apis/v2/pipelines/pipeline-a/versions/deleted-version',
+        '/apis/v2/pipelines/pipeline-a/versions/version-a',
       ],
       'each distinct referenced version is fetched once per page load',
     );

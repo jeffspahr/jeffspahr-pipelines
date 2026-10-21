@@ -20,7 +20,7 @@ import { vi } from 'vitest';
 import { ArchivedRuns } from './ArchivedRuns';
 import { PageProps } from './Page';
 import { ToolbarProps } from 'src/lib/PageChromeTypes';
-import { V2beta1RunStorageState } from 'src/apisv2beta1/run';
+import { V2RunStorageState } from 'src/apisv2/run';
 import { ButtonKeys } from 'src/lib/Buttons';
 import { Apis } from 'src/lib/Apis';
 
@@ -148,7 +148,7 @@ describe('ArchivedRuns', () => {
 
   it('shows a list of available runs', () => {
     renderArchivedRuns();
-    expect(lastRunListProps.storageState).toBe(V2beta1RunStorageState.ARCHIVED.toString());
+    expect(lastRunListProps.storageState).toBe(V2RunStorageState.ARCHIVED.toString());
   });
 
   it('cancels deletion when Cancel is clicked', async () => {

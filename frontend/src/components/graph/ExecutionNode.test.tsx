@@ -19,7 +19,7 @@ import { render, screen } from '@testing-library/react';
 import ExecutionNode from './ExecutionNode';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
+import { PipelineTaskTaskState } from 'src/apisv2/run';
 import { ReactFlowProvider } from '@xyflow/react';
 
 describe('ExecutionNode', () => {

@@ -15,7 +15,7 @@
  */
 
 import { encodeNameFilter } from './ApiFilter';
-import { V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+import { V2PredicateOperation } from 'src/apisv2/filter';
 
 it('omits an empty filter', () => {
   expect(encodeNameFilter('')).toBe('');
@@ -23,7 +23,7 @@ it('omits an empty filter', () => {
 
 it('encodes special characters once and composes predicates without mutating them', () => {
   const types = [
-    { key: 'type', operation: V2beta1PredicateOperation.IN, int_values: { values: [6, 7] } },
+    { key: 'type', operation: V2PredicateOperation.IN, int_values: { values: [6, 7] } },
   ];
   const name = '100% / & \"quoted\" 雪';
   expect(JSON.parse(decodeURIComponent(encodeNameFilter(name, types)))).toEqual({

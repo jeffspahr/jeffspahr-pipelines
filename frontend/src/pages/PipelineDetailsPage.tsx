@@ -22,11 +22,7 @@ import { Apis } from 'src/lib/Apis';
 import { convertFlowElements } from 'src/lib/v2/StaticFlow';
 import type { PipelineFlowElement } from 'src/lib/v2/FlowTypes';
 import * as WorkflowUtils from 'src/lib/v2/WorkflowUtils';
-import {
-  V2beta1ListPipelineVersionsResponse,
-  V2beta1Pipeline,
-  V2beta1PipelineVersion,
-} from 'src/apisv2beta1/pipeline';
+import { V2ListPipelineVersionsResponse, V2Pipeline, V2PipelineVersion } from 'src/apisv2/pipeline';
 import { QUERY_PARAMS, RoutePage, RoutePageFactory, RouteParams } from 'src/components/Router';
 import { ToolbarProps } from 'src/lib/PageChromeTypes';
 import 'src/components/pipelines/Pipelines.css';
@@ -35,9 +31,9 @@ import { URLParser } from 'src/lib/URLParser';
 import { logger } from 'src/lib/Utils';
 import { Page } from './Page';
 import PipelineDetailsView from './PipelineDetailsView';
-import { V2beta1Run } from 'src/apisv2beta1/run';
-import { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
-import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
+import { V2Run } from 'src/apisv2/run';
+import { V2RecurringRun } from 'src/apisv2/recurringrun';
+import { V2Experiment } from 'src/apisv2/experiment';
 
 import type { PipelineDefinitionSource } from 'src/components/pipelines/PipelineDefinitionDetails';
 
@@ -45,10 +41,10 @@ interface PipelineDetailsPageState {
   definitionSource?: PipelineDefinitionSource;
   graphV2: PipelineFlowElement[] | null;
   graphIsLoading: boolean;
-  v2Pipeline: V2beta1Pipeline | null;
-  v2SelectedVersion?: V2beta1PipelineVersion;
+  v2Pipeline: V2Pipeline | null;
+  v2SelectedVersion?: V2PipelineVersion;
   templateString?: string;
-  v2Versions: V2beta1PipelineVersion[];
+  v2Versions: V2PipelineVersion[];
   selectedVersionIds: string[];
 }
 
@@ -56,8 +52,8 @@ type Origin = {
   isRecurring: boolean;
   runId: string | null;
   recurringRunId: string | null;
-  v2Run?: V2beta1Run;
-  v2RecurringRun?: V2beta1RecurringRun;
+  v2Run?: V2Run;
+  v2RecurringRun?: V2RecurringRun;
 };
 
 class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
@@ -272,7 +268,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
     return fromRunId || fromRecurringRunId ? origin : undefined;
   }
 
-  private async getTempStrFromRunOrRecurringRun(existingObj: V2beta1Run | V2beta1RecurringRun) {
+  private async getTempStrFromRunOrRecurringRun(existingObj: V2Run | V2RecurringRun) {
     if (existingObj.pipeline_spec) return JsYaml.dump(existingObj.pipeline_spec);
 
     // 1. Pipeline and pipeline version id
@@ -293,7 +289,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
 
   // We don't have default version in v2 pipeline proto, choose the latest version instead.
   private async getSelectedVersion(pipelineId: string, versionId?: string) {
-    let selectedVersion: V2beta1PipelineVersion;
+    let selectedVersion: V2PipelineVersion;
     // Get specific version if version id is provided
     if (versionId) {
       try {
@@ -306,7 +302,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
       }
     } else {
       // Get the latest version if no version id
-      let listVersionsResponse: V2beta1ListPipelineVersionsResponse;
+      let listVersionsResponse: V2ListPipelineVersionsResponse;
       try {
         listVersionsResponse = await Apis.pipelineServiceApiV2.listPipelineVersions(
           pipelineId,
@@ -351,9 +347,9 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
     }
 
     let definitionSource: PipelineDefinitionSource | undefined;
-    let v2Pipeline: V2beta1Pipeline | null = null;
-    let v2SelectedVersion: V2beta1PipelineVersion | undefined;
-    let v2Versions: V2beta1PipelineVersion[] = [];
+    let v2Pipeline: V2Pipeline | null = null;
+    let v2SelectedVersion: V2PipelineVersion | undefined;
+    let v2Versions: V2PipelineVersion[] = [];
 
     let templateString = '';
     let breadcrumbs: Array<{ displayName: string; href: string }> = [];
@@ -391,7 +387,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
         const relatedExperimentId = origin.isRecurring
           ? origin.v2RecurringRun?.experiment_id
           : origin.v2Run?.experiment_id;
-        let experiment: V2beta1Experiment | undefined;
+        let experiment: V2Experiment | undefined;
         if (relatedExperimentId) {
           experiment = await Apis.experimentServiceApiV2.getExperiment(relatedExperimentId);
         }
@@ -553,7 +549,7 @@ class PipelineDetailsPage extends Page<{}, PipelineDetailsPageState> {
     }
   }
 
-  private async _getTemplateString(pipelineVersion?: V2beta1PipelineVersion): Promise<string> {
+  private async _getTemplateString(pipelineVersion?: V2PipelineVersion): Promise<string> {
     if (pipelineVersion && !pipelineVersion.pipeline_spec) {
       await this.showPageError(
         'This pipeline version has no pipeline spec. Legacy formats are no longer supported; upload a version compiled with the KFP v2 SDK.',

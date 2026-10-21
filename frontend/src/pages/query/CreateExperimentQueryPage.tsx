@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { V2beta1Experiment } from 'src/apisv2beta1/experiment';
+import { V2Experiment } from 'src/apisv2/experiment';
 import { TextField } from 'src/components/ui/text-field';
 import { Button } from 'src/components/ui/button';
 import 'src/components/runs/ExperimentWorkflows.css';
@@ -53,13 +53,13 @@ export function CreateExperimentQueryPage(props: CreateExperimentQueryPageProps)
   }, []);
 
   const newExperimentMutation = useMutation({
-    mutationFn: (experiment: V2beta1Experiment) => {
+    mutationFn: (experiment: V2Experiment) => {
       return Apis.experimentServiceApiV2.createExperiment(experiment);
     },
   });
 
   const createExperiment = async () => {
-    let newExperiment: V2beta1Experiment = {
+    let newExperiment: V2Experiment = {
       display_name: experimentName,
       description: description,
       namespace: namespace,

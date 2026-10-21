@@ -39,7 +39,7 @@ import {
   useStore,
 } from '@xyflow/react';
 import 'src/components/graph/Graph.css';
-import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
+import { PipelineTaskTaskState } from 'src/apisv2/run';
 import { getTaskStatus } from 'src/lib/StatusUtils';
 import { TaskStateIndicator } from 'src/components/graph/ExecutionNode';
 import GraphControls from 'src/components/graph/GraphControls';

@@ -22,8 +22,8 @@ import { RouteParams } from 'src/components/Router';
 import { queryKeys } from 'src/hooks/queryKeys';
 import { Apis } from 'src/lib/Apis';
 import { queryClientTest } from 'src/TestUtils';
-import { V2beta1Run, V2beta1RuntimeState } from 'src/apisv2beta1/run';
-import { V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
+import { V2Run, V2RuntimeState } from 'src/apisv2/run';
+import { V2PipelineVersion } from 'src/apisv2/pipeline';
 import { MemoryRouter } from 'react-router';
 import RunDetailsPage, {
   RUN_DETAILS_REFETCH_INTERVAL,
@@ -33,7 +33,7 @@ import v2YamlTemplateString from 'src/data/test/lightweight_python_functions_v2_
 import { vi } from 'vitest';
 
 const observedRetryCallbacks = vi.hoisted(() => [] as Array<() => void>);
-const observedRunReferences = vi.hoisted(() => [] as V2beta1Run[]);
+const observedRunReferences = vi.hoisted(() => [] as V2Run[]);
 
 vi.mock('src/pages/RunDetailsView', async (importOriginal) => ({
   ...(await importOriginal<typeof import('src/pages/RunDetailsView')>()),
@@ -107,7 +107,7 @@ describe('RunDetailsRouter', () => {
   });
 
   it('renders RunDetailsV2 when template is a v2 pipeline spec', async () => {
-    const v2Run: V2beta1Run = {
+    const v2Run: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
     };
@@ -130,10 +130,10 @@ describe('RunDetailsRouter', () => {
 
   it('does not rerender V2 details for a byte-equivalent active-run poll', async () => {
     vi.useFakeTimers();
-    const runningRun: V2beta1Run = {
+    const runningRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.RUNNING,
+      state: V2RuntimeState.RUNNING,
       created_at: new Date('2026-08-14T12:00:00Z'),
     };
     getRunSpy.mockImplementation(async () => ({
@@ -166,10 +166,10 @@ describe('RunDetailsRouter', () => {
   });
 
   it('keeps the retry callback stable across parent rerenders', async () => {
-    const v2Run: V2beta1Run = {
+    const v2Run: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
     };
     getRunSpy.mockResolvedValue(v2Run);
     const { rerender } = render(
@@ -192,14 +192,14 @@ describe('RunDetailsRouter', () => {
 
   it('polls an active v2 run and stops after observing its terminal state', async () => {
     vi.useFakeTimers();
-    const runningRun: V2beta1Run = {
+    const runningRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.RUNNING,
+      state: V2RuntimeState.RUNNING,
     };
-    const succeededRun: V2beta1Run = {
+    const succeededRun: V2Run = {
       ...runningRun,
-      state: V2beta1RuntimeState.SUCCEEDED,
+      state: V2RuntimeState.SUCCEEDED,
     };
     getRunSpy.mockResolvedValueOnce(runningRun).mockResolvedValue(succeededRun);
 
@@ -215,7 +215,7 @@ describe('RunDetailsRouter', () => {
     expect(getRunSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('run-details-v2')).toHaveAttribute(
       'data-run-state',
-      V2beta1RuntimeState.RUNNING,
+      V2RuntimeState.RUNNING,
     );
 
     await act(async () => {
@@ -227,7 +227,7 @@ describe('RunDetailsRouter', () => {
     expect(getRunSpy).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('run-details-v2')).toHaveAttribute(
       'data-run-state',
-      V2beta1RuntimeState.SUCCEEDED,
+      V2RuntimeState.SUCCEEDED,
     );
 
     await act(async () => {
@@ -238,10 +238,10 @@ describe('RunDetailsRouter', () => {
 
   it('keeps cached v2 run details visible when a background refresh fails', async () => {
     vi.useFakeTimers();
-    const runningRun: V2beta1Run = {
+    const runningRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.RUNNING,
+      state: V2RuntimeState.RUNNING,
     };
     getRunSpy
       .mockResolvedValueOnce(runningRun)
@@ -259,7 +259,7 @@ describe('RunDetailsRouter', () => {
     });
     expect(screen.getByTestId('run-details-v2')).toHaveAttribute(
       'data-run-state',
-      V2beta1RuntimeState.RUNNING,
+      V2RuntimeState.RUNNING,
     );
 
     await act(async () => {
@@ -287,12 +287,12 @@ describe('RunDetailsRouter', () => {
 
   it('starts normal polling when the post-retry refresh observes an active run', async () => {
     vi.useFakeTimers();
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
     };
-    const runningRun = { ...failedRun, state: V2beta1RuntimeState.RUNNING };
+    const runningRun = { ...failedRun, state: V2RuntimeState.RUNNING };
     getRunSpy.mockResolvedValueOnce(failedRun).mockResolvedValue(runningRun);
 
     render(
@@ -314,16 +314,16 @@ describe('RunDetailsRouter', () => {
     expect(getRunSpy).toHaveBeenCalledTimes(3);
     expect(screen.getByTestId('run-details-v2')).toHaveAttribute(
       'data-run-state',
-      V2beta1RuntimeState.RUNNING,
+      V2RuntimeState.RUNNING,
     );
   });
 
   it('does not poll forever when a fast retry is terminal before the refresh observes it', async () => {
     vi.useFakeTimers();
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
     };
     getRunSpy.mockResolvedValue(failedRun);
 
@@ -345,13 +345,13 @@ describe('RunDetailsRouter', () => {
   it('does not consume retry discovery attempts for cancelled run snapshots', async () => {
     vi.useFakeTimers();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
     };
-    let resolveCancelledRequest!: (run: V2beta1Run) => void;
-    const cancelledRequest = new Promise<V2beta1Run>((resolve) => {
+    let resolveCancelledRequest!: (run: V2Run) => void;
+    const cancelledRequest = new Promise<V2Run>((resolve) => {
       resolveCancelledRequest = resolve;
     });
     getRunSpy
@@ -389,34 +389,34 @@ describe('RunDetailsRouter', () => {
 
   it('keeps discovering a retry through shorter or divergent state histories', async () => {
     vi.useFakeTimers();
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
       state_history: [
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:00:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:00:00Z') },
       ],
     };
-    const retriedFailedRun: V2beta1Run = {
+    const retriedFailedRun: V2Run = {
       ...failedRun,
       state_history: [
         ...failedRun.state_history!,
-        { state: V2beta1RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:01:00Z') },
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:02:00Z') },
+        { state: V2RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:01:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:02:00Z') },
       ],
     };
     getRunSpy
       .mockResolvedValueOnce(failedRun)
       .mockResolvedValueOnce({
         ...failedRun,
-        state: V2beta1RuntimeState.RUNNING,
+        state: V2RuntimeState.RUNNING,
         state_history: [],
       })
       .mockResolvedValueOnce({
         ...failedRun,
-        state: V2beta1RuntimeState.RUNNING,
+        state: V2RuntimeState.RUNNING,
         state_history: [
-          { state: V2beta1RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:00:00Z') },
+          { state: V2RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:00:00Z') },
         ],
       })
       .mockResolvedValue(retriedFailedRun);
@@ -448,28 +448,28 @@ describe('RunDetailsRouter', () => {
   });
 
   it('uses a new task refresh version when run details remounts between retries', async () => {
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
       state_history: [
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:00:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:00:00Z') },
       ],
     };
-    const firstRetriedRun: V2beta1Run = {
+    const firstRetriedRun: V2Run = {
       ...failedRun,
       state_history: [
         ...failedRun.state_history!,
-        { state: V2beta1RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:01:00Z') },
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:02:00Z') },
+        { state: V2RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:01:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:02:00Z') },
       ],
     };
-    const secondRetriedRun: V2beta1Run = {
+    const secondRetriedRun: V2Run = {
       ...firstRetriedRun,
       state_history: [
         ...firstRetriedRun.state_history!,
-        { state: V2beta1RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:03:00Z') },
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:04:00Z') },
+        { state: V2RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:03:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:04:00Z') },
       ],
     };
     let apiRun = failedRun;
@@ -526,15 +526,15 @@ describe('RunDetailsRouter', () => {
 
   it('keeps discovering a retried run after the first post-retry refresh fails', async () => {
     vi.useFakeTimers();
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
     };
     getRunSpy
       .mockResolvedValueOnce(failedRun)
       .mockRejectedValueOnce(new Error('Run service unavailable'))
-      .mockResolvedValue({ ...failedRun, state: V2beta1RuntimeState.RUNNING });
+      .mockResolvedValue({ ...failedRun, state: V2RuntimeState.RUNNING });
 
     render(
       <CommonTestWrapper>
@@ -568,10 +568,10 @@ describe('RunDetailsRouter', () => {
 
   it('bounds retry discovery when every run refresh fails', async () => {
     vi.useFakeTimers();
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
     };
     getRunSpy
       .mockResolvedValueOnce(failedRun)
@@ -596,16 +596,16 @@ describe('RunDetailsRouter', () => {
 
   it('resumes pending retry discovery after Run Details navigation', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
     };
-    const retriedRun: V2beta1Run = {
+    const retriedRun: V2Run = {
       ...failedRun,
-      state: V2beta1RuntimeState.RUNNING,
+      state: V2RuntimeState.RUNNING,
       state_history: [
-        { state: V2beta1RuntimeState.RUNNING, update_time: new Date('2026-08-15T12:00:00Z') },
+        { state: V2RuntimeState.RUNNING, update_time: new Date('2026-08-15T12:00:00Z') },
       ],
     };
     let apiRun = failedRun;
@@ -637,31 +637,31 @@ describe('RunDetailsRouter', () => {
 
   it('keeps retry generation and baseline atomic across cache collection and remounts', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const failedRun: V2beta1Run = {
+    const failedRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
-      state: V2beta1RuntimeState.FAILED,
+      state: V2RuntimeState.FAILED,
       state_history: [
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:00:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:00:00Z') },
       ],
     };
-    const retriedRun: V2beta1Run = {
+    const retriedRun: V2Run = {
       ...failedRun,
       state_history: [
         ...failedRun.state_history!,
-        { state: V2beta1RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:01:00Z') },
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:02:00Z') },
+        { state: V2RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:01:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:02:00Z') },
       ],
     };
-    const secondRetriedRun: V2beta1Run = {
+    const secondRetriedRun: V2Run = {
       ...retriedRun,
       state_history: [
         ...retriedRun.state_history!,
-        { state: V2beta1RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:03:00Z') },
-        { state: V2beta1RuntimeState.FAILED, update_time: new Date('2026-08-14T12:04:00Z') },
+        { state: V2RuntimeState.RUNNING, update_time: new Date('2026-08-14T12:03:00Z') },
+        { state: V2RuntimeState.FAILED, update_time: new Date('2026-08-14T12:04:00Z') },
       ],
     };
-    let apiRun: V2beta1Run = failedRun;
+    let apiRun: V2Run = failedRun;
     getRunSpy.mockImplementation(async () => apiRun);
     const props = generateProps();
     const renderHarness = (mounted: boolean) => (
@@ -759,8 +759,8 @@ describe('RunDetailsRouter', () => {
   });
 
   it('remounts the v2 detail subtree when the run ID changes', async () => {
-    const runOne: V2beta1Run = { run_id: 'run-1', pipeline_spec: v2PipelineSpec };
-    const runTwo: V2beta1Run = { run_id: 'run-2', pipeline_spec: v2PipelineSpec };
+    const runOne: V2Run = { run_id: 'run-1', pipeline_spec: v2PipelineSpec };
+    const runTwo: V2Run = { run_id: 'run-2', pipeline_spec: v2PipelineSpec };
     getRunSpy.mockImplementation(async (runId) => (runId === 'run-1' ? runOne : runTwo));
     const { rerender } = render(
       <CommonTestWrapper>
@@ -785,7 +785,7 @@ describe('RunDetailsRouter', () => {
       metadata: { name: 'test' },
       spec: { arguments: { parameters: [{ name: 'output' }] } },
     };
-    const invalidRun: V2beta1Run = {
+    const invalidRun: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: argoWorkflow,
     };
@@ -817,7 +817,7 @@ describe('RunDetailsRouter', () => {
     getRunSpy.mockResolvedValue({
       run_id: TEST_RUN_ID,
       pipeline_spec: argoWorkflow,
-      state: V2beta1RuntimeState.RUNNING,
+      state: V2RuntimeState.RUNNING,
     });
 
     render(
@@ -842,9 +842,9 @@ describe('RunDetailsRouter', () => {
     'recovers a %s version from stored IR and retains it across polls and retries',
     async (versionState) => {
       const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-      const run: V2beta1Run = {
+      const run: V2Run = {
         run_id: TEST_RUN_ID,
-        state: V2beta1RuntimeState.FAILED,
+        state: V2RuntimeState.FAILED,
         pipeline_version_reference: {
           pipeline_id: TEST_PIPELINE_ID,
           pipeline_version_id: TEST_PIPELINE_VERSION_ID,
@@ -874,7 +874,7 @@ describe('RunDetailsRouter', () => {
       );
       expect(client.getQueryData(queryKeys.v2RunDetail(TEST_RUN_ID))).toEqual(run);
 
-      run.state = V2beta1RuntimeState.RUNNING;
+      run.state = V2RuntimeState.RUNNING;
       fireEvent.click(screen.getByText('Retry started'));
       await waitFor(() => expect(details).toHaveAttribute('data-run-state', 'RUNNING'));
       await act(async () => {
@@ -922,7 +922,7 @@ describe('RunDetailsRouter', () => {
   });
 
   it('shows loading indicator while pipeline version template is fetching', async () => {
-    const runWithVersionRef: V2beta1Run = {
+    const runWithVersionRef: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_version_reference: {
         pipeline_id: TEST_PIPELINE_ID,
@@ -953,14 +953,14 @@ describe('RunDetailsRouter', () => {
 
     it('keeps RunDetailsV2 out of loading state during template refetch after the template is cached', async () => {
       const nativeSpec = v2PipelineSpec;
-      const runWithVersionRef: V2beta1Run = {
+      const runWithVersionRef: V2Run = {
         run_id: TEST_RUN_ID,
         pipeline_version_reference: {
           pipeline_id: TEST_PIPELINE_ID,
           pipeline_version_id: TEST_PIPELINE_VERSION_ID,
         },
       };
-      const pipelineVersion: V2beta1PipelineVersion = {
+      const pipelineVersion: V2PipelineVersion = {
         pipeline_id: TEST_PIPELINE_ID,
         pipeline_version_id: TEST_PIPELINE_VERSION_ID,
         pipeline_spec: nativeSpec,
@@ -1012,7 +1012,7 @@ describe('RunDetailsRouter', () => {
     // usePipelineVersionTemplate is only enabled when pipelineId and pipelineVersionId
     // are both present. A run with only pipeline_spec has no version reference, so the
     // hook stays disabled and getPipelineVersion is never called.
-    const v2Run: V2beta1Run = {
+    const v2Run: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
     };
@@ -1031,7 +1031,7 @@ describe('RunDetailsRouter', () => {
   });
 
   it('prefers inline pipeline_spec over pipeline version template when both are present', async () => {
-    const v2Run: V2beta1Run = {
+    const v2Run: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
       pipeline_version_reference: {
@@ -1076,7 +1076,7 @@ describe('RunDetailsRouter', () => {
   });
 
   it('shows error banner when pipeline version template fetch fails', async () => {
-    const runWithVersionRef: V2beta1Run = {
+    const runWithVersionRef: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_version_reference: {
         pipeline_id: TEST_PIPELINE_ID,
@@ -1105,7 +1105,7 @@ describe('RunDetailsRouter', () => {
   });
 
   it('does not show error banner when inline pipeline_spec is present and getPipelineVersion rejects', async () => {
-    const v2Run: V2beta1Run = {
+    const v2Run: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_spec: v2PipelineSpec,
       pipeline_version_reference: {
@@ -1130,14 +1130,14 @@ describe('RunDetailsRouter', () => {
   });
 
   it('fetches template from pipeline version when run has no inline spec', async () => {
-    const runWithVersionRef: V2beta1Run = {
+    const runWithVersionRef: V2Run = {
       run_id: TEST_RUN_ID,
       pipeline_version_reference: {
         pipeline_id: TEST_PIPELINE_ID,
         pipeline_version_id: TEST_PIPELINE_VERSION_ID,
       },
     };
-    const pipelineVersion: V2beta1PipelineVersion = {
+    const pipelineVersion: V2PipelineVersion = {
       pipeline_id: TEST_PIPELINE_ID,
       pipeline_version_id: TEST_PIPELINE_VERSION_ID,
       pipeline_spec: v2PipelineSpec,
@@ -1181,7 +1181,7 @@ it('clears an initial load error after a successful retry without resetting the 
   getRun.mockResolvedValue({
     run_id: TEST_RUN_ID,
     pipeline_spec: v2PipelineSpec,
-    state: V2beta1RuntimeState.SUCCEEDED,
+    state: V2RuntimeState.SUCCEEDED,
   });
   await act(async () => {
     await client.invalidateQueries({ queryKey: queryKeys.v2RunDetail(TEST_RUN_ID) });

@@ -197,6 +197,7 @@ it.each([
   '/static/orphan.js',
   '/static/missing.js',
   '/index.html',
+  '/apis/v2/runs',
   '/apis/v2beta1/runs',
   '/artifacts/get',
   '/static/../Editor-hash.js',

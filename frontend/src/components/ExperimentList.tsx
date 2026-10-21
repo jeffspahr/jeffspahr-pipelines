@@ -21,14 +21,14 @@ import * as React from 'react';
 import { ResourceTable } from 'src/components/tables/ResourceTable';
 import { Link } from 'react-router';
 import {
-  V2beta1ListExperimentsResponse,
-  V2beta1Experiment,
-  V2beta1ExperimentStorageState,
-} from 'src/apisv2beta1/experiment';
+  V2ListExperimentsResponse,
+  V2Experiment,
+  V2ExperimentStorageState,
+} from 'src/apisv2/experiment';
 import { errorToMessage } from 'src/lib/Utils';
 import { RoutePage, RouteParams } from './Router';
 import { Apis, ExperimentSortKeys, ListRequest } from 'src/lib/Apis';
-import { V2beta1Filter, V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+import { V2Filter, V2PredicateOperation } from 'src/apisv2/filter';
 import { ExperimentRunPreview } from './runs/ExperimentRunPreview';
 import { produce as immerProduce } from 'immer';
 import 'src/components/runs/ExperimentWorkflows.css';
@@ -36,11 +36,11 @@ import 'src/components/runs/ExperimentWorkflows.css';
 export interface ExperimentListProps extends NavigationProps {
   namespace?: string;
   scopeControl?: React.ReactNode;
-  storageState?: V2beta1ExperimentStorageState;
+  storageState?: V2ExperimentStorageState;
   onError: (message: string, error: Error) => void;
 }
 
-interface DisplayExperiment extends V2beta1Experiment {
+interface DisplayExperiment extends V2Experiment {
   error?: string;
   expandState?: ExpandState;
 }
@@ -146,17 +146,17 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
         // Augment the request filter with the storage state predicate
         const filter = JSON.parse(
           decodeURIComponent(request.filter || '{"predicates": []}'),
-        ) as V2beta1Filter;
+        ) as V2Filter;
         filter.predicates = (filter.predicates || []).concat([
           {
             key: 'storage_state',
             // Use EQUALS ARCHIVED or NOT EQUALS ARCHIVED to account for cases where the field
             // is missing, in which case it should be counted as available.
             operation:
-              this.props.storageState === V2beta1ExperimentStorageState.ARCHIVED
-                ? V2beta1PredicateOperation.EQUALS
-                : V2beta1PredicateOperation.NOT_EQUALS,
-            string_value: V2beta1ExperimentStorageState.ARCHIVED.toString(),
+              this.props.storageState === V2ExperimentStorageState.ARCHIVED
+                ? V2PredicateOperation.EQUALS
+                : V2PredicateOperation.NOT_EQUALS,
+            string_value: V2ExperimentStorageState.ARCHIVED.toString(),
           },
         ]);
         request.filter = encodeURIComponent(JSON.stringify(filter));
@@ -168,7 +168,7 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
     }
 
     try {
-      let response: V2beta1ListExperimentsResponse;
+      let response: V2ListExperimentsResponse;
       response = await Apis.experimentServiceApiV2.listExperiments(
         request.pageToken,
         request.pageSize,
@@ -206,7 +206,7 @@ export class ExperimentList extends React.PureComponent<ExperimentListProps, Exp
       <ExperimentRunPreview
         key={`${experiment.experiment_id}:${this.props.storageState}`}
         experimentId={experiment.experiment_id!}
-        archived={this.props.storageState === V2beta1ExperimentStorageState.ARCHIVED}
+        archived={this.props.storageState === V2ExperimentStorageState.ARCHIVED}
       />
     );
   }

@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-import { V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
-import type { V2beta1Predicate } from 'src/apisv2beta1/filter';
+import { V2PredicateOperation } from 'src/apisv2/filter';
+import type { V2Predicate } from 'src/apisv2/filter';
 
 /** Compose list predicates before encoding once for the API query parameter. */
-export function encodeNameFilter(
-  name: string,
-  additionalPredicates: V2beta1Predicate[] = [],
-): string {
-  const predicates: V2beta1Predicate[] = name
-    ? [{ key: 'name', operation: V2beta1PredicateOperation.IS_SUBSTRING, string_value: name }]
+export function encodeNameFilter(name: string, additionalPredicates: V2Predicate[] = []): string {
+  const predicates: V2Predicate[] = name
+    ? [{ key: 'name', operation: V2PredicateOperation.IS_SUBSTRING, string_value: name }]
     : [];
   predicates.push(...additionalPredicates);
   return predicates.length ? encodeURIComponent(JSON.stringify({ predicates })) : '';

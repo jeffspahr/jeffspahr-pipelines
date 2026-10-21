@@ -18,7 +18,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 import { Apis } from 'src/lib/Apis';
-import { V2beta1RuntimeState } from 'src/apisv2beta1/run';
+import { V2RuntimeState } from 'src/apisv2/run';
 import { ExperimentRunPreview } from './ExperimentRunPreview';
 
 it('shows at most five linked runs without table or selection controls', () => {
@@ -30,7 +30,7 @@ it('shows at most five linked runs without table or selection controls', () => {
         runs={Array.from({ length: 7 }, (_, i) => ({
           run_id: `run/${i}`,
           display_name: `Run ${i}`,
-          state: V2beta1RuntimeState.SUCCEEDED,
+          state: V2RuntimeState.SUCCEEDED,
         }))}
       />
     </MemoryRouter>,

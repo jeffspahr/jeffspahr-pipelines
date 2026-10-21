@@ -237,11 +237,11 @@ async function withFixture(options, exercise) {
                 : 'application/octet-stream',
         });
       }
-      if (path === '/apis/v2beta1/healthz')
+      if (path === '/apis/v2/healthz')
         return json({ apiServerTagName: 'fixture', apiServerMultiUser: !!options.namespace });
       if (path === '/system/cluster-name' || path === '/system/project-id')
         return route.fulfill({ body: '' });
-      if (path === '/apis/v2beta1/artifacts') {
+      if (path === '/apis/v2/artifacts') {
         assert.equal(request.method(), 'GET');
         assert.ok([10, 20, 50, 100].includes(Number(query.page_size)));
         assert.match(
@@ -284,16 +284,16 @@ async function withFixture(options, exercise) {
           next_page_token: end < rows.length ? `offset-${end}` : '',
         });
       }
-      if (path.startsWith('/apis/v2beta1/artifacts/')) {
+      if (path.startsWith('/apis/v2/artifacts/')) {
         if (fixture.failArtifact) return json({ message: 'Artifact temporarily unavailable' }, 503);
-        const id = decodeURIComponent(path.slice('/apis/v2beta1/artifacts/'.length));
+        const id = decodeURIComponent(path.slice('/apis/v2/artifacts/'.length));
         const artifact = [...artifacts, inputArtifact, outputArtifact, legacyArtifact].find(
           (item) => item.artifact_id === id,
         );
         assert.ok(artifact, `unknown artifact ${id}`);
         return json(artifact);
       }
-      if (path === '/apis/v2beta1/artifact_tasks') {
+      if (path === '/apis/v2/artifact_tasks') {
         assert.equal(request.method(), 'GET');
         assert.ok([5, 10, 20, 50, 100].includes(Number(query.page_size)));
         if (fixture.failRelationships)
@@ -330,12 +330,12 @@ async function withFixture(options, exercise) {
           next_page_token: query.page_token ? '' : 'related-next',
         });
       }
-      if (path === '/apis/v2beta1/runs/run%2Fone')
+      if (path === '/apis/v2/runs/run%2Fone')
         return json({ run_id: 'run/one', display_name: 'Artifact training run' });
-      if (path === '/apis/v2beta1/runs/run%2Fone/tasks') return json({ tasks });
-      if (path.startsWith('/apis/v2beta1/runs/run%2Fone/tasks/')) {
+      if (path === '/apis/v2/runs/run%2Fone/tasks') return json({ tasks });
+      if (path.startsWith('/apis/v2/runs/run%2Fone/tasks/')) {
         if (fixture.failTask) return json({ message: 'Task temporarily unavailable' }, 503);
-        const id = decodeURIComponent(path.slice('/apis/v2beta1/runs/run%2Fone/tasks/'.length));
+        const id = decodeURIComponent(path.slice('/apis/v2/runs/run%2Fone/tasks/'.length));
         const task = tasks.find((item) => item.task_id === id);
         assert.ok(task, `unknown task ${id}`);
         return json(task);
@@ -455,7 +455,7 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
     await ready(page, 10);
     await page.getByRole('alert').waitFor({ state: 'hidden' });
     assert.equal(
-      fixture.requests.filter((item) => item.path.startsWith('/apis/v2beta1/artifacts/')).length,
+      fixture.requests.filter((item) => item.path.startsWith('/apis/v2/artifacts/')).length,
       0,
       'list rows must not fetch per-artifact details',
     );
@@ -465,7 +465,7 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
     await page.getByRole('searchbox', { name: 'Search artifacts' }).fill('Artifact 1');
     await ready(page, 7);
     assert.ok(
-      !fixture.requests.filter((item) => item.path === '/apis/v2beta1/artifacts').at(-1).query
+      !fixture.requests.filter((item) => item.path === '/apis/v2/artifacts').at(-1).query
         .page_token,
     );
     await page.getByRole('button', { name: 'Name', exact: true }).click();
@@ -474,7 +474,7 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
     await page.getByRole('menuitemradio', { name: 'Metrics', exact: true }).click();
     await ready(page, 3);
     const query = fixture.requests
-      .filter((item) => item.path === '/apis/v2beta1/artifacts')
+      .filter((item) => item.path === '/apis/v2/artifacts')
       .at(-1).query;
     assert.equal(query.namespace, 'team-a');
     assert.equal(query.sort_by, 'name');
@@ -491,7 +491,7 @@ test('Artifacts combines scoped type/name filters with token paging, sorting, an
     await page.evaluate(() => window.selectFixtureNamespace('team-b'));
     await ready(page, 2);
     assert.equal(
-      fixture.requests.filter((item) => item.path === '/apis/v2beta1/artifacts').at(-1).query
+      fixture.requests.filter((item) => item.path === '/apis/v2/artifacts').at(-1).query
         .namespace,
       'team-b',
     );
@@ -547,7 +547,7 @@ test('Related artifact tasks preserve producer/root semantics, encoded task dest
       .getByRole('link', { name: 'Artifact training run · Train model', exact: true })
       .waitFor();
     assert.equal(
-      fixture.requests.filter((item) => item.path === '/apis/v2beta1/runs/run%2Fone/tasks').length,
+      fixture.requests.filter((item) => item.path === '/apis/v2/runs/run%2Fone/tasks').length,
       1,
       'related rows share task-name reads',
     );
@@ -590,7 +590,7 @@ test('Artifact lineage bounds neighborhoods, preserves directed identity and his
     );
     assert.ok(
       fixture.requests
-        .filter((item) => item.path === '/apis/v2beta1/artifact_tasks')
+        .filter((item) => item.path === '/apis/v2/artifact_tasks')
         .every((item) => item.query.page_size === '5' && !item.query.page_token),
     );
     assert.equal(

@@ -20,9 +20,9 @@ import type { CustomTableRenderModel } from '../CustomTable';
 import { RunStatus } from '../runs/RunStatus';
 import { RunsTable } from './RunsTable';
 import { ThemeProvider } from '../shell/ThemeProvider';
-import type { V2beta1RuntimeState } from 'src/apisv2beta1/run';
+import type { V2RuntimeState } from 'src/apisv2/run';
 
-const fixtures: { id: string; name: string; state: V2beta1RuntimeState; duration: string }[] = [
+const fixtures: { id: string; name: string; state: V2RuntimeState; duration: string }[] = [
   { id: 'run-7f3a2c', name: 'churn-model nightly', state: 'RUNNING', duration: '00:03:42' },
   { id: 'run-9b1e07', name: 'feature-backfill', state: 'SUCCEEDED', duration: '00:12:08' },
   { id: 'run-c41a88', name: 'ranker eval · candidate 21', state: 'FAILED', duration: '00:02:56' },

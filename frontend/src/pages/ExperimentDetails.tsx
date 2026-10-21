@@ -21,15 +21,15 @@ import RecurringRunsManager from './RecurringRunsManager';
 import ExperimentRunTabs, { RunListsGroupTab } from './ExperimentRunTabs';
 import type { ToolbarProps } from 'src/lib/PageChromeTypes';
 import { Toolbar } from 'src/components/shell/PageChrome';
-import { V2beta1Experiment, V2beta1ExperimentStorageState } from 'src/apisv2beta1/experiment';
+import { V2Experiment, V2ExperimentStorageState } from 'src/apisv2/experiment';
 import { Apis } from 'src/lib/Apis';
 import { Page, PageProps } from './Page';
 import { RoutePage, RouteParams } from 'src/components/Router';
 import { errorToMessage, logger } from 'src/lib/Utils';
 import { useNamespaceChangeEvent } from 'src/lib/KubeflowClient';
 import { Navigate } from 'react-router';
-import { V2beta1RunStorageState } from 'src/apisv2beta1/run';
-import { V2beta1RecurringRunStatus } from 'src/apisv2beta1/recurringrun';
+import { V2RunStorageState } from 'src/apisv2/run';
+import { V2RecurringRunStatus } from 'src/apisv2/recurringrun';
 
 import { Button } from 'src/components/ui/button';
 import { ModalDialog } from 'src/components/ui/dialog';
@@ -37,10 +37,10 @@ import 'src/components/runs/ExperimentWorkflows.css';
 
 interface ExperimentDetailsState {
   activeRecurringRunsCount: number;
-  experiment: V2beta1Experiment | null;
+  experiment: V2Experiment | null;
   recurringRunsManagerOpen: boolean;
   selectedIds: string[];
-  runStorageState: V2beta1RunStorageState;
+  runStorageState: V2RunStorageState;
   runListToolbarProps: ToolbarProps;
   runlistRefreshCount: number;
 }
@@ -61,7 +61,7 @@ export class ExperimentDetails extends Page<{}, ExperimentDetailsState> {
       },
       // TODO: remove
       selectedIds: [],
-      runStorageState: V2beta1RunStorageState.AVAILABLE,
+      runStorageState: V2RunStorageState.AVAILABLE,
       runlistRefreshCount: 0,
     };
   }
@@ -205,7 +205,7 @@ export class ExperimentDetails extends Page<{}, ExperimentDetailsState> {
         this.getInitialToolbarState().actions,
       );
       const idGetter = () => (experiment.experiment_id ? [experiment.experiment_id] : []);
-      experiment.storage_state === V2beta1ExperimentStorageState.ARCHIVED
+      experiment.storage_state === V2ExperimentStorageState.ARCHIVED
         ? buttons.restore('experiment', idGetter, true, () => this.refresh())
         : buttons.archive('experiment', idGetter, true, () => this.refresh());
       // If experiment is archived, shows archived runs list by default.
@@ -216,9 +216,9 @@ export class ExperimentDetails extends Page<{}, ExperimentDetailsState> {
       // want to view.
       if (isFirstTimeLoad) {
         runStorageState =
-          experiment.storage_state === V2beta1ExperimentStorageState.ARCHIVED
-            ? V2beta1RunStorageState.ARCHIVED
-            : V2beta1RunStorageState.AVAILABLE;
+          experiment.storage_state === V2ExperimentStorageState.ARCHIVED
+            ? V2RunStorageState.ARCHIVED
+            : V2RunStorageState.AVAILABLE;
       }
 
       const actions = buttons.getToolbarActionMap();
@@ -243,7 +243,7 @@ export class ExperimentDetails extends Page<{}, ExperimentDetailsState> {
           experimentId,
         );
         activeRecurringRunsCount = (recurringRuns.recurringRuns || []).filter(
-          (rr) => rr.status === V2beta1RecurringRunStatus.ENABLED,
+          (rr) => rr.status === V2RecurringRunStatus.ENABLED,
         ).length;
       } catch (err) {
         const error = err instanceof Error ? err : new Error(await errorToMessage(err));
@@ -279,9 +279,9 @@ export class ExperimentDetails extends Page<{}, ExperimentDetailsState> {
    * @param tab selected by user for run storage state
    */
   _onRunTabSwitch = (tab: RunListsGroupTab) => {
-    let runStorageState: V2beta1RunStorageState = V2beta1RunStorageState.AVAILABLE;
+    let runStorageState: V2RunStorageState = V2RunStorageState.AVAILABLE;
     if (tab === RunListsGroupTab.ARCHIVE) {
-      runStorageState = V2beta1RunStorageState.ARCHIVED;
+      runStorageState = V2RunStorageState.ARCHIVED;
     }
     let runlistRefreshCount = this.state.runlistRefreshCount + 1;
     this.setStateSafe(
@@ -301,7 +301,7 @@ export class ExperimentDetails extends Page<{}, ExperimentDetailsState> {
     const toolbarButtons = this._getRunInitialToolBarButtons();
     // If user selects to show Active runs list, shows `Archive` button for selected runs.
     // If user selects to show Archive runs list, shows `Restore` button for selected runs.
-    if (this.state.runStorageState === V2beta1RunStorageState.AVAILABLE) {
+    if (this.state.runStorageState === V2RunStorageState.AVAILABLE) {
       toolbarButtons.archive(
         'run',
         () => this.state.selectedIds,

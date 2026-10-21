@@ -27,7 +27,7 @@ import { getArtifactTypeName } from 'src/lib/v2/RuntimeArtifactUtils';
 import { PageTokenTracker } from 'src/lib/v2/PaginationUtils';
 import { Page, PageProps } from 'src/pages/Page';
 import { ResourceTable } from 'src/components/tables/ResourceTable';
-import { V2beta1PredicateOperation } from 'src/apisv2beta1/filter';
+import { V2PredicateOperation } from 'src/apisv2/filter';
 import './Artifacts.css';
 
 import { DateListFilter, ColumnFilter, FilterChip } from 'src/components/tables/ColumnFilter';
@@ -46,7 +46,7 @@ interface ArtifactUriCell {
   uri: string;
 }
 
-// Numeric values are the ArtifactType wire values in backend/api/v2beta1/artifact.proto.
+// Numeric values are the ArtifactType wire values in backend/api/v2/artifact.proto.
 // The list service filters its integer Type column; totals are not fetched for these choices.
 const TYPE_FILTERS = [
   { label: 'All', values: [] },
@@ -111,7 +111,7 @@ export class ArtifactList extends Page<ArtifactListProps, ArtifactListState> {
                   ? [
                       {
                         key: 'type',
-                        operation: V2beta1PredicateOperation.IN,
+                        operation: V2PredicateOperation.IN,
                         int_values: { values: TYPE_FILTERS[this.state.selectedType].values },
                       },
                     ]

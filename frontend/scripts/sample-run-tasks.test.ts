@@ -4,7 +4,7 @@
 // You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 import { describe, expect, it } from 'vitest';
-import { V2beta1Run, V2beta1RuntimeState } from '../src/apisv2beta1/run';
+import { V2Run, V2RuntimeState } from '../src/apisv2/run';
 import {
   sampleDriverLogs,
   sampleRunPipelineSpec,
@@ -12,7 +12,7 @@ import {
 } from '../mock-backend/sample-run-tasks';
 import { getRunTaskTiming } from '../src/lib/v2/RunTaskTiming';
 
-const samples: V2beta1Run[] = Object.values(V2beta1RuntimeState)
+const samples: V2Run[] = Object.values(V2RuntimeState)
   .filter((state) =>
     ['RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELED', 'CANCELING', 'PENDING'].includes(state),
   )

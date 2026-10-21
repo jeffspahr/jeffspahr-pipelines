@@ -23,7 +23,7 @@ import {
   Database,
   CircleHelp,
 } from 'lucide-react';
-import { PipelineTaskTaskState } from 'src/apisv2beta1/run';
+import { PipelineTaskTaskState } from 'src/apisv2/run';
 import { ExecutionFlowElementData, GRAPH_NODE_HEIGHT, GRAPH_NODE_WIDTH } from './Constants';
 import { ReadOnlyNodeHandles } from './ReadOnlyNodeHandles';
 import { getTaskStatus } from 'src/lib/StatusUtils';

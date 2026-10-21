@@ -15,11 +15,11 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { V2beta1RuntimeState } from 'src/apisv2beta1/run';
+import { V2RuntimeState } from 'src/apisv2/run';
 import { RunStatus } from './RunStatus';
 import { RecentRunHealth } from './RecentRunHealth';
 
-const expected: Record<V2beta1RuntimeState, string> = {
+const expected: Record<V2RuntimeState, string> = {
   SUCCEEDED: 'succeeded',
   RUNNING: 'running',
   FAILED: 'failed',
@@ -31,7 +31,7 @@ const expected: Record<V2beta1RuntimeState, string> = {
   RUNTIME_STATE_UNSPECIFIED: 'neutral',
 };
 
-it.each(Object.values(V2beta1RuntimeState))(
+it.each(Object.values(V2RuntimeState))(
   'uses the same %s tone in badges and recent-run health',
   (state) => {
     const { container } = render(
