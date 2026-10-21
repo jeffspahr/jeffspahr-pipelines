@@ -15,7 +15,7 @@
  */
 
 import { useEffect } from 'react';
-import { QUERY_PARAMS } from 'src/components/Router';
+import { QUERY_PARAMS, RoutePage } from 'src/components/Router';
 import { URLParser } from 'src/lib/URLParser';
 import RunComparisonWithContext from './RunComparisonView';
 import { PageProps } from './Page';
@@ -27,10 +27,15 @@ export const METRICS_SECTION_NAME = 'Metrics';
 export default function CompareRunsPage(props: PageProps) {
   const runIds = new URLParser(props).get(QUERY_PARAMS.runlist)?.split(',') || [];
   const invalidRunCount = runIds.length < 2 || runIds.length > 10;
-  const { updateBanner } = props;
-  // External synchronization: the page shell owns the banner.
+  const { updateBanner, updateToolbar } = props;
+  // External synchronization: the page shell owns the banner and title.
   useEffect(() => {
     if (invalidRunCount) {
+      updateToolbar({
+        actions: {},
+        breadcrumbs: [{ displayName: 'Runs', href: RoutePage.RUNS }],
+        pageTitle: 'Compare runs',
+      });
       updateBanner({
         additionalInfo:
           'At least two runs and at most ten runs must be selected to view the Run Comparison page.',
@@ -41,6 +46,6 @@ export default function CompareRunsPage(props: PageProps) {
       return () => updateBanner({});
     }
     return undefined;
-  }, [invalidRunCount, updateBanner]);
+  }, [invalidRunCount, updateBanner, updateToolbar]);
   return invalidRunCount ? null : <RunComparisonWithContext {...props} />;
 }

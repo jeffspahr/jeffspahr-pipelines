@@ -110,6 +110,7 @@
   margin-bottom: var(--kfp-section-gap, 12px);
 }
 .kfp-theme .kfp-inspection-fields h3,
+.kfp-theme .kfp-inspection-fields > h2,
 .kfp-theme .kfp-task-inspection h3,
 .kfp-theme .kfp-inspection-history caption {
   margin: 0 0 var(--kfp-section-gap, 12px);

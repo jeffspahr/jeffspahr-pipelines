@@ -119,6 +119,26 @@ describe('RecurringRunDetailsV2', () => {
     screen.getByText('Disabled');
     screen.getByText('param1');
     screen.getByText('value1');
+    expect(
+      screen.getAllByRole('heading').map((heading) => [heading.tagName, heading.textContent]),
+    ).toEqual([
+      ['H2', 'Schedule'],
+      ['H2', 'Pipeline definition'],
+      ['H2', 'Execution settings'],
+      ['H2', 'Run parameters'],
+      ['H2', 'Recurring run details'],
+    ]);
+  });
+
+  it('titles an empty parameter section at the same level as its siblings', async () => {
+    fullTestV2RecurringRun.runtime_config = {};
+    render(
+      <CommonTestWrapper>
+        <RecurringRunDetailsPage {...generateProps()} />
+      </CommonTestWrapper>,
+    );
+    await screen.findByText('No run parameters configured.');
+    expect(screen.getByRole('heading', { name: 'Run parameters', level: 2 })).toBeVisible();
   });
 
   it('renders a recurring run with cron schedule', async () => {

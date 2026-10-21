@@ -725,6 +725,7 @@ export function RunDetailsView(props: RunDetailsViewProps) {
             </dl>
             <div className='kfp-detail-sections'>
               <DetailsTable
+                headingLevel={2}
                 title='Run details'
                 fields={[
                   ...getDetailsFields(run),
@@ -733,6 +734,7 @@ export function RunDetailsView(props: RunDetailsViewProps) {
               />
               {Object.keys(run.runtime_config?.parameters || {}).length > 0 && (
                 <DetailsTable
+                  headingLevel={2}
                   title='Run parameters'
                   fields={Object.entries(run.runtime_config?.parameters || {}).map((param) => [
                     param[0],

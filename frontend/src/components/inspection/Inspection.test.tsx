@@ -195,6 +195,17 @@ it('preserves falsy fields, structured values, and custom field content', () => 
   expect(screen.getByRole('link', { name: 'Artifact URI' })).toHaveAttribute('href', 's3://model');
 });
 
+it('titles fields with a level 3 heading unless the caller places them below the page title', () => {
+  render(
+    <>
+      <InspectionFields title='Task inputs' fields={[]} />
+      <InspectionFields title='Run details' headingLevel={2} fields={[]} />
+    </>,
+  );
+  expect(screen.getByRole('heading', { name: 'Task inputs' })).toHaveProperty('tagName', 'H3');
+  expect(screen.getByRole('heading', { name: 'Run details' })).toHaveProperty('tagName', 'H2');
+});
+
 it.each(['plain text', '{invalid}', '[1,', 'null', 'false', '123', '"text"', ''])(
   'preserves non-structured JSON or invalid text verbatim: %s',
   (value) => {

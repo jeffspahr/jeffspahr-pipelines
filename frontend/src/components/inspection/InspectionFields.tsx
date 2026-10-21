@@ -21,6 +21,8 @@ import './RunInspection.css';
 export interface InspectionFieldsProps<T> {
   fields: Array<KeyValue<string | T>>;
   title?: string;
+  /** Use 2 when the fields are a top-level section directly below the page title. */
+  headingLevel?: 2 | 3;
   valueComponent?: ComponentType<ValueComponentProps<T>>;
   valueComponentProps?: Record<string, unknown>;
 }
@@ -42,12 +44,14 @@ function structuredValue(value: unknown): string | undefined {
 export function InspectionFields<T>({
   fields,
   title,
+  headingLevel = 3,
   valueComponent: ValueComponent,
   valueComponentProps,
 }: InspectionFieldsProps<T>) {
+  const Heading = `h${headingLevel}` as const;
   return (
     <section className='kfp-inspection-fields' aria-label={title}>
-      {title && <h3>{title}</h3>}
+      {title && <Heading>{title}</Heading>}
       <dl>
         {fields.map(([name, value], index) => {
           const json =

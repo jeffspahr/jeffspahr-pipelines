@@ -149,6 +149,7 @@ describe('ArtifactDetails', () => {
     renderPage();
 
     await screen.findByText('Artifact details');
+    expect(screen.getByRole('heading', { name: 'Artifact details', level: 2 })).toBeVisible();
     expect(screen.getAllByText('test-artifact')).toHaveLength(2);
     screen.getByText('system.Dataset');
     screen.getByText('A native artifact');

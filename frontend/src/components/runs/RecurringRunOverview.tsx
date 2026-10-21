@@ -43,9 +43,10 @@ export function RecurringRunOverview({ run }: { run: V2RecurringRun }) {
   return (
     <div className='kfp-detail-page kfp-recurring-detail'>
       <div className='kfp-detail-sections kfp-detail-sections-stacked'>
-        <InspectionFields title='Schedule' fields={scheduleFields} />
+        <InspectionFields headingLevel={2} title='Schedule' fields={scheduleFields} />
         <RecurringRunPipeline run={run} />
         <InspectionFields
+          headingLevel={2}
           title='Execution settings'
           fields={[
             ['Max. concurrent runs', run.max_concurrency ?? 'Not specified'],
@@ -53,14 +54,15 @@ export function RecurringRunOverview({ run }: { run: V2RecurringRun }) {
           ]}
         />
         {parameters.length > 0 ? (
-          <InspectionFields title='Run parameters' fields={parameters} />
+          <InspectionFields headingLevel={2} title='Run parameters' fields={parameters} />
         ) : (
           <section className='kfp-inspection-fields' aria-label='Run parameters'>
-            <h3>Run parameters</h3>
+            <h2>Run parameters</h2>
             <p>No run parameters configured.</p>
           </section>
         )}
         <InspectionFields
+          headingLevel={2}
           title='Recurring run details'
           fields={[
             ['Description', run.description || 'No description'],

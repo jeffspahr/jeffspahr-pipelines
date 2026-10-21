@@ -29,7 +29,7 @@ export function RecurringRunPipeline({ run }: { run: V2RecurringRun }) {
       : undefined;
   return (
     <section className='kfp-inspection-fields' aria-label='Pipeline definition'>
-      <h3>Pipeline definition</h3>
+      <h2>Pipeline definition</h2>
       <dl>
         {pipelineId ? (
           <>

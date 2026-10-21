@@ -26,6 +26,7 @@ export function PipelineDefinitionDetails({
   return (
     <div className='kfp-detail-sections'>
       <InspectionFields<ReactNode>
+        headingLevel={2}
         title='Pipeline definition'
         valueComponent={renderValue}
         fields={[
@@ -52,6 +53,7 @@ export function PipelineDefinitionDetails({
       />
       {parameters.length ? (
         <InspectionFields
+          headingLevel={2}
           title='Input parameter defaults'
           fields={parameters.map(([name, parameter]) => [
             name,

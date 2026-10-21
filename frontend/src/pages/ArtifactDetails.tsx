@@ -295,9 +295,10 @@ function ArtifactOverview({
   return (
     <ArtifactTabs selectedTab={ArtifactDetailsTab.OVERVIEW} onSwitch={onSwitch}>
       <div className='kfp-detail-sections kfp-artifact-overview'>
-        <InspectionFields title='Artifact details' fields={details} />
+        <InspectionFields headingLevel={2} title='Artifact details' fields={details} />
         {artifact.uri && (
           <InspectionFields
+            headingLevel={2}
             title='Artifact URI'
             fields={[[artifact.name || 'Artifact', { uri: artifact.uri }]]}
             valueComponent={ArtifactPreview}

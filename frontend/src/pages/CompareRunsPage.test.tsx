@@ -15,7 +15,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { QUERY_PARAMS } from 'src/components/Router';
+import { QUERY_PARAMS, RoutePage } from 'src/components/Router';
 import { PageProps } from './Page';
 import CompareRunsPage from './CompareRunsPage';
 
@@ -41,6 +41,11 @@ it.each([0, 1, 11])('rejects %s selected runs before fetching', (count) => {
   render(<CompareRunsPage {...pageProps} />);
   expect(screen.queryByText('Native comparison')).toBeNull();
   expect(pageProps.updateBanner).toHaveBeenCalledWith(expect.objectContaining({ mode: 'error' }));
+  expect(pageProps.updateToolbar).toHaveBeenCalledWith({
+    actions: {},
+    breadcrumbs: [{ displayName: 'Runs', href: RoutePage.RUNS }],
+    pageTitle: 'Compare runs',
+  });
 });
 it('clears the count error when the selection becomes valid', () => {
   const pageProps = props(['run-1']);

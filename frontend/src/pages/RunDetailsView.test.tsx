@@ -1935,7 +1935,7 @@ describe('RunDetailsV2', () => {
       await userEvent.click(screen.getByRole('tab', { name: 'Details' }));
       const details = within(screen.getByRole('region', { name: 'Run details' }));
 
-      details.getByText('Run details');
+      details.getByRole('heading', { name: 'Run details', level: 2 });
       details.getByText('Run ID');
       details.getByText('Workflow name');
       details.getByText('Status');

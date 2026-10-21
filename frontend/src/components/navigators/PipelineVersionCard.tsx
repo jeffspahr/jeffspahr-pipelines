@@ -33,6 +33,7 @@ export function PipelineVersionCard({ pipeline, selectedVersion }: PipelineVersi
   return (
     <div className='kfp-detail-sections'>
       <InspectionFields<ReactNode>
+        headingLevel={2}
         title='Pipeline details'
         valueComponent={renderValue}
         fields={[
@@ -43,6 +44,7 @@ export function PipelineVersionCard({ pipeline, selectedVersion }: PipelineVersi
       />
       {selectedVersion && (
         <InspectionFields<ReactNode>
+          headingLevel={2}
           title='Version details'
           valueComponent={renderValue}
           fields={[

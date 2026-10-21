@@ -206,7 +206,7 @@ export default function RunDetailsPage(props: PageProps & NavigationProps<RunDet
             ? 'Unable to load the pipeline definition. Available run metadata is shown below. Refresh this page to retry.'
             : 'This run has no valid pipeline IR. Graph inspection is unavailable; available run metadata is shown below.'}
         </div>
-        <InspectionFields title='Run details' fields={getDetailsFields(v2Run)} />
+        <InspectionFields headingLevel={2} title='Run details' fields={getDetailsFields(v2Run)} />
       </div>
     );
   }

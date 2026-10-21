@@ -36,6 +36,8 @@ describe('PipelineVersionCard', () => {
     render(<PipelineVersionCard pipeline={pipeline} selectedVersion={selectedVersion} />);
     expect(screen.getByRole('region', { name: 'Pipeline details' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Version details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pipeline details', level: 2 })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Version details', level: 2 })).toBeVisible();
     expect(screen.getByText('pipeline-id')).toBeInTheDocument();
     expect(screen.getByText('Version one')).toBeInTheDocument();
     expect(screen.getByText('description').tagName).toBe('STRONG');
