@@ -205,7 +205,7 @@ export class UploadPipelineController extends Page<
   public getInitialToolbarState(): ToolbarProps {
     return {
       actions: {},
-      breadcrumbs: [{ displayName: 'Pipeline Versions', href: RoutePage.NEW_PIPELINE_VERSION }],
+      breadcrumbs: [{ displayName: 'Pipelines', href: RoutePage.PIPELINES }],
       pageTitle: 'New pipeline',
     };
   }

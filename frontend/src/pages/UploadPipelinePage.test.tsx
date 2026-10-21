@@ -364,7 +364,7 @@ describe('NewPipelineVersion', () => {
 
       expect(updateToolbarSpy).toHaveBeenLastCalledWith({
         actions: {},
-        breadcrumbs: [{ displayName: 'Pipeline Versions', href: '/pipeline_versions/new' }],
+        breadcrumbs: [{ displayName: 'Pipelines', href: RoutePage.PIPELINES }],
         pageTitle: 'New pipeline',
       });
       expect(getPipelineSpy).toHaveBeenCalledWith(MOCK_PIPELINE.pipeline_id);
@@ -518,6 +518,16 @@ describe('NewPipelineVersion', () => {
   });
 
   describe('creating new pipeline', () => {
+    it('links the breadcrumb to the pipeline list', async () => {
+      await renderNewPipelineVersion();
+
+      expect(updateToolbarSpy).toHaveBeenLastCalledWith({
+        actions: {},
+        breadcrumbs: [{ displayName: 'Pipelines', href: RoutePage.PIPELINES }],
+        pageTitle: 'New pipeline',
+      });
+    });
+
     it('renders the new pipeline page', async () => {
       await renderNewPipelineVersion();
       expect(
