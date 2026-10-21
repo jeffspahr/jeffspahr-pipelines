@@ -72,8 +72,8 @@ function ToolbarOverflow({ actions }: { actions: ToolbarProps['actions'] }) {
         <MoreHorizontal size={18} aria-hidden='true' />
       </Menu.Trigger>
       <Menu.Portal className={themeClassName}>
-        <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>
-          <Menu.Popup className='kfp-density-menu'>
+        <Menu.Positioner align='end' sideOffset={4} className='kfp-menu-positioner'>
+          <Menu.Popup className='kfp-menu-menu'>
             {Object.entries(actions)
               .filter(([, action]) => action.overflow)
               .map(([key, action]) => (
@@ -81,7 +81,7 @@ function ToolbarOverflow({ actions }: { actions: ToolbarProps['actions'] }) {
                   key={key}
                   disabled={action.disabled || action.busy}
                   onClick={action.action}
-                  className='kfp-density-option'
+                  className='kfp-menu-option'
                 >
                   {action.title}
                 </Menu.Item>

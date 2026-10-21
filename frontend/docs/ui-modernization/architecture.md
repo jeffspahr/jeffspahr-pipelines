@@ -47,11 +47,11 @@ The two feature-flagged query-based alternative page implementations live in `pa
 
 Use a compact workbench layout across resource pages. `PageChrome` owns the title, primary actions, breadcrumbs and 16px page gutter. Align collection controls, tabs and content to that gutter; nested collections inherit the parent content width without adding another gutter.
 
-List pages place filters on the left and view/sort controls on the right in one wrapping control strip. Selection, rows and pagination share the same collection surface. Use a 52px minimum list header, 48px filter strip, and 48px comfortable / 40px compact minimum single-line rows; allow content and responsive wrapping to grow naturally. Keep pagination compact and stable during filtering. Validate density with same-viewport screenshots and the distance from the page top to the first data row, not just shared CSS. Pipelines use a table with a linked latest-version column. Version management belongs on the pipeline detail page, not in an expanded list row.
+List pages place filters on the left and view/sort controls on the right in one wrapping control strip. Selection, rows and pagination share the same collection surface. Use a 52px minimum list header, 48px filter strip, and 32px minimum single-line rows; allow content and responsive wrapping to grow naturally. Keep pagination compact and stable during filtering. Validate density with same-viewport screenshots and the distance from the page top to the first data row, not just shared CSS. Pipelines use a table with a linked latest-version column. Version management belongs on the pipeline detail page, not in an expanded list row.
 
 Detail pages use the same header and tab rhythm, with metadata grouped into readable sections. Graphs and timelines retain a large dedicated workspace and task inspectors; metadata views use responsive fields rather than narrow nested cards. Special-purpose content can differ, but spacing and control placement should not depend on the resource type.
 
-Collection density is a remembered preference. Comfortable (default) and Compact apply globally; pipelines expose it in the compact Table options menu. Density changes cell padding without changing page headers, filtering, selection, content, or page size. Browser storage failures preserve the choice for the current session. Namespace-wide import/export belongs in the shell Workspace menu. Pipeline detail pages put the version selector beside the title and full version management in the Versions tab.
+Collections use one compact layout with unchanged readable text sizes. There is no density preference; browser zoom controls overall scaling. Column resizing and remembered column widths remain independent. Namespace-wide import/export belongs in the shell Workspace menu. Pipeline detail pages put the version selector beside the title and full version management in the Versions tab.
 
 
 ## Page layout contract
@@ -66,7 +66,7 @@ and comparison matrices retain their domain-specific layouts within that frame.
 
 CollectionToolbar owns the search and view-control strip. ResourceTable owns
 cell padding, header styling, selection, scrolling, and pagination chrome.
-Comfortable rows are 40px; Compact rows are 32px without reducing text size.
+Rows are 32px minimum without reducing text size; wrapped content can grow.
 Declare metadata widths on each Column alongside its renderer: dates 190px,
 status 120px, duration 100px, and other metadata 160–200px. Leave primary names
 flexible and reserve at least 240px for them in the table minimum width. Wide

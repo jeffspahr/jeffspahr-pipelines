@@ -30,8 +30,6 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 
-import { DensityProvider } from '../tables/DensityProvider';
-
 export type Theme = 'system' | 'light' | 'dark';
 type ResolvedTheme = Exclude<Theme, 'system'>;
 
@@ -144,7 +142,7 @@ function ThemeProviderContent({
         className={[themeClassName, className].filter(Boolean).join(' ')}
         data-theme={resolvedTheme}
       >
-        <DensityProvider>{children}</DensityProvider>
+        {children}
       </div>
     </ThemeContext.Provider>
   );

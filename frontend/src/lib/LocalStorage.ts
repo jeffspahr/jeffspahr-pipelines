@@ -18,7 +18,6 @@ export enum LocalStorageKey {
   navbarCollapsed = 'navbarCollapsed',
   tablePageSize = 'tablePageSize',
   pipelineView = 'pipelineView',
-  collectionDensity = 'collectionDensity',
 }
 
 export class LocalStorage {
@@ -39,24 +38,6 @@ export class LocalStorage {
       localStorage.setItem(LocalStorageKey.navbarCollapsed, value.toString());
     } catch {
       // Navigation remains usable when browser policy or quota blocks storage.
-    }
-  }
-
-  public static getCollectionDensity(): 'comfortable' | 'compact' {
-    try {
-      return localStorage.getItem(LocalStorageKey.collectionDensity) === 'compact'
-        ? 'compact'
-        : 'comfortable';
-    } catch {
-      return 'comfortable';
-    }
-  }
-
-  public static saveCollectionDensity(value: 'comfortable' | 'compact'): void {
-    try {
-      localStorage.setItem(LocalStorageKey.collectionDensity, value);
-    } catch {
-      // The preference remains usable in this session when storage is unavailable.
     }
   }
 

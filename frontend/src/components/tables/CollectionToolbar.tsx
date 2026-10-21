@@ -20,7 +20,6 @@ import { Search } from 'lucide-react';
 import type { CustomTableRenderModel } from '../CustomTable';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { DensityMenu } from './DensityMenu';
 import './RunsTable.css';
 
 /** One control strip for list filters and resource-specific view controls. */
@@ -28,12 +27,10 @@ export function CollectionToolbar({
   table,
   filterLabel = table.filterLabel,
   children,
-  compactOptions = false,
 }: {
   table: CustomTableRenderModel;
   filterLabel?: string;
   children?: ReactNode;
-  compactOptions?: boolean;
 }) {
   const id = useId();
   return (
@@ -57,10 +54,7 @@ export function CollectionToolbar({
         </Button>
       )}
       {table.filterActions}
-      <div className='kfp-collection-view-controls'>
-        {children}
-        <DensityMenu compact={compactOptions} />
-      </div>
+      {children && <div className='kfp-collection-view-controls'>{children}</div>}
     </div>
   );
 }

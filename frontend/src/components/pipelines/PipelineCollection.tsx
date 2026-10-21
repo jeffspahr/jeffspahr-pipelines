@@ -34,7 +34,7 @@ export function PipelineCollection({
 }) {
   return (
     <div className='kfp-pipeline-collection'>
-      <CollectionToolbar table={table} compactOptions />
+      <CollectionToolbar table={table} />
       {activeFilters}
       <ResourceTable
         table={{ ...table, noFilterBox: true, filterActions: undefined }}

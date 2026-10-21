@@ -49,12 +49,12 @@ export function WorkspaceMenu({
           side={sidebar ? 'right' : 'bottom'}
           align={sidebar ? 'start' : 'end'}
           sideOffset={4}
-          className='kfp-density-positioner'
+          className='kfp-menu-positioner'
         >
-          <Menu.Popup className='kfp-density-menu' aria-label='Workspace'>
+          <Menu.Popup className='kfp-menu-menu' aria-label='Workspace'>
             <Menu.Item
               render={<Link to={RoutePage.METADATA_TRANSFER} />}
-              className='kfp-density-option'
+              className='kfp-menu-option'
             >
               Import / export namespace data…
             </Menu.Item>

@@ -301,7 +301,6 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
           >
             <div
               class="kfp-runs-table-view kfp-runs-data-table"
-              data-density="comfortable"
             >
               <div
                 class="kfp-collection-toolbar"
@@ -369,63 +368,6 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                     Archived
                   </button>
                 </div>
-                <div
-                  class="kfp-collection-view-controls"
-                >
-                  <button
-                    aria-expanded="false"
-                    aria-haspopup="menu"
-                    aria-label="Display options"
-                    class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border font-kfp-sans text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-wait [&_svg]:size-[18px] [&_svg]:shrink-0 border-border-strong bg-card text-foreground hover:bg-muted h-8 px-2.5"
-                    data-slot="button"
-                    id="base-ui-_r_72_"
-                    tabindex="0"
-                    type="button"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-sliders-horizontal"
-                      fill="none"
-                      height="16"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="16"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M10 5H3"
-                      />
-                      <path
-                        d="M12 19H3"
-                      />
-                      <path
-                        d="M14 3v4"
-                      />
-                      <path
-                        d="M16 17v4"
-                      />
-                      <path
-                        d="M21 12h-9"
-                      />
-                      <path
-                        d="M21 19h-5"
-                      />
-                      <path
-                        d="M21 5h-7"
-                      />
-                      <path
-                        d="M8 10v4"
-                      />
-                      <path
-                        d="M8 12H3"
-                      />
-                    </svg>
-                    Display
-                  </button>
-                </div>
               </div>
               <div
                 class="kfp-runs-table-card"
@@ -476,14 +418,14 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                             class="kfp-checkbox"
                             data-disabled=""
                             data-unchecked=""
-                            id="base-ui-_r_74_"
+                            id="base-ui-_r_5d_"
                             role="checkbox"
                             tabindex="-1"
                           />
                           <input
                             aria-hidden="true"
                             disabled=""
-                            id="base-ui-_r_75_"
+                            id="base-ui-_r_5e_"
                             style="clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"
                             tabindex="-1"
                             type="checkbox"
@@ -527,7 +469,7 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                               aria-label="Filter status"
                               class="kfp-column-filter"
                               data-active="false"
-                              id="base-ui-_r_7a_"
+                              id="base-ui-_r_5j_"
                               tabindex="0"
                               type="button"
                             >
@@ -647,7 +589,7 @@ exports[`ExperimentDetails > fetches this experiment's recurring runs 1`] = `
                               aria-label="Filter started"
                               class="kfp-column-filter"
                               data-active="false"
-                              id="base-ui-_r_7f_"
+                              id="base-ui-_r_5o_"
                               tabindex="0"
                               type="button"
                             >
@@ -1087,7 +1029,6 @@ exports[`ExperimentDetails > hides the description control if the experiment has
           >
             <div
               class="kfp-runs-table-view kfp-runs-data-table"
-              data-density="comfortable"
             >
               <div
                 class="kfp-collection-toolbar"
@@ -1155,63 +1096,6 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                     Archived
                   </button>
                 </div>
-                <div
-                  class="kfp-collection-view-controls"
-                >
-                  <button
-                    aria-expanded="false"
-                    aria-haspopup="menu"
-                    aria-label="Display options"
-                    class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border font-kfp-sans text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-wait [&_svg]:size-[18px] [&_svg]:shrink-0 border-border-strong bg-card text-foreground hover:bg-muted h-8 px-2.5"
-                    data-slot="button"
-                    id="base-ui-_r_28_"
-                    tabindex="0"
-                    type="button"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-sliders-horizontal"
-                      fill="none"
-                      height="16"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="16"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M10 5H3"
-                      />
-                      <path
-                        d="M12 19H3"
-                      />
-                      <path
-                        d="M14 3v4"
-                      />
-                      <path
-                        d="M16 17v4"
-                      />
-                      <path
-                        d="M21 12h-9"
-                      />
-                      <path
-                        d="M21 19h-5"
-                      />
-                      <path
-                        d="M21 5h-7"
-                      />
-                      <path
-                        d="M8 10v4"
-                      />
-                      <path
-                        d="M8 12H3"
-                      />
-                    </svg>
-                    Display
-                  </button>
-                </div>
               </div>
               <div
                 class="kfp-runs-table-card"
@@ -1262,14 +1146,14 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                             class="kfp-checkbox"
                             data-disabled=""
                             data-unchecked=""
-                            id="base-ui-_r_2a_"
+                            id="base-ui-_r_1m_"
                             role="checkbox"
                             tabindex="-1"
                           />
                           <input
                             aria-hidden="true"
                             disabled=""
-                            id="base-ui-_r_2b_"
+                            id="base-ui-_r_1n_"
                             style="clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"
                             tabindex="-1"
                             type="checkbox"
@@ -1313,7 +1197,7 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                               aria-label="Filter status"
                               class="kfp-column-filter"
                               data-active="false"
-                              id="base-ui-_r_2g_"
+                              id="base-ui-_r_1s_"
                               tabindex="0"
                               type="button"
                             >
@@ -1433,7 +1317,7 @@ exports[`ExperimentDetails > hides the description control if the experiment has
                               aria-label="Filter started"
                               class="kfp-column-filter"
                               data-active="false"
-                              id="base-ui-_r_2l_"
+                              id="base-ui-_r_21_"
                               tabindex="0"
                               type="button"
                             >
@@ -1891,7 +1775,6 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
           >
             <div
               class="kfp-runs-table-view kfp-runs-data-table"
-              data-density="comfortable"
             >
               <div
                 class="kfp-collection-toolbar"
@@ -1959,63 +1842,6 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                     Archived
                   </button>
                 </div>
-                <div
-                  class="kfp-collection-view-controls"
-                >
-                  <button
-                    aria-expanded="false"
-                    aria-haspopup="menu"
-                    aria-label="Display options"
-                    class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border font-kfp-sans text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-wait [&_svg]:size-[18px] [&_svg]:shrink-0 border-border-strong bg-card text-foreground hover:bg-muted h-8 px-2.5"
-                    data-slot="button"
-                    id="base-ui-_r_6_"
-                    tabindex="0"
-                    type="button"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-sliders-horizontal"
-                      fill="none"
-                      height="16"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="16"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M10 5H3"
-                      />
-                      <path
-                        d="M12 19H3"
-                      />
-                      <path
-                        d="M14 3v4"
-                      />
-                      <path
-                        d="M16 17v4"
-                      />
-                      <path
-                        d="M21 12h-9"
-                      />
-                      <path
-                        d="M21 19h-5"
-                      />
-                      <path
-                        d="M21 5h-7"
-                      />
-                      <path
-                        d="M8 10v4"
-                      />
-                      <path
-                        d="M8 12H3"
-                      />
-                    </svg>
-                    Display
-                  </button>
-                </div>
               </div>
               <div
                 class="kfp-runs-table-card"
@@ -2066,14 +1892,14 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                             class="kfp-checkbox"
                             data-disabled=""
                             data-unchecked=""
-                            id="base-ui-_r_8_"
+                            id="base-ui-_r_3_"
                             role="checkbox"
                             tabindex="-1"
                           />
                           <input
                             aria-hidden="true"
                             disabled=""
-                            id="base-ui-_r_9_"
+                            id="base-ui-_r_4_"
                             style="clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"
                             tabindex="-1"
                             type="checkbox"
@@ -2117,7 +1943,7 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                               aria-label="Filter status"
                               class="kfp-column-filter"
                               data-active="false"
-                              id="base-ui-_r_e_"
+                              id="base-ui-_r_9_"
                               tabindex="0"
                               type="button"
                             >
@@ -2237,7 +2063,7 @@ exports[`ExperimentDetails > renders a page with no runs or recurring runs 1`] =
                               aria-label="Filter started"
                               class="kfp-column-filter"
                               data-active="false"
-                              id="base-ui-_r_j_"
+                              id="base-ui-_r_e_"
                               tabindex="0"
                               type="button"
                             >

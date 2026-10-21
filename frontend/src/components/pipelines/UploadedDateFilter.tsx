@@ -43,9 +43,9 @@ export function UploadedDateOptions({ value, onChange }: Props) {
         if (value === 'all' || value === '7' || value === '30' || value === '90') onChange(value);
       }}
     >
-      <div className='kfp-density-heading'>Uploaded</div>
+      <div className='kfp-menu-heading'>Uploaded</div>
       {(['all', '7', '30', '90'] as const).map((period) => (
-        <Menu.RadioItem key={period} value={period} className='kfp-density-option' closeOnClick>
+        <Menu.RadioItem key={period} value={period} className='kfp-menu-option' closeOnClick>
           {period === 'all' ? 'Any time' : `Last ${period} days`}
           <Menu.RadioItemIndicator>
             <Check size={16} aria-hidden='true' />

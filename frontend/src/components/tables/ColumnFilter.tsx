@@ -44,8 +44,8 @@ export function ColumnFilter({
         <Filter size={13} strokeWidth={2} aria-hidden='true' />
       </Menu.Trigger>
       <Menu.Portal className={themeClassName}>
-        <Menu.Positioner align='end' sideOffset={4} className='kfp-density-positioner'>
-          <Menu.Popup className='kfp-density-menu' aria-label={`Filter ${label.toLowerCase()}`}>
+        <Menu.Positioner align='end' sideOffset={4} className='kfp-menu-positioner'>
+          <Menu.Popup className='kfp-menu-menu' aria-label={`Filter ${label.toLowerCase()}`}>
             <Menu.RadioGroup
               value={value}
               onValueChange={(value) => {
@@ -53,12 +53,12 @@ export function ColumnFilter({
                   onChange(value);
               }}
             >
-              <div className='kfp-density-heading'>{label}</div>
+              <div className='kfp-menu-heading'>{label}</div>
               {options.map((option) => (
                 <Menu.RadioItem
                   key={option.value}
                   value={option.value}
-                  className='kfp-density-option'
+                  className='kfp-menu-option'
                   closeOnClick
                 >
                   {option.label}

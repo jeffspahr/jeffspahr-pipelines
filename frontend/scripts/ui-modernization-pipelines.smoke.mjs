@@ -425,8 +425,9 @@ async function waitForRows(page, count) {
   );
 }
 
-test('pipelines remain table-only with latest version links and quiet display controls', async () => {
+test('pipelines use compact rows with latest version links and ignore retired density preferences', async () => {
   await withFixture({}, async (page, fixture) => {
+    await page.addInitScript(() => localStorage.setItem('collectionDensity', 'comfortable'));
     await page.goto(`${fixture.origin}/#/pipelines`);
     await page.getByRole('table', { name: 'Pipelines', exact: true }).waitFor();
     await card(page, 'Pipeline 01')
@@ -434,7 +435,9 @@ test('pipelines remain table-only with latest version links and quiet display co
       .waitFor();
     assert.equal(await page.getByRole('button', { name: 'Cards', exact: true }).count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Display options' }).count(), 0);
-    await page.getByRole('button', { name: 'Table options' }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Table options' }).count(), 0);
+    const firstRow = page.locator('.kfp-runs-table tbody tr[data-row-id]').first();
+    assert.ok((await firstRow.boundingBox()).height <= 34, 'compact rows are the default');
     assert.equal(
       await card(page, 'Pipeline 01')
         .getByRole('link', { name: 'Version 01', exact: true })

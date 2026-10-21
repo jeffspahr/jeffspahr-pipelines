@@ -17,7 +17,7 @@
   margin: 0;
 }
 .kfp-collection-preview li {
-  min-height: 32px;
+  min-height: 26px;
   align-items: center;
   gap: 16px;
 }
@@ -43,9 +43,6 @@
 .kfp-collection-preview a:hover {
   color: var(--primary);
   text-decoration: underline;
-}
-.kfp-runs-table-view[data-density='compact'] .kfp-collection-preview li {
-  min-height: 26px;
 }
 @media (max-width: 600px) {
   .kfp-collection-preview-heading {
