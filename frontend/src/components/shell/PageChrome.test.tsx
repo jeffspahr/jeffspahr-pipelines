@@ -105,6 +105,28 @@ describe('PageChrome', () => {
     expect(screen.getByRole('heading', { name: 'Run details' })).toBeVisible();
   });
 
+  it('titles the document from the published page title and restores the base title', () => {
+    const toolbarProps = { actions: {}, breadcrumbs: [], pageTitle: '' };
+    const view = render(element({ toolbarProps }));
+    expect(document.title).toBe('Kubeflow Pipelines');
+    view.rerender(element({ toolbarProps: { ...toolbarProps, pageTitle: 'Runs' } }));
+    expect(document.title).toBe('Runs - Kubeflow Pipelines');
+    view.rerender(
+      element({
+        toolbarProps: {
+          ...toolbarProps,
+          pageTitle: <span>Python two steps</span>,
+          pageTitleTooltip: 'Python two steps',
+        },
+      }),
+    );
+    expect(document.title).toBe('Python two steps - Kubeflow Pipelines');
+    view.rerender(element({ toolbarProps: { ...toolbarProps, documentTitle: 'Page not found' } }));
+    expect(document.title).toBe('Page not found - Kubeflow Pipelines');
+    view.unmount();
+    expect(document.title).toBe('Kubeflow Pipelines');
+  });
+
   it('does not reserve empty ordinary or embedded toolbars', () => {
     const toolbarProps = { actions: {}, breadcrumbs: [], pageTitle: '' };
     const view = render(element({ toolbarProps }));

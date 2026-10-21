@@ -45,6 +45,8 @@ export interface Breadcrumb {
 export interface ToolbarProps {
   actions: ToolbarActionMap;
   breadcrumbs: Breadcrumb[];
+  /** Browser tab title for pages whose heading is not `pageTitle`. */
+  documentTitle?: string;
   navigate?: NavigateFunction;
   pageTitle: ReactNode;
   pageTitleTooltip?: string;

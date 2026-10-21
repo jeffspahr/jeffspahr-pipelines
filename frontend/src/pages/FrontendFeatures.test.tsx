@@ -28,10 +28,16 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
+it('publishes its heading as the document title', () => {
+  const updateToolbar = vi.fn();
+  render(<FrontendFeatures updateToolbar={updateToolbar} />);
+  expect(updateToolbar).toHaveBeenCalledWith({ documentTitle: 'Frontend features' });
+});
+
 it('edits an unsaved keyboard-accessible draft and resets without persisting it', async () => {
   const writes = vi.spyOn(localStorage, 'setItem');
   const user = userEvent.setup();
-  render(<FrontendFeatures />);
+  render(<FrontendFeatures updateToolbar={vi.fn()} />);
   const control = screen.getByRole('switch', { name: 'Enable functional_component' });
   expect(control).not.toBeChecked();
   control.focus();
@@ -46,7 +52,7 @@ it('edits an unsaved keyboard-accessible draft and resets without persisting it'
 
 it('saves exactly once, then resets later edits to the saved state', () => {
   const writes = vi.spyOn(localStorage, 'setItem');
-  render(<FrontendFeatures />);
+  render(<FrontendFeatures updateToolbar={vi.fn()} />);
   const control = screen.getByRole('switch', { name: 'Enable functional_component' });
   fireEvent.click(control);
   fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));

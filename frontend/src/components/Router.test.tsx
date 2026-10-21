@@ -125,6 +125,31 @@ describe('Router', () => {
     expect(screen.queryByText('404')).not.toBeInTheDocument();
   });
 
+  it('titles the document for each routed page', async () => {
+    const router = createMemoryRouter([{ path: '*', element: <Router /> }], {
+      initialEntries: ['/does-not-exist'],
+    });
+    const view = render(<RouterProvider router={router} />);
+    expect(document.title).toBe('Page not found - Kubeflow Pipelines');
+
+    await act(() => router.navigate(RoutePage.METADATA_TRANSFER));
+    await screen.findByText('Export / import', { selector: 'h1' });
+    expect(document.title).toBe('Export / import - Kubeflow Pipelines');
+
+    await act(() => router.navigate(RoutePage.FRONTEND_FEATURES));
+    await screen.findByRole('heading', { name: 'Frontend features' });
+    expect(document.title).toBe('Frontend features - Kubeflow Pipelines');
+
+    await act(() => router.navigate('/runs'));
+    expect(screen.getByText('Runs page')).toBeVisible();
+    expect(document.title).toBe('Kubeflow Pipelines');
+
+    await act(() => router.navigate('/does-not-exist'));
+    expect(document.title).toBe('Page not found - Kubeflow Pipelines');
+    view.unmount();
+    expect(document.title).toBe('Kubeflow Pipelines');
+  });
+
   it('does not create an empty breadcrumb before a page supplies navigation metadata', () => {
     render(
       <MemoryRouter initialEntries={['/unconfigured']}>

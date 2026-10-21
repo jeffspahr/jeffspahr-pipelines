@@ -779,17 +779,16 @@ function updateToolBar(
 ) {
   const runMetadata = run;
   if (runMetadata) {
+    const runName = runMetadata.display_name || 'Run name unknown';
     const pageTitle = (
       <div className='kfp-inspection-run-title'>
-        <span className='kfp-inspection-run-name'>
-          {runMetadata.display_name || 'Run name unknown'}
-        </span>
+        <span className='kfp-inspection-run-name'>{runName}</span>
         <RunStatus state={runMetadata.state} />
         <RunElapsed run={runMetadata} />
       </div>
     );
 
-    updateToolBarCallback({ pageTitle, pageTitleTooltip: runMetadata.display_name });
+    updateToolBarCallback({ pageTitle, pageTitleTooltip: runName });
   }
 
   const breadcrumbs: Array<{ displayName: string; href: string }> = [];

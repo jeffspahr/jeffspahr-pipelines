@@ -23,7 +23,7 @@ import './SecondaryPages.css';
 
 export default class Page404 extends Page<{}, {}> {
   public getInitialToolbarState(): ToolbarProps {
-    return { actions: {}, breadcrumbs: [], pageTitle: '' };
+    return { actions: {}, breadcrumbs: [], pageTitle: '', documentTitle: 'Page not found' };
   }
 
   public async refresh(): Promise<void> {

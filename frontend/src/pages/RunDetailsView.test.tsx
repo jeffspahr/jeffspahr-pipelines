@@ -1133,6 +1133,17 @@ describe('RunDetailsV2', () => {
     },
   );
 
+  it('titles an unnamed run with the same fallback name as its heading', async () => {
+    renderRoutedRunDetails('', { ...TEST_RUN, display_name: undefined });
+    await waitFor(() =>
+      expect(updateToolbarSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ pageTitleTooltip: 'Run name unknown' }),
+      ),
+    );
+    const title = updateToolbarSpy.mock.calls.find(([props]) => props.pageTitle)?.[0].pageTitle;
+    expect(render(<>{title}</>).getByText('Run name unknown')).toBeInTheDocument();
+  });
+
   it('keeps metadata in Detail and the run name before status in the compact header', async () => {
     renderRoutedRunDetails();
     expect(screen.queryByLabelText('Run summary')).not.toBeInTheDocument();

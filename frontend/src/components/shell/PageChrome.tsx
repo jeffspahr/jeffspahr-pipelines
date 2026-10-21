@@ -279,6 +279,15 @@ export function PageNotification({
   );
 }
 
+const BASE_DOCUMENT_TITLE = 'Kubeflow Pipelines';
+
+function getDocumentTitle(toolbar: ToolbarProps): string {
+  const title =
+    toolbar.documentTitle ||
+    (typeof toolbar.pageTitle === 'string' ? toolbar.pageTitle : toolbar.pageTitleTooltip);
+  return title ? `${title} - ${BASE_DOCUMENT_TITLE}` : BASE_DOCUMENT_TITLE;
+}
+
 export function PageChrome({
   children,
   toolbarProps,
@@ -292,6 +301,14 @@ export function PageChrome({
   showWorkspaceControl,
   reserveBreadcrumbHeader,
 }: PageChromeProps) {
+  const documentTitle = getDocumentTitle(toolbarProps);
+  // External sync: the browser tab title mirrors the routed page title.
+  useEffect(() => {
+    document.title = documentTitle;
+    return () => {
+      document.title = BASE_DOCUMENT_TITLE;
+    };
+  }, [documentTitle]);
   return (
     <section className='kfp-modern-page' aria-label='Pipeline workspace'>
       <PageToolbar

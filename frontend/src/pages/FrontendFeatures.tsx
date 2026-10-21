@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from 'src/components/ui/button';
 import { Switch } from 'src/components/ui/switch';
 import { getFeatureList, saveFeatures } from 'src/features';
+import type { PageProps } from './Page';
 import './SecondaryPages.css';
 
 // The application initializes feature storage once before rendering.
-export default function FrontendFeatures() {
+export default function FrontendFeatures({ updateToolbar }: Pick<PageProps, 'updateToolbar'>) {
   const [features, setFeatures] = useState(getFeatureList);
+  // External synchronization: the toolbar is owned by the router outside this page.
+  useEffect(() => {
+    updateToolbar({ documentTitle: 'Frontend features' });
+  }, [updateToolbar]);
   const reset = () => setFeatures(getFeatureList());
   const submit = () => {
     saveFeatures(features);
