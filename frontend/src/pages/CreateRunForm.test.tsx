@@ -502,6 +502,14 @@ describe('NewRunV2', () => {
     expect(await screen.findByText('This pipeline has no parameters')).toBeInTheDocument();
   });
 
+  it('names each Choose button after the field it fills', async () => {
+    renderCreateRunForm({ chosenExperiment: DEFAULT_EXPERIMENT });
+
+    for (const name of ['Choose pipeline', 'Choose pipeline version', 'Choose experiment']) {
+      expect(await screen.findByRole('button', { name })).toHaveTextContent('Choose');
+    }
+  });
+
   it('falls back to empty template-derived state when template parsing fails', async () => {
     renderCreateRunForm({ templateString: 'pipelineInfo: [' });
 

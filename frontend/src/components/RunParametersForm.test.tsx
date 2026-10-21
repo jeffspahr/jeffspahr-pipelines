@@ -43,18 +43,35 @@ describe('RunParametersForm', () => {
         clonedRuntimeConfig={{}}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Open Json Editor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Json Editor for settings' }));
     await waitFor(() =>
       expect(
         screen.getByRole('textbox', { name: /settings - dict JSON editor/ }),
       ).toBeInTheDocument(),
     );
     expect(screen.getByLabelText('settings - dict')).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Json Editor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close Json Editor for settings' }));
     expect(
       screen.queryByRole('textbox', { name: /settings - dict JSON editor/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('settings - dict')).toBeEnabled();
+  });
+
+  it('names each JSON editor button after its parameter', () => {
+    render(
+      <RunParametersForm
+        titleMessage='Specify parameters'
+        specParameters={{
+          tags: { parameterType: ParameterType_ParameterTypeEnum.LIST, defaultValue: ['a'] },
+          settings: { parameterType: ParameterType_ParameterTypeEnum.STRUCT, defaultValue: {} },
+        }}
+        clonedRuntimeConfig={{}}
+      />,
+    );
+
+    for (const name of ['Open Json Editor for tags', 'Open Json Editor for settings']) {
+      expect(screen.getByRole('button', { name })).toHaveTextContent('Open Json Editor');
+    }
   });
 
   it('shows parameters', () => {

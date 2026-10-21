@@ -310,7 +310,12 @@ class ParamEditor extends React.Component<ParamEditorProps, ParamEditorState> {
           error={param.errorMsg}
           trailingContent={
             this.state.isJsonField ? (
-              <Button variant='secondary' size='sm' onClick={onClick}>
+              <Button
+                variant='secondary'
+                size='sm'
+                aria-label={`${this.state.isEditorOpen ? 'Close' : 'Open'} Json Editor for ${id}`}
+                onClick={onClick}
+              >
                 {this.state.isEditorOpen ? 'Close Json Editor' : 'Open Json Editor'}
               </Button>
             ) : undefined

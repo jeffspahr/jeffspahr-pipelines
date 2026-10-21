@@ -336,6 +336,7 @@ export class UploadPipelineController extends Page<
                     <Button
                       variant='secondary'
                       id='choosePipelineBtn'
+                      aria-label='Choose pipeline'
                       onClick={() => this.setStateSafe({ pipelineSelectorOpen: true })}
                     >
                       Choose

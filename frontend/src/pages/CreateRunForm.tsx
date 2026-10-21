@@ -860,6 +860,7 @@ function PipelineSelector(props: PipelineSelectorProps) {
           <Button
             variant='secondary'
             id='choosePipelineBtn'
+            aria-label='Choose pipeline'
             onClick={() => setPipelineSelectorOpen(true)}
           >
             Choose
@@ -953,6 +954,7 @@ function PipelineVersionSelector(props: PipelineVersionSelectorProps) {
           <Button
             variant='secondary'
             id='choosePipelineVersionBtn'
+            aria-label='Choose pipeline version'
             onClick={() => {
               choice.reset();
               setPipelineVersionSelectorOpen(true);
@@ -1057,6 +1059,7 @@ function ExperimentSelector(props: ExperimentSelectorProps) {
           <Button
             variant='secondary'
             id='chooseExperimentBtn'
+            aria-label='Choose experiment'
             onClick={() => {
               choice.reset();
               setExperimentSelectorOpen(true);

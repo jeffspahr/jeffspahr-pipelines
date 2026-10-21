@@ -370,6 +370,12 @@ describe('NewPipelineVersion', () => {
       expect(getPipelineSpy).toHaveBeenCalledWith(MOCK_PIPELINE.pipeline_id);
     });
 
+    it('names the Choose button after the pipeline field', async () => {
+      await renderExistingPipeline();
+
+      expect(screen.getByRole('button', { name: 'Choose pipeline' })).toHaveTextContent('Choose');
+    });
+
     it('allows updating pipeline version name', async () => {
       await renderExistingPipeline();
 
