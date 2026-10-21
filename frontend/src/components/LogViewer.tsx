@@ -25,6 +25,10 @@ const listContainerStyleOverride = {
   overflow: 'visible',
 };
 
+// react-virtualized defaults aria-readonly to true, which is not allowed on role='group'.
+// Only null (not undefined) bypasses that default, so React omits the attribute.
+const OMIT_ARIA_READONLY = null as unknown as boolean;
+
 interface LogViewerProps {
   logLines: string[];
   label?: string;
@@ -90,7 +94,12 @@ class LogViewer extends React.Component<LogViewerProps, LogViewerState> {
             rowCount={this.props.logLines.length}
             rowHeight={LOG_ROW_HEIGHT}
             className='kfp-log-viewer'
+            // A focusable scroll area of plain text lines, not an interactive grid. Not a live
+            // region: logs are refetched while the task runs and lines re-mount on scroll.
+            role='group'
+            containerRole='presentation'
             aria-label={this.props.label || 'Task logs'}
+            aria-readonly={OMIT_ARIA_READONLY}
             ref={this._rootRef}
             overscanIndicesGetter={overscanOnBothDirections}
             overscanRowCount={
@@ -129,8 +138,15 @@ class LogViewer extends React.Component<LogViewerProps, LogViewerState> {
   private _rowRenderer(props: ListRowProps): React.ReactNode {
     const { style, key, index } = props;
     const line = this.props.logLines[index];
+    // An explicit role stops react-virtualized from adding role='gridcell' to each line.
     return (
-      <div key={key} className='kfp-log-line' data-level={getLineLevel(line)} style={style}>
+      <div
+        key={key}
+        className='kfp-log-line'
+        data-level={getLineLevel(line)}
+        role='presentation'
+        style={style}
+      >
         <MemoedLogLine index={index} line={line} />
       </div>
     );

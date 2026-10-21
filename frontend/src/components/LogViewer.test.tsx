@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import LogViewer from './LogViewer';
 
@@ -30,6 +30,27 @@ describe('LogViewer', () => {
   it('renders an empty container when no logs passed', () => {
     const { asFragment } = render(<LogViewer logLines={[]} />);
     expect(asFragment()).toMatchSnapshot();
+  });
+
+  it('exposes the log as a named group of plain text lines', () => {
+    // Give AutoSizer a viewport in jsdom so lines render.
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600);
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(800);
+    try {
+      render(<LogViewer label='Driver logs' logLines={['first line', 'second line']} />);
+      const log = screen.getByRole('group', { name: 'Driver logs' });
+      expect(log).toHaveAttribute('tabindex', '0');
+      expect(log).not.toHaveAttribute('aria-readonly');
+      expect(log).not.toHaveAttribute('aria-live');
+      expect(log.firstElementChild).toHaveAttribute('role', 'presentation');
+      expect(log).toHaveTextContent('first line');
+      expect(log).toHaveTextContent('second line');
+      expect(screen.queryByRole('grid')).not.toBeInTheDocument();
+      expect(screen.queryByRole('row')).not.toBeInTheDocument();
+      expect(screen.queryByRole('gridcell')).not.toBeInTheDocument();
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 
   it('renders one log line', () => {
