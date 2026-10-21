@@ -215,21 +215,28 @@ describe('AppShell', () => {
     expect(localStorage.getItem('kfp.theme')).toBeNull();
   });
 
-  it('keeps the theme menu in the selected palette and persists all choices', async () => {
+  it('persists every theme choice while switching between palettes', async () => {
     localStorage.setItem('navbarCollapsed', 'true');
-    const view = renderShell();
+    renderShell();
+    const user = userEvent.setup();
     for (const name of ['Dark', 'System', 'Light']) {
-      await userEvent.click(screen.getByRole('button', { name: /^Theme: / }));
-      await userEvent.click(await screen.findByRole('menuitemradio', { name }));
+      await user.click(screen.getByRole('button', { name: /^Theme: / }));
+      await user.click(await screen.findByRole('menuitemradio', { name }));
       await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
       expect(localStorage.getItem('kfp.theme')).toBe(name.toLowerCase());
       expect(screen.getByRole('button', { name: `Theme: ${name}` })).toBeVisible();
     }
-    await userEvent.click(screen.getByRole('button', { name: 'Theme: Light' }));
-    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Dark' }));
+  });
+
+  it('restores the selected palette in the theme menu after remount', async () => {
+    localStorage.setItem('navbarCollapsed', 'true');
+    const view = renderShell();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Theme: Light' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Dark' }));
     view.unmount();
     renderShell();
-    await userEvent.click(screen.getByRole('button', { name: 'Theme: Dark' }));
+    await user.click(screen.getByRole('button', { name: 'Theme: Dark' }));
     expect(await screen.findByRole('menu', { name: 'Appearance' })).toBeVisible();
     expect(screen.getByRole('menu').closest('.kfp-theme')).toHaveClass('dark');
   });
