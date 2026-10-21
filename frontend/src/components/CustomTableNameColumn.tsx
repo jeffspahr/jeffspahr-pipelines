@@ -44,6 +44,25 @@ export function NameTooltip({ name, children }: { name: string; children: ReactE
   );
 }
 
+function ResourceName({ name, displayName }: { name: string; displayName: string }) {
+  const descriptionId = useId();
+  const describesName = !!name && name !== displayName;
+  return (
+    <>
+      <NameTooltip name={'Name: ' + name}>
+        <span tabIndex={0} aria-describedby={describesName ? descriptionId : undefined}>
+          {displayName}
+        </span>
+      </NameTooltip>
+      {describesName && (
+        <span id={descriptionId} hidden>
+          {'Name: ' + name}
+        </span>
+      )}
+    </>
+  );
+}
+
 /**
  * Common name custom renderer that shows a tooltip when hovered. The tooltip helps if there isn't
  * enough space to show the entire name in limited space.
@@ -54,11 +73,7 @@ export const NameWithTooltip: React.FC<
     name?: string;
   }>
 > = (props: CustomRendererProps<{ display_name?: string; name?: string }>) => {
-  return (
-    <NameTooltip name={'Name: ' + (props.value?.name || '')}>
-      <span tabIndex={0} aria-label={'Name: ' + (props.value?.name || '')}>
-        {props.value?.display_name || props.value?.name || ''}
-      </span>
-    </NameTooltip>
-  );
+  const name = props.value?.name || '';
+  // Tables call custom renderers as plain functions, so hooks live in ResourceName.
+  return <ResourceName name={name} displayName={props.value?.display_name || name} />;
 };

@@ -32,6 +32,51 @@ describe('NameWithTooltip', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Name: pipeline-123');
   });
 
+  it('names the cell by its visible text and describes the resource name', () => {
+    render(
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <NameWithTooltip
+                value={{ display_name: 'My Pipeline', name: 'pipeline-123' }}
+                id='test-id'
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByRole('cell')).toHaveAccessibleName('My Pipeline');
+    const label = screen.getByText('My Pipeline');
+    expect(label).not.toHaveAttribute('aria-label');
+    expect(label).toHaveAccessibleDescription('Name: pipeline-123');
+  });
+
+  it('keeps a same-name cell focusable without repeating the name as a description', async () => {
+    render(
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <NameWithTooltip
+                value={{ display_name: 'pipeline-123', name: 'pipeline-123' }}
+                id='test-id'
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByRole('cell')).toHaveAccessibleName('pipeline-123');
+    await userEvent.tab();
+    const label = screen.getByText('pipeline-123');
+    expect(label).toHaveFocus();
+    expect(label).not.toHaveAttribute('aria-label');
+    expect(label).not.toHaveAttribute('aria-describedby');
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Name: pipeline-123');
+  });
+
   it('falls back to name when display_name is not available', () => {
     render(<NameWithTooltip value={{ name: 'pipeline-123' }} id='test-id' />);
     expect(screen.getByText('pipeline-123')).toBeInTheDocument();
