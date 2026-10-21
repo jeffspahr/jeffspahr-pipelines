@@ -37,7 +37,7 @@ try{
   if(scene.name==='closing')await frames[1].getByRole('switch',{name:'Dark mode',exact:true}).check();
   await sleep(600);const start=(performance.now()-clock)/1000;clips.push({...scene,start:start+.15,title,path});
   await page.screenshot({path:resolve(out,scene.name+'.png')});
-  if(scene.name==='pipelines'){await sleep(2000);await frames[1].getByRole('button',{name:/Expand pipeline Python two steps/}).click();}
+  if(scene.name==='pipelines'){await sleep(2000);await frames[1].getByRole('button',{name:'Pipeline name',exact:true}).click();}
   if(scene.name==='experiments'){await sleep(1500);await frames[1].getByRole('button',{name:/Expand experiment Default/}).click();}
   if(scene.name==='filter'){
    await sleep(1000);await frames[1].getByRole('button',{name:'Filter status',exact:true}).click();await sleep(2200);await frames[1].getByRole('menuitemradio',{name:'Failed',exact:true}).click();
