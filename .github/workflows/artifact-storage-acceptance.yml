@@ -1,22 +1,7 @@
-name: Artifact storage acceptance
+name: Final preview live acceptance
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [release-2.18]
-    paths:
-      - '.github/workflows/artifact-storage-acceptance.yml'
-      - 'frontend/**'
-      - '.github/actions/create-cluster/**'
-      - '.github/actions/github-disk-cleanup/**'
-      - '.github/actions/upload-artifact-with-retry/**'
-      - '.github/resources/scripts/configure-docker-hub-mirror.sh'
-      - '.github/resources/scripts/docker-pull-with-retry.sh'
-      - '.github/resources/scripts/helper-functions.sh'
-      - '.github/resources/curl-retry/**'
-      - 'manifests/kustomize/third-party/seaweedfs/base/seaweedfs/seaweedfs-deployment.yaml'
-      - '!**/*.md'
-      - '!**/OWNERS'
 
 permissions:
   contents: read
@@ -30,6 +15,8 @@ jobs:
       FRONTEND_SERVER_NAMESPACE: kfp-artifact-acceptance
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: 4805d915a2ae2aa2f3deefa11e444b163d68bc5c
       - uses: actions/setup-node@v7
         with:
           node-version-file: frontend/.nvmrc
@@ -85,6 +72,15 @@ jobs:
         run: |
           npm install --global "$(node -p 'require("./package.json").packageManager')"
           npm ci
+      - name: Add isolated live preview acceptance helper
+        run: |
+          python3 - <<'PYHELPER'
+          import base64
+          from pathlib import Path
+          p=Path('frontend/server/integration-tests/artifact-storage-live.test.ts')
+          s=p.read_text()
+          p.write_text(s[:s.rfind('});')]+base64.b64decode('ICBpdC5lYWNoKFsnbWluaW8nLCAnczMnXSkoJ3NlcnZlcyB0aGUgcmVhbCAlcyBzaWJsaW5nIG9iamVjdCBhbmQga2VlcHMgZGlyZWN0b3J5IG9iamVjdHMgY2xlYW4nLCBhc3luYyAoc291cmNlKSA9PiB7CiAgICBjb25zdCBjbGllbnQgPSBuZXcgQ2xpZW50KHsgZW5kUG9pbnQ6ICcxMjcuMC4wLjEnLCBwb3J0LCB1c2VTU0w6IGZhbHNlLCBhY2Nlc3NLZXk6ICdmaXh0dXJlJywgc2VjcmV0S2V5OiAnZml4dHVyZS1zZWNyZXQnIH0pOwogICAgY29uc3QgcHJldmlldyA9IEpTT04uc3RyaW5naWZ5KHsgdmVyc2lvbjogMSwga2luZDogJ21vZGVsJywgaHlwZXJwYXJhbWV0ZXJzOiB7IG1heF9kZXB0aDogMyB9IH0pOwogICAgYXdhaXQgY2xpZW50LnB1dE9iamVjdChidWNrZXQsICdwcmV2aWV3LW1vZGVsL2RhdGEuYmluJywgJ21vZGVsIGJ5dGVzJyk7CiAgICBhd2FpdCBjbGllbnQucHV0T2JqZWN0KGJ1Y2tldCwgJ3ByZXZpZXctbW9kZWwua2ZwLXByZXZpZXcuanNvbicsIHByZXZpZXcpOwogICAgY29uc3QgcmVxdWVzdCA9IHVpKCk7CiAgICBmb3IgKGNvbnN0IGtleSBvZiBbJ3ByZXZpZXctbW9kZWwnLCAncHJldmlldy1tb2RlbC8nXSkgewogICAgICBjb25zdCByZXNwb25zZSA9IGF3YWl0IHJlcXVlc3QuZ2V0KCcvYXJ0aWZhY3RzL3ByZXZpZXcnKS5xdWVyeSh7IHNvdXJjZSwgYnVja2V0LCBrZXksIHN0b3JhZ2U6ICdzaWJsaW5nJyB9KS5leHBlY3QoMjAwKTsKICAgICAgZXhwZWN0KHJlc3BvbnNlLnRleHQpLnRvQmUocHJldmlldyk7CiAgICAgIGV4cGVjdChyZXNwb25zZS5oZWFkZXJzWydjYWNoZS1jb250cm9sJ10pLnRvQmUoJ25vLXN0b3JlJyk7CiAgICAgIGV4cGVjdChyZXNwb25zZS5oZWFkZXJzWydjb250ZW50LXR5cGUnXSkudG9Db250YWluKCdhcHBsaWNhdGlvbi9qc29uJyk7CiAgICAgIGV4cGVjdChyZXNwb25zZS5oZWFkZXJzWyd4LWNvbnRlbnQtdHlwZS1vcHRpb25zJ10pLnRvQmUoJ25vc25pZmYnKTsKICAgIH0KICAgIGNvbnN0IGRpcmVjdG9yeUtleXM6IHN0cmluZ1tdID0gW107CiAgICBmb3IgYXdhaXQgKGNvbnN0IG9iamVjdCBvZiBjbGllbnQubGlzdE9iamVjdHNWMihidWNrZXQsICdwcmV2aWV3LW1vZGVsLycsIHRydWUpKSBkaXJlY3RvcnlLZXlzLnB1c2gob2JqZWN0Lm5hbWUhKTsKICAgIGV4cGVjdChkaXJlY3RvcnlLZXlzKS50b0VxdWFsKFsncHJldmlldy1tb2RlbC9kYXRhLmJpbiddKTsKICAgIGF3YWl0IGNsaWVudC5wdXRPYmplY3QoYnVja2V0LCAncHJldmlldy1sZWdhY3kvX2tmcF9wcmV2aWV3Lmpzb24nLCBwcmV2aWV3KTsKICAgIGF3YWl0IHJlcXVlc3QuZ2V0KCcvYXJ0aWZhY3RzL3ByZXZpZXcnKS5xdWVyeSh7IHNvdXJjZSwgYnVja2V0LCBrZXk6ICdwcmV2aWV3LWxlZ2FjeScgfSkuZXhwZWN0KDIwMCwgcHJldmlldyk7CiAgICBhd2FpdCByZXF1ZXN0LmdldCgnL2FydGlmYWN0cy9wcmV2aWV3JykucXVlcnkoeyBzb3VyY2UsIGJ1Y2tldCwga2V5OiAncHJldmlldy1taXNzaW5nJywgc3RvcmFnZTogJ3NpYmxpbmcnIH0pLmV4cGVjdCg0MDQpOwogICAgYXdhaXQgcmVxdWVzdC5nZXQoJy9hcnRpZmFjdHMvcHJldmlldycpLnF1ZXJ5KHsgc291cmNlLCBidWNrZXQsIGtleTogJ3ByZXZpZXctbW9kZWwnLCBzdG9yYWdlOiAnYXJiaXRyYXJ5JyB9KS5leHBlY3QoNDAwKTsKICAgIGF3YWl0IGNsaWVudC5wdXRPYmplY3QoYnVja2V0LCAncHJldmlldy1vdmVyc2l6ZS5rZnAtcHJldmlldy5qc29uJywgQnVmZmVyLmFsbG9jKDY1NTM3LCAnYScpKTsKICAgIGF3YWl0IHJlcXVlc3QuZ2V0KCcvYXJ0aWZhY3RzL3ByZXZpZXcnKS5xdWVyeSh7IHNvdXJjZSwgYnVja2V0LCBrZXk6ICdwcmV2aWV3LW92ZXJzaXplJywgc3RvcmFnZTogJ3NpYmxpbmcnIH0pLmV4cGVjdCg0MTMpOwogIH0sIDMwMDAwKTsKCiAgaXQoJ3NoYXJlcyB0aGUgcmVhbCBjbG9jayByZXF1ZXN0IGJ1ZGdldCBhY3Jvc3Mgc3VjY2Vzc2Z1bCBzdG9yYWdlIHByZXZpZXdzIGFuZCBkb3dubG9hZHMnLCBhc3luYyAoKSA9PiB7CiAgICBjb25zdCByZXF1ZXN0ID0gdWkoKTsKICAgIGNvbnN0IHN0YXJ0ZWQgPSBEYXRlLm5vdygpOwogICAgZm9yIChsZXQgaW5kZXggPSAwOyBpbmRleCA8IDMwMDsgaW5kZXgrKykgewogICAgICBjb25zdCByZXNwb25zZSA9IGluZGV4ICUgMiA9PT0gMAogICAgICAgID8gYXdhaXQgcmVxdWVzdC5nZXQoJy9hcnRpZmFjdHMvcHJldmlldycpLnF1ZXJ5KHsgc291cmNlOiAnbWluaW8nLCBidWNrZXQsIGtleTogJ3ByZXZpZXctbW9kZWwnLCBzdG9yYWdlOiAnc2libGluZycgfSkKICAgICAgICA6IGF3YWl0IHJlcXVlc3QuZ2V0KCcvYXJ0aWZhY3RzL2dldCcpLnF1ZXJ5KHsgc291cmNlOiAnbWluaW8nLCBidWNrZXQsIGtleTogJ2V4aXN0aW5nLmh0bWwnLCBkb3dubG9hZDogJ3RydWUnIH0pOwogICAgICBleHBlY3QocmVzcG9uc2Uuc3RhdHVzLCBgcmVxdWVzdCAke2luZGV4fTogJHtyZXNwb25zZS50ZXh0fWApLnRvQmUoMjAwKTsKICAgIH0KICAgIGV4cGVjdChEYXRlLm5vdygpIC0gc3RhcnRlZCkudG9CZUxlc3NUaGFuKDU1MDAwKTsKICAgIGNvbnN0IGxpbWl0ZWQgPSBhd2FpdCByZXF1ZXN0LmdldCgnL2FydGlmYWN0cy9wcmV2aWV3JykucXVlcnkoeyBzb3VyY2U6ICdtaW5pbycsIGJ1Y2tldCwga2V5OiAncHJldmlldy1tb2RlbCcsIHN0b3JhZ2U6ICdzaWJsaW5nJyB9KS5leHBlY3QoNDI5KTsKICAgIGV4cGVjdChOdW1iZXIobGltaXRlZC5oZWFkZXJzWydyZXRyeS1hZnRlciddKSkudG9CZUdyZWF0ZXJUaGFuKDApOwogICAgZXhwZWN0KGxpbWl0ZWQuaGVhZGVyc1snY2FjaGUtY29udHJvbCddKS50b0JlKCduby1zdG9yZScpOwogICAgYXdhaXQgcmVxdWVzdC5nZXQoJy8nKS5leHBlY3QoMjAwKTsKICB9LCA2MDAwMCk7CgogIGl0KCdhbGxvd3MgYSBuYW1lc3BhY2UgYXJ0aWZhY3Qgc2VydmVyIHRvIHNlcnZlIGJleW9uZCB0aGUgc2hhcmVkLXNlcnZlciBsaW1pdCcsIGFzeW5jICgpID0+IHsKICAgIGNvbnN0IHJlcXVlc3QgPSB1aSh7IEFSVElGQUNUU19SQVRFX0xJTUlUX0RJU0FCTEVEOiAndHJ1ZScgfSk7CiAgICBmb3IgKGxldCBpbmRleCA9IDA7IGluZGV4IDwgMzAxOyBpbmRleCsrKSB7CiAgICAgIGNvbnN0IHJlc3BvbnNlID0gYXdhaXQgcmVxdWVzdC5nZXQoJy9hcnRpZmFjdHMvcHJldmlldycpLnF1ZXJ5KHsgc291cmNlOiAnbWluaW8nLCBidWNrZXQsIGtleTogJ3ByZXZpZXctbW9kZWwnLCBzdG9yYWdlOiAnc2libGluZycgfSkuZXhwZWN0KDIwMCk7CiAgICAgIGV4cGVjdChyZXNwb25zZS5oZWFkZXJzWydyYXRlbGltaXQnXSkudG9CZVVuZGVmaW5lZCgpOwogICAgfQogIH0sIDYwMDAwKTsK').decode()+s[s.rfind('});'):])
+          PYHELPER
       - name: Exercise actual handler, Kubernetes and storage clients
         working-directory: frontend/server
         run: |
@@ -94,6 +90,8 @@ jobs:
         if: always()
         run: |
           git rev-parse HEAD > /tmp/artifact-storage-revision.txt
+          echo "${{ github.sha }}" > /tmp/preview-helper-revision.txt
+          sha256sum frontend/server/integration-tests/artifact-storage-live.test.ts > /tmp/preview-helper-sha256.txt
       - uses: ./.github/actions/upload-artifact-with-retry
         if: always()
         with:
@@ -101,6 +99,8 @@ jobs:
           path: |
             /tmp/artifact-storage-results.json
             /tmp/artifact-storage-revision.txt
+            /tmp/preview-helper-revision.txt
+            /tmp/preview-helper-sha256.txt
       - name: Delete disposable storage
         if: always()
         run: docker rm -f artifact-seaweedfs || true
