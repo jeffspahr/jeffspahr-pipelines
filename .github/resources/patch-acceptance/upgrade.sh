@@ -12,6 +12,7 @@ case "$lane" in
      version=140024; security=();;
  *) exit 2;;
 esac
+fixture_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 name="pg-acceptance-${lane}-${GITHUB_RUN_ID:-$$}"
 volume="$name-data"
 mlmd="$name-mlmd"
@@ -25,6 +26,15 @@ docker volume create "$volume"
 if [[ "$lane" == 18 ]]; then
  docker run --rm --user 0:0 -v "$volume:/var/lib/postgresql/data" --entrypoint sh "$old" -c 'chown 999:999 /var/lib/postgresql/data; chmod 2770 /var/lib/postgresql/data'
 fi
+if [[ "$lane" == 14 ]]; then
+ docker build -t "$name-client" - <<'DOCKERFILE'
+FROM python:3.10-slim
+RUN pip install --no-cache-dir ml-metadata==1.14.0 'numpy<2'
+DOCKERFILE
+fi
+mlmd_client() {
+ docker run --rm --network "container:$name" -v "$fixture_dir/mlmd-client.py:/client.py:ro" "$name-client" python /client.py "$1"
+}
 psql() { docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U user -d postgres "$@"; }
 start() {
  docker run -d --name "$name" "${security[@]}" -p 127.0.0.1:15432:5432 \
@@ -37,7 +47,7 @@ start() {
  echo 'PostgreSQL readiness timed out' >&2; return 1
 }
 mlmd_start() {
- docker run -d --name "$mlmd" --network "container:$name" --user 1000:0 --cap-drop ALL --security-opt no-new-privileges \
+ docker run -d --name "$mlmd" --network "container:$name" --entrypoint /bin/metadata_store_server --user 1000:0 --cap-drop ALL --security-opt no-new-privileges \
  gcr.io/tfx-oss-public/ml_metadata_store_server:1.14.0 \
  --grpc_port=8080 --metadata_source_config_type=postgresql --postgres_config_host=127.0.0.1 \
  --postgres_config_port=5432 --postgres_config_dbname=mlmdpostgres --postgres_config_user=user \
@@ -63,6 +73,7 @@ if [[ "$lane" == 18 ]]; then
 else
  psql -c 'CREATE DATABASE mlmdpostgres'
  mlmd_start
+ mlmd_client seed
  docker rm -f "$mlmd"
 fi
 before=$(psql -Atc "SELECT md5(string_agg(id||name||payload::text||created::text,',' ORDER BY id)) FROM patch_acceptance.records")
@@ -82,9 +93,9 @@ INSERT INTO patch_acceptance.records(name,payload,created) VALUES ('after-upgrad
 SET timezone='America/New_York';
 SELECT to_char(created,'YYYY-MM-DD TZ') FROM patch_acceptance.records LIMIT 1;
 SQL
-if [[ "$lane" == 18 ]]; then "$KFP_SCHEMA" verify; else mlmd_start; docker rm -f "$mlmd"; fi
+if [[ "$lane" == 18 ]]; then "$KFP_SCHEMA" verify; else mlmd_start; mlmd_client upgraded; docker rm -f "$mlmd"; fi
 docker restart -t 60 "$name"
 for i in $(seq 1 90); do if psql -Atc 'SELECT 1' >/dev/null 2>&1; then break; fi; sleep 2; done
 [[ $(psql -Atc 'SELECT count(*) FROM patch_acceptance.records') == 1001 ]]
-if [[ "$lane" == 18 ]]; then "$KFP_SCHEMA" verify; else mlmd_start; fi
+if [[ "$lane" == 18 ]]; then "$KFP_SCHEMA" verify; else mlmd_start; mlmd_client restarted; fi
 echo "PASS PostgreSQL $lane same-volume upgrade to $version, persisted reads/writes/indexes/restart and application schema initialization"
