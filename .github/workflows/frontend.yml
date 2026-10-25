@@ -6,20 +6,30 @@ permissions:
 jobs:
   tensorboard:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: jeffspahr/jeffspahr-pipelines
+        ref: f060d5424
+        path: source
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: 24.22.1
     - name: Start actual viewer image
-      run: "docker run -d --name tensorboard -p127.0.0.1:6006:6006 -v \"$PWD/.github/resources/patch-acceptance/tensorboard.py:/acceptance.py:ro\"\
-        \ tensorflow/tensorflow:2.20.0@sha256:6b0a7db409e62b7cf188ce72074c520af3e8c21f6d4d5b206f700520594dfb5a\
-        \ python /acceptance.py\nfor i in $(seq 1 120); do\n  if docker exec tensorboard\
-        \ test -f /tmp/tensorboard-ready; then break; fi\n  if [[ $(docker inspect\
-        \ -f '{{.State.Running}}' tensorboard) != true ]]; then docker logs tensorboard;\
-        \ exit 1; fi\n  sleep 2\ndone\ndocker exec tensorboard cat /tmp/tensorboard-ready\
-        \ | tee schemes.json\n"
+      run: "set -euo pipefail\ndocker build -f source/backend/Dockerfile.tensorboard\
+        \ -t kfp-tensorboard:test source\ndocker run -d --name s3 --network host motoserver/moto:5.1.15@sha256:8860b18917e1ee4d067df19a406ae95dc26037e6965d5b499e1cffd33755b914\n\
+        docker run -d --name gcs --network host fsouza/fake-gcs-server:1.54.0@sha256:3730da0e31f7e5186a90ec4899dc2c336104e7599df400411392ef17e684c31f\
+        \ -scheme http -port 4443 -external-url http://127.0.0.1:4443\ndocker run\
+        \ -d --name tensorboard --network host -e S3_ENDPOINT=http://127.0.0.1:5000\
+        \ -e STORAGE_EMULATOR_HOST=http://127.0.0.1:4443 -e AWS_ACCESS_KEY_ID=test\
+        \ -e AWS_SECRET_ACCESS_KEY=test -e AWS_DEFAULT_REGION=us-east-1 -v \"$PWD/.github/resources/patch-acceptance/tensorboard.py:/acceptance.py:ro\"\
+        \ kfp-tensorboard:test python /acceptance.py\nfor i in $(seq 1 120); do\n\
+        \  if docker exec tensorboard test -f /tmp/tensorboard-ready; then break;\
+        \ fi\n  if [[ $(docker inspect -f '{{.State.Running}}' tensorboard) != true\
+        \ ]]; then docker logs tensorboard; exit 1; fi\n  sleep 2\ndone\ndocker exec\
+        \ tensorboard cat /tmp/tensorboard-ready | tee schemes.json\n"
     - name: Exercise browser navigation under proxy prefix
       run: 'mkdir /tmp/browser
 
@@ -59,6 +69,53 @@ jobs:
 
           '
         retention-days: 7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      if: always()
+      with:
+        repository: kubeflow/pipelines
+        ref: 2143a241f968408bb49068c1a3d9e377572ebf3f
+        path: tooling
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      if: always()
+      with:
+        python-version: '3.13'
+    - run: pip install -r tooling/.github/scripts/requirements.txt
+      if: always()
+    - uses: ./tooling/.github/actions/setup-osv-scanner
+      if: always()
+      with:
+        arch: amd64
+    - name: Scan built runtime by immutable image ID
+      if: always()
+      env:
+        PYTHONPATH: tooling/release
+      run: 'set -euo pipefail
+
+        mkdir -p evidence
+
+        docker image inspect kfp-tensorboard:test > evidence/image-inspect.json
+
+        python - <<''SCAN''
+
+        import json
+
+        from pathlib import Path
+
+        from kfpr.osv_image_scan import scan_image
+
+        image=json.load(open(''evidence/image-inspect.json''))[0][''Id'']
+
+        scan_image(image,''linux/amd64'',Path(''evidence''),''json'')
+
+        SCAN
+
+        '
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: always()
+      with:
+        name: native-tensorboard-scan
+        path: evidence
+        retention-days: 7
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -66,56 +123,32 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         repository: jeffspahr/jeffspahr-pipelines
-        ref: bace9e83da95bb6dde6fb60f3aec4c29a3d544dc
+        ref: f060d5424
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: 24.22.1
     - run: npm ci
       working-directory: frontend
+    - run: npm run build:css
+      working-directory: frontend
+      if: success() || failure()
     - run: npx vitest run src/components/viewers/Tensorboard.test.tsx
       working-directory: frontend
+      if: success() || failure()
     - run: npm run typecheck
       working-directory: frontend
+      if: success() || failure()
     - run: npx prettier --check src/components/viewers/Tensorboard.tsx src/components/viewers/Tensorboard.test.tsx
       working-directory: frontend
+      if: success() || failure()
     - run: npm run build:viewer
       working-directory: frontend
+      if: success() || failure()
     - run: git diff --binary > viewer-assets.patch
+      if: success() || failure()
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       if: always()
       with:
         name: tensorboard-viewer-assets
         path: viewer-assets.patch
-        retention-days: 7
-  scan:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - key: tensorboard
-          image: tensorflow/tensorflow:2.20.0@sha256:6b0a7db409e62b7cf188ce72074c520af3e8c21f6d4d5b206f700520594dfb5a
-    steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        repository: kubeflow/pipelines
-        ref: 2143a241f968408bb49068c1a3d9e377572ebf3f
-    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-      with:
-        python-version: '3.13'
-    - run: pip install -r .github/scripts/requirements.txt
-    - uses: ./.github/actions/setup-osv-scanner
-      with:
-        arch: amd64
-    - env:
-        IMAGE: ${{ matrix.image }}
-        PYTHONPATH: release
-      run: python .github/resources/scripts/third_party_image_scan.py scan --image
-        "$IMAGE" --output evidence
-    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-      if: always()
-      with:
-        name: patch-image-scan-${{ matrix.key }}
-        path: evidence
         retention-days: 7

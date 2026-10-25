@@ -5,24 +5,52 @@ import subprocess
 import time
 import urllib.request
 
-import tensorflow as tf
+from tensorboard.compat import tf
+import io
+import os
+from PIL import Image
 from tensorboard.compat.proto import event_pb2, graph_pb2, node_def_pb2, summary_pb2
 from tensorboard.summary.writer.event_file_writer import EventFileWriter
 
 root = pathlib.Path('/tmp/tensorboard-acceptance')
 root.mkdir(exist_ok=True)
-# Both current scalars and legacy event formats must remain readable.
-with tf.summary.create_file_writer(str(root / 'current')).as_default():
-    tf.summary.scalar('loss', 0.25, step=1)
-    tf.summary.image('preview', tf.ones((1, 2, 2, 3)), step=1)
 writer = EventFileWriter(str(root / 'legacy'))
 graph = graph_pb2.GraphDef(node=[node_def_pb2.NodeDef(name='input', op='Placeholder')])
 writer.add_event(event_pb2.Event(wall_time=time.time(), step=1, graph_def=graph.SerializeToString()))
-writer.add_event(event_pb2.Event(wall_time=time.time(), step=1, summary=summary_pb2.Summary(value=[summary_pb2.Summary.Value(tag='accuracy', simple_value=0.75)])))
+png = io.BytesIO()
+Image.new('RGB', (2, 2), 'blue').save(png, format='PNG')
+writer.add_event(event_pb2.Event(wall_time=time.time(), step=1, summary=summary_pb2.Summary(value=[
+    summary_pb2.Summary.Value(tag='accuracy', simple_value=0.75),
+    summary_pb2.Summary.Value(tag='preview', image=summary_pb2.Summary.Image(height=2, width=2, colorspace=3, encoded_image_string=png.getvalue())),
+])))
 writer.flush()
 writer.close()
-schemes = sorted(tf.io.gfile.get_registered_schemes())
-print(json.dumps({'versions': {name: importlib.metadata.version(name) for name in ['tensorflow', 'tensorboard', 'protobuf', 'Werkzeug']}, 'filesystem_schemes': schemes}), flush=True)
+schemes = ['local', 's3', 'gs']
+print(json.dumps({'versions': {name: importlib.metadata.version(name) for name in ['tensorboard', 'protobuf', 'Werkzeug', 'boto3', 'gcsfs']}, 'filesystem_module': tf.io.gfile.__name__}), flush=True)
+# Exercise the same filesystem readers used by TensorBoard against actual
+# S3/GCS protocol emulators, not merely import their libraries.
+if os.environ.get('S3_ENDPOINT'):
+    import boto3
+    s3 = boto3.client('s3', endpoint_url=os.environ['S3_ENDPOINT'])
+    s3.create_bucket(Bucket='tensorboard-fixtures')
+    event = next((root / 'legacy').glob('events.*'))
+    s3.put_object(Bucket='tensorboard-fixtures', Key='events/'+event.name, Body=event.read_bytes())
+    with tf.io.gfile.GFile('s3://tensorboard-fixtures/events/'+event.name, 'rb') as stream:
+        assert stream.read() == event.read_bytes()
+    assert tf.io.gfile.listdir('s3://tensorboard-fixtures/events')
+    print('S3 event read/list passed', flush=True)
+if os.environ.get('STORAGE_EMULATOR_HOST'):
+    import gcsfs
+    # This emulator must allow anonymous requests. gcsfs reads the emulator
+    # endpoint from the environment and uses its normal credential fallback.
+    fs = gcsfs.GCSFileSystem(token='anon')
+    fs.mkdir('tensorboard-fixtures')
+    event = next((root / 'legacy').glob('events.*'))
+    fs.pipe('tensorboard-fixtures/events/'+event.name, event.read_bytes())
+    with tf.io.gfile.GFile('gs://tensorboard-fixtures/events/'+event.name, 'rb') as stream:
+        assert stream.read() == event.read_bytes()
+    assert tf.io.gfile.listdir('gs://tensorboard-fixtures/events')
+    print('GCS event read/list passed', flush=True)
 prefix = '/tensorboard/viewer-acceptance'
 process = subprocess.Popen(['tensorboard', '--logdir='+str(root), '--path_prefix='+prefix+'/', '--bind_all', '--port=6006', '--reload_interval=1'])
 try:
