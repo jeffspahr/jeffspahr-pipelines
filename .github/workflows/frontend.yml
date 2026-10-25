@@ -1,61 +1,49 @@
-name: 2.18 PostgreSQL and TensorBoard qualification
-on:
-  workflow_dispatch: null
+name: 2.18 TensorBoard final qualification
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 jobs:
-  tensorboard:
+  runtime:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         repository: jeffspahr/jeffspahr-pipelines
-        ref: 3c69c371b49281fa68ff2f64c4c7f3b0bcda5cb0
-        path: source
+        ref: d3920f6a5fbb10f6f83deda0fb606d3a49c69174
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: 24.22.1
     - name: Start actual viewer image
-      run: "set -euo pipefail\ndocker build -f source/backend/Dockerfile.tensorboard\
-        \ -t kfp-tensorboard:test source\ndocker run -d --name s3 --network host motoserver/moto:5.1.15@sha256:8860b18917e1ee4d067df19a406ae95dc26037e6965d5b499e1cffd33755b914\n\
-        docker run -d --name gcs --network host fsouza/fake-gcs-server:1.54.0@sha256:3730da0e31f7e5186a90ec4899dc2c336104e7599df400411392ef17e684c31f\
-        \ -scheme http -port 4443 -external-url http://127.0.0.1:4443\ndocker run\
-        \ -d --name tensorboard --network host -e S3_ENDPOINT=http://127.0.0.1:5000\
-        \ -e STORAGE_EMULATOR_HOST=http://127.0.0.1:4443 -e AWS_ACCESS_KEY_ID=test\
-        \ -e AWS_SECRET_ACCESS_KEY=test -e AWS_DEFAULT_REGION=us-east-1 -v \"$PWD/.github/resources/patch-acceptance/tensorboard.py:/acceptance.py:ro\"\
-        \ kfp-tensorboard:test python /acceptance.py\nfor i in $(seq 1 120); do\n\
-        \  if docker exec tensorboard test -f /tmp/tensorboard-ready; then break;\
-        \ fi\n  if [[ $(docker inspect -f '{{.State.Running}}' tensorboard) != true\
-        \ ]]; then docker logs tensorboard; exit 1; fi\n  sleep 2\ndone\ndocker exec\
-        \ tensorboard cat /tmp/tensorboard-ready | tee schemes.json\n"
+      run: |
+        set -euo pipefail
+        docker build -f backend/Dockerfile.tensorboard -t kfp-tensorboard:test .
+        docker run -d --name s3 --network host motoserver/moto:5.1.15@sha256:8860b18917e1ee4d067df19a406ae95dc26037e6965d5b499e1cffd33755b914
+        docker run -d --name gcs --network host fsouza/fake-gcs-server:1.54.0@sha256:3730da0e31f7e5186a90ec4899dc2c336104e7599df400411392ef17e684c31f -scheme http -port 4443 -external-url http://127.0.0.1:4443
+        docker run -d --name tensorboard --network host -e S3_ENDPOINT=http://127.0.0.1:5000 -e STORAGE_EMULATOR_HOST=http://127.0.0.1:4443 -e AWS_ACCESS_KEY_ID=test -e AWS_SECRET_ACCESS_KEY=test -e AWS_DEFAULT_REGION=us-east-1 -v "$PWD/test/tensorboard/runtime.py:/acceptance.py:ro" kfp-tensorboard:test python /acceptance.py
+        for i in $(seq 1 120); do
+          if docker exec tensorboard test -f /tmp/tensorboard-ready; then break; fi
+          if [[ $(docker inspect -f '{{.State.Running}}' tensorboard) != true ]]; then docker logs tensorboard; exit 1; fi
+          sleep 2
+        done
+        docker exec tensorboard cat /tmp/tensorboard-ready | tee schemes.json
     - name: Exercise browser navigation under proxy prefix
-      run: 'mkdir /tmp/browser
-
+      run: |
+        mkdir /tmp/browser
         cd /tmp/browser
-
         npm install playwright@1.56.1
-
         npx playwright install --with-deps chromium
-
-        NODE_PATH=/tmp/browser/node_modules node "$GITHUB_WORKSPACE/.github/resources/patch-acceptance/tensorboard.cjs"
-
-        '
+        NODE_PATH=/tmp/browser/node_modules node "$GITHUB_WORKSPACE/test/tensorboard/browser.cjs"
     - name: Require existing storage reader schemes
-      run: 'python3 - <<''PY''
-
+      run: |
+        python3 - <<'PY'
         import json
-
-        schemes=json.load(open(''schemes.json''))
-
-        assert ''gs'' in schemes, schemes
-
-        assert ''s3'' in schemes, schemes
-
+        schemes=json.load(open('schemes.json'))
+        assert 'gs' in schemes, schemes
+        assert 's3' in schemes, schemes
         PY
-
-        '
     - name: Preserve runtime diagnostics
       if: always()
       run: docker logs tensorboard > tensorboard-runtime.log 2>&1
@@ -63,11 +51,10 @@ jobs:
       if: always()
       with:
         name: tensorboard-runtime
-        path: 'tensorboard-runtime.log
-
+        path: |-
+          tensorboard-runtime.log
           schemes.json
-
-          '
+          tensorboard-browser.*
         retention-days: 7
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       if: always()
@@ -89,33 +76,35 @@ jobs:
       if: always()
       env:
         PYTHONPATH: tooling/release
-      run: 'set -euo pipefail
-
+      run: |
+        set -euo pipefail
         mkdir -p evidence
-
         docker image inspect kfp-tensorboard:test > evidence/image-inspect.json
-
-        python - <<''SCAN''
-
+        python - <<'SCAN'
         import json
-
         from pathlib import Path
-
         from kfpr.osv_image_scan import scan_image
-
-        image=json.load(open(''evidence/image-inspect.json''))[0][''Id'']
-
-        scan_image(image,''linux/amd64'',Path(''evidence''),''json'')
-
+        image=json.load(open('evidence/image-inspect.json'))[0]['Id']
+        scan_image(image,'linux/amd64',Path('evidence'),'json')
         SCAN
-
-        '
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       if: always()
       with:
         name: native-tensorboard-scan
         path: evidence
         retention-days: 7
+  arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: jeffspahr/jeffspahr-pipelines
+        ref: d3920f6a5fbb10f6f83deda0fb606d3a49c69174
+    - run: |-
+        docker build -f backend/Dockerfile.tensorboard -t kfp-tensorboard:test .
+        docker run --rm kfp-tensorboard:test tensorboard --version
+        docker run --rm kfp-tensorboard:test python -c "import boto3,gcsfs; from tensorboard.compat import tf; print(tf.io.gfile.__name__)"
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -123,17 +112,20 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         repository: jeffspahr/jeffspahr-pipelines
-        ref: 3c69c371b49281fa68ff2f64c4c7f3b0bcda5cb0
+        ref: d3920f6a5fbb10f6f83deda0fb606d3a49c69174
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: 24.22.1
     - run: npm ci
       working-directory: frontend
-    - run: npm run build:css
+    - run: npm run build:tailwind
       working-directory: frontend
       if: success() || failure()
     - run: npx vitest run src/components/viewers/Tensorboard.test.tsx
       working-directory: frontend
+      if: success() || failure()
+    - run: npx vitest run handlers/tensorboard-proxy.test.ts
+      working-directory: frontend/server
       if: success() || failure()
     - run: npm run typecheck
       working-directory: frontend
@@ -152,21 +144,5 @@ jobs:
         name: tensorboard-viewer-assets
         path: viewer-assets.patch
         retention-days: 7
-  arm64:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
-    steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        repository: jeffspahr/jeffspahr-pipelines
-        ref: 3c69c371b49281fa68ff2f64c4c7f3b0bcda5cb0
-    - run: 'docker build -f backend/Dockerfile.tensorboard -t kfp-tensorboard:test
-        .
-
-        docker run --rm kfp-tensorboard:test tensorboard --version
-
-        docker run --rm kfp-tensorboard:test python -c "import boto3,gcsfs; from tensorboard.compat
-        import tf; print(tf.io.gfile.__name__)"'
-defaults:
-  run:
-    shell: bash
+'on':
+  workflow_dispatch: null
