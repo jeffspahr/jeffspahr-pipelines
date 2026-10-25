@@ -1,98 +1,75 @@
-name: Frontend Tests
-
+name: Supplemental 2.18 deployed image scan
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
-    paths:
-      - 'frontend/**'
-      - 'manifests/kustomize/base/installs/multi-user/pipelines-profile-controller/sync.py'
-      - 'api/v2alpha1/*.proto'
-      - 'kubernetes_platform/proto/*.proto'
-      - 'backend/api/v2/swagger/**'
-      - '.github/workflows/frontend.yml'
-      - '!**/*.md'
-      - '!**/OWNERS'
-      - 'backend/src/apiserver/config/sample_config.json'
-
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+  workflow_dispatch:
 permissions:
   contents: read
-
 jobs:
-  frontend-tests:
-    runs-on: ubuntu-latest
-
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - key: image-1
+            image: "docker.io/postgres:18.3-alpine3.22"
+          - key: image-2
+            image: "gcr.io/cloudsql-docker/gce-proxy:1.38.3"
+          - key: image-3
+            image: "gcr.io/ml-pipeline/application-crd-controller:20231101"
+          - key: image-4
+            image: "mysql:8.0.3"
+          - key: image-5
+            image: "postgres:14.7-alpine3.17"
+          - key: image-6
+            image: "ghcr.io/containerd/busybox:latest"
+          - key: image-7
+            image: "tensorflow/tensorflow:1.13.2"
+          - key: image-8
+            image: "tensorflow/tensorflow:2.2.2"
+          - key: image-9
+            image: "docker.io/istio/install-cni:1.31.1"
+          - key: image-10
+            image: "docker.io/istio/proxyv2:1.31.1"
+          - key: image-11
+            image: "docker.io/istio/pilot:1.31.1"
+          - key: image-12
+            image: "ghcr.io/kubeflow/dashboard/profile-controller:v2.0.0"
+          - key: image-13
+            image: "ghcr.io/kubeflow/dashboard/access-management:v2.0.0"
+          - key: image-14
+            image: "quay.io/jetstack/cert-manager-controller:v1.16.2"
+          - key: image-15
+            image: "quay.io/jetstack/cert-manager-cainjector:v1.16.2"
+          - key: image-16
+            image: "quay.io/jetstack/cert-manager-webhook:v1.16.2"
+          - key: image-17
+            image: "quay.io/jetstack/cert-manager-acmesolver:v1.16.2"
     steps:
-    - name: Checkout code
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      with:
-        persist-credentials: false
-
-    - name: Set up Node.js
-      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
-      with:
-        node-version-file: frontend/.nvmrc
-
-    - name: Set up Python for profile-controller regression tests
-      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-      with:
-        python-version: '3.13'
-
-    - name: Set up npm
-      working-directory: frontend
-      run: |
-        npm install --global "$(node -p 'require("./package.json").packageManager')"
-        npm --version
-
-    - name: Check for toolchain version drift
-      if: github.event_name == 'pull_request'
-      run: |
-        git fetch origin ${{ github.base_ref }} --depth=1
-        git fetch --deepen=100 2>/dev/null || true
-        cd frontend && node scripts/check-lockfile-drift.mjs --base-ref "origin/${{ github.base_ref }}"
-
-    - name: Clean npm cache
-      run: npm cache clean --force
-
-    - name: Install dependencies
-      run: cd ./frontend && npm ci
-
-    - name: Verify generated API clients are up to date
-      run: |
-        cd ./frontend
-        npm run apis:all
-        git diff --exit-code -- \
-          src/apis \
-          src/apisv2 \
-          server/src/generated/apis \
-          server/src/generated/apisv2
-
-    - name: Verify pipeline and platform spec generation
-      working-directory: frontend
-      run: |
-        # Protobuf only needs Ubuntu sources, not the runner's third-party repositories.
-        test -s /etc/apt/sources.list.d/ubuntu.sources
-        apt_sources=(
-          -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources
-          -o Dir::Etc::sourceparts=-
-        )
-        sudo apt-get "${apt_sources[@]}" update
-        sudo apt-get "${apt_sources[@]}" install --yes protobuf-compiler
-        bash scripts/check-spec-generation.sh
-
-    - name: Run Frontend Tests
-      run: cd ./frontend && npm run test:ci
-
-    - name: Verify production bundle startup
-      working-directory: frontend
-      run: |
-        npx playwright install --with-deps chromium
-        npm run test:bundle
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r .github/scripts/requirements.txt
+      - uses: ./.github/actions/setup-osv-scanner
+        with:
+          arch: amd64
+      - name: Scan exact deployment image
+        env:
+          IMAGE: ${{ matrix.image }}
+          IMAGE_KEY: ${{ matrix.key }}
+          PYTHONPATH: release
+        run: |
+          python .github/resources/scripts/third_party_image_scan.py scan --image "$IMAGE" --output "evidence/$IMAGE_KEY"
+      - name: Preserve evidence and failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: supplemental-${{ matrix.key }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
