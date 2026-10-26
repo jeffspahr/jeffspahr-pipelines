@@ -46,7 +46,11 @@ jobs:
         run: |
           docker image inspect "$IMAGE" > "evidence/$IMAGE_KEY/docker-inspect.json"
           set +e
-          docker run --rm "$IMAGE" --help > "evidence/$IMAGE_KEY/help.txt" 2>&1
+          case "$IMAGE_KEY" in
+            cloudsql-*) binary=/cloud_sql_proxy ;;
+            meta-*) binary=/usr/bin/metacontroller ;;
+          esac
+          docker run --rm "$IMAGE" "$binary" --help > "evidence/$IMAGE_KEY/help.txt" 2>&1
           status=$?
           echo "$status" > "evidence/$IMAGE_KEY/help-exit.txt"
           test "$status" = 0 || test "$status" = 2
