@@ -12,40 +12,14 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          - key: image-1
-            image: "docker.io/postgres:18.3-alpine3.22"
-          - key: image-2
+          - key: cloudsql-before
             image: "gcr.io/cloudsql-docker/gce-proxy:1.38.3"
-          - key: image-3
-            image: "gcr.io/ml-pipeline/application-crd-controller:20231101"
-          - key: image-4
-            image: "mysql:8.0.3"
-          - key: image-5
-            image: "postgres:14.7-alpine3.17"
-          - key: image-6
-            image: "ghcr.io/containerd/busybox:latest"
-          - key: image-7
-            image: "tensorflow/tensorflow:1.13.2"
-          - key: image-8
-            image: "tensorflow/tensorflow:2.2.2"
-          - key: image-9
-            image: "docker.io/istio/install-cni:1.31.1"
-          - key: image-10
-            image: "docker.io/istio/proxyv2:1.31.1"
-          - key: image-11
-            image: "docker.io/istio/pilot:1.31.1"
-          - key: image-12
-            image: "ghcr.io/kubeflow/dashboard/profile-controller:v2.0.0"
-          - key: image-13
-            image: "ghcr.io/kubeflow/dashboard/access-management:v2.0.0"
-          - key: image-14
-            image: "quay.io/jetstack/cert-manager-controller:v1.16.2"
-          - key: image-15
-            image: "quay.io/jetstack/cert-manager-cainjector:v1.16.2"
-          - key: image-16
-            image: "quay.io/jetstack/cert-manager-webhook:v1.16.2"
-          - key: image-17
-            image: "quay.io/jetstack/cert-manager-acmesolver:v1.16.2"
+          - key: cloudsql-after
+            image: "gcr.io/cloudsql-docker/gce-proxy:1.38.4"
+          - key: meta-before
+            image: "ghcr.io/metacontroller/metacontroller:v4.16.2"
+          - key: meta-after
+            image: "ghcr.io/metacontroller/metacontroller:v4.16.7"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -65,6 +39,17 @@ jobs:
           PYTHONPATH: release
         run: |
           python .github/resources/scripts/third_party_image_scan.py scan --image "$IMAGE" --output "evidence/$IMAGE_KEY"
+      - name: Preserve CLI interface
+        env:
+          IMAGE: ${{ matrix.image }}
+          IMAGE_KEY: ${{ matrix.key }}
+        run: |
+          docker image inspect "$IMAGE" > "evidence/$IMAGE_KEY/docker-inspect.json"
+          set +e
+          docker run --rm "$IMAGE" --help > "evidence/$IMAGE_KEY/help.txt" 2>&1
+          status=$?
+          echo "$status" > "evidence/$IMAGE_KEY/help-exit.txt"
+          test "$status" = 0 || test "$status" = 2
       - name: Preserve evidence and failures
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
