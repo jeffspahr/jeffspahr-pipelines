@@ -1,98 +1,66 @@
-name: Frontend Tests
-
+name: Third-party TensorBoard compatibility probes
 on:
-  merge_group:
-    types: [checks_requested]
-    branches: [release-2.18]
-  push:
-    branches:
-      - master
-      - release-2.18
-  pull_request:
-    branches:
-      - master
-      - release-2.18
-    paths:
-      - 'frontend/**'
-      - 'manifests/kustomize/base/installs/multi-user/pipelines-profile-controller/sync.py'
-      - 'api/v2alpha1/*.proto'
-      - 'kubernetes_platform/proto/*.proto'
-      - 'backend/api/v1beta1/swagger/**'
-      - 'backend/api/v2beta1/swagger/**'
-      - '.github/workflows/frontend.yml'
-      - '!**/*.md'
-      - '!**/OWNERS'
-      - 'backend/src/apiserver/config/sample_config.json'
-
-
+  workflow_dispatch:
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+defaults:
+  run:
+    shell: bash
 jobs:
-  frontend-tests:
-    runs-on: ubuntu-latest
-
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: galaxy
+          image: quay.io/galaxy/tensorboard@sha256:7c59ac15a1d060fbb67ea2ff9dfe465b9025f7d0183e00f6fb11ff19a9f30baf
+        - name: jasongzy
+          image: docker.io/jasongzy/tensorboard-docker@sha256:44479b3593a912dc0c827ec926359d7a2f0f17c4049c46bf2b0067b3e01944f1
+        - name: hpecmf
+          image: docker.io/hpecmf/tensorboard@sha256:41dedef787216a50def1befa29adf33344ccf9ea8a0ca4eef348dc27b58f518b
+        - name: federcmf
+          image: docker.io/federcmf/tensorboard@sha256:dc152d38a2dfbdc0866fdb91d45476df4407ac1dc4dca108d0977ec5e6d0fce5
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v7
-      with:
-        fetch-depth: 0
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v7
-      with:
-        node-version-file: frontend/.nvmrc
-
-    - name: Set up Python for profile-controller regression tests
-      uses: actions/setup-python@v7
-      with:
-        python-version: '3.13'
-
-    - name: Set up npm
-      working-directory: frontend
-      run: |
-        npm install --global "$(node -p 'require("./package.json").packageManager')"
-        npm --version
-
-    - name: Check for toolchain version drift
-      if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    - uses: actions/checkout@v7
+    - name: Pull exact candidate and start storage emulators
       env:
-        BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        IMAGE: ${{ matrix.image }}
       run: |
-        cd frontend && node scripts/check-lockfile-drift.mjs --base-ref "$BASE_SHA"
-
-    - name: Clean npm cache
-      run: npm cache clean --force
-
-    - name: Install dependencies
-      run: cd ./frontend && npm ci
-
-    - name: Verify generated API clients are up to date
+        set -euo pipefail
+        mkdir evidence
+        printf '%s\n' "$IMAGE" > evidence/reference.txt
+        docker pull "$IMAGE"
+        docker image inspect "$IMAGE" > evidence/image.json
+        docker run -d --name s3 --network host motoserver/moto:5.1.15@sha256:8860b18917e1ee4d067df19a406ae95dc26037e6965d5b499e1cffd33755b914
+        docker run -d --name gcs --network host fsouza/fake-gcs-server:1.54.0@sha256:3730da0e31f7e5186a90ec4899dc2c336104e7599df400411392ef17e684c31f -scheme http -port 4443 -external-url http://127.0.0.1:4443
+        curl --retry 30 --retry-connrefused --retry-delay 2 -fsS -X PUT http://127.0.0.1:5000/tb-probe
+        curl -fsS -X PUT --data-binary 'kfp-storage-probe' http://127.0.0.1:5000/tb-probe/logs/probe.txt
+        curl --retry 30 --retry-connrefused --retry-delay 2 -fsS -X POST -H 'Content-Type: application/json' -d '{"name":"tb-probe"}' http://127.0.0.1:4443/storage/v1/b
+        curl -fsS -X POST -H 'Content-Type: text/plain' --data-binary 'kfp-storage-probe' 'http://127.0.0.1:4443/upload/storage/v1/b/tb-probe/o?uploadType=media&name=logs%2Fprobe.txt'
+        test "$(curl -fsS http://127.0.0.1:5000/tb-probe/logs/probe.txt)" = kfp-storage-probe
+        test "$(curl -fsS 'http://127.0.0.1:4443/storage/v1/b/tb-probe/o/logs%2Fprobe.txt?alt=media')" = kfp-storage-probe
+    - name: Probe unchanged image as non-root
+      env:
+        IMAGE: ${{ matrix.image }}
       run: |
-        cd ./frontend
-        npm run apis:all
-        git diff --exit-code -- \
-          src/apis \
-          src/apisv2beta1 \
-          server/src/generated/apis \
-          server/src/generated/apisv2beta1
-
-    - name: Verify pipeline and platform spec generation
-      working-directory: frontend
+        set -euo pipefail
+        docker run --rm --network host --user 1000:1000 --entrypoint python \
+          -e HOME=/tmp -e AWS_ACCESS_KEY_ID=fixture -e AWS_SECRET_ACCESS_KEY=fixture \
+          -e AWS_DEFAULT_REGION=us-east-1 -e AWS_EC2_METADATA_DISABLED=true \
+          -e S3_ENDPOINT=http://127.0.0.1:5000 -e STORAGE_EMULATOR_HOST=http://127.0.0.1:4443 \
+          -v "$PWD/.github/resources/tb-thirdparty-probe.py:/probe.py:ro" \
+          "$IMAGE" /probe.py > evidence/probe.json
+        cat evidence/probe.json
+    - name: Preserve storage diagnostics
+      if: always()
       run: |
-        # Protobuf only needs Ubuntu sources, not the runner's third-party repositories.
-        test -s /etc/apt/sources.list.d/ubuntu.sources
-        apt_sources=(
-          -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources
-          -o Dir::Etc::sourceparts=-
-        )
-        sudo apt-get "${apt_sources[@]}" update
-        sudo apt-get "${apt_sources[@]}" install --yes protobuf-compiler
-        bash scripts/check-spec-generation.sh
-
-    - name: Run Frontend Tests
-      run: cd ./frontend && npm run test:ci
+        docker logs s3 > evidence/s3.log 2>&1 || true
+        docker logs gcs > evidence/gcs.log 2>&1 || true
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: thirdparty-tensorboard-${{ matrix.name }}
+        path: evidence
+        retention-days: 14
