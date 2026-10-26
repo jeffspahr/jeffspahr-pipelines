@@ -35,12 +35,9 @@ jobs:
         docker image inspect "$IMAGE" > evidence/image.json
         docker run -d --name s3 --network host motoserver/moto:5.1.15@sha256:8860b18917e1ee4d067df19a406ae95dc26037e6965d5b499e1cffd33755b914
         docker run -d --name gcs --network host fsouza/fake-gcs-server:1.54.0@sha256:3730da0e31f7e5186a90ec4899dc2c336104e7599df400411392ef17e684c31f -scheme http -port 4443 -external-url http://127.0.0.1:4443
-        curl --aws-sigv4 aws:amz:us-east-1:s3 --user fixture:fixture --retry 30 --retry-connrefused --retry-delay 2 -fsS -X PUT http://127.0.0.1:5000/tb-probe
-        curl --aws-sigv4 aws:amz:us-east-1:s3 --user fixture:fixture -fsS -X PUT --data-binary 'kfp-storage-probe' http://127.0.0.1:5000/tb-probe/logs/probe.txt
-        curl --retry 30 --retry-connrefused --retry-delay 2 -fsS -X POST -H 'Content-Type: application/json' -d '{"name":"tb-probe"}' http://127.0.0.1:4443/storage/v1/b
-        curl -fsS -X POST -H 'Content-Type: text/plain' --data-binary 'kfp-storage-probe' 'http://127.0.0.1:4443/upload/storage/v1/b/tb-probe/o?uploadType=media&name=logs%2Fprobe.txt'
-        test "$(curl --aws-sigv4 aws:amz:us-east-1:s3 --user fixture:fixture -fsS http://127.0.0.1:5000/tb-probe/logs/probe.txt)" = kfp-storage-probe
-        test "$(curl -fsS 'http://127.0.0.1:4443/download/storage/v1/b/tb-probe/o/logs%2Fprobe.txt?alt=media')" = kfp-storage-probe
+        python3 -m venv /tmp/probe-control
+        /tmp/probe-control/bin/pip install 'boto3==1.43.118' 'gcsfs==2026.10.1'
+        GCSFS_EXPERIMENTAL_ZB_HNS_SUPPORT=false STORAGE_EMULATOR_HOST=http://127.0.0.1:4443 /tmp/probe-control/bin/python .github/resources/tb-thirdparty-seed.py
     - name: Probe unchanged image as non-root
       env:
         IMAGE: ${{ matrix.image }}
