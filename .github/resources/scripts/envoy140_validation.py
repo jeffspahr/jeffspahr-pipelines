@@ -137,7 +137,7 @@ def lane(tls):
         '--tmpfs', '/tmp:rw,mode=1777', '-v', f'{mlmd_file}:/etc/grpc/config.proto:ro'],
         ['--grpc_port=8080', '--metadata_store_server_config_file=/etc/grpc/config.proto',
          '--enable_database_upgrade=true', '--grpc_channel_arguments=grpc.max_metadata_size=16384,grpc.max_receive_message_length=104857600,grpc.max_send_message_length=104857600'])
-    container(name, IMAGE, ['-p','127.0.0.1::9090','-p','127.0.0.1::9901',
+    container(name, IMAGE, ['-p','127.0.0.1:19090:9090','-p','127.0.0.1:19901:9901',
         '-v', f'{config_file}:/etc/envoy/envoy-config.yaml:ro', '-v', f'{TMP}:/etc/envoy/tls:ro'], ['/etc/envoy/envoy-config.yaml'])
     admin = 'http://127.0.0.1:' + port(name, 9901)
     url = ('https' if tls else 'http') + '://127.0.0.1:' + port(name, 9090)
