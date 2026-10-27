@@ -4,7 +4,16 @@ mkdir -p /tmp/namespace-evidence
 chmod 777 /tmp/namespace-evidence
 for ns in fixture-a fixture-b; do
  kubectl create namespace "$ns"
- kubectl -n "$ns" create role fixture-pipelines --verb=get,list,create --resource=pipelines.pipelines.kubeflow.org,pipelineversions.pipelines.kubeflow.org
+ kubectl -n "$ns" apply -f - <<YAML
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fixture-pipelines
+rules:
+- apiGroups: [pipelines.kubeflow.org]
+  resources: [pipelines, pipelineversions]
+  verbs: [get, list, create]
+YAML
  kubectl -n "$ns" create rolebinding fixture-pipelines --role=fixture-pipelines --user=namespace-fixture@example.test
 done
 kubectl create clusterrole fixture-subject-access --verb=create --resource=subjectaccessreviews.authorization.k8s.io

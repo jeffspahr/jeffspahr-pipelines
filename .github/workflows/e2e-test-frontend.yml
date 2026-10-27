@@ -5,10 +5,7 @@ permissions:
   contents: read
   actions: read
 jobs:
-  build:
-    uses: ./.github/workflows/namespace-live-build.yml
   browser:
-    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -22,7 +19,7 @@ jobs:
       - uses: ./.github/actions/create-cluster
         with:
           k8s_version: v1.36.1
-      - uses: ./.github/actions/deploy
+      - uses: ./fixture/.github/namespace-live/deploy
         with:
           image_path: images_${{ github.run_id }}
           image_tag: latest
