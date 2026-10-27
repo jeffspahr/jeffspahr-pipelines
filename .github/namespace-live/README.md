@@ -1,0 +1,5 @@
+# Disposable namespace-switch acceptance
+
+Application checkout and image builds are pinned to e2ccfb1022fcdc748d7f4126d33e99b1c8e58e67. The fork branch supplies only validation workflow and fixtures. Deploy the standard CI installation, then enable multi-user API/UI behavior with narrowly scoped fixture user pipeline RBAC in two fresh namespaces. The loopback proxy supplies the trusted fixture identity and simulates only the central-dashboard callback library. Pipeline uploads and list responses are real, unmodified backend requests; no API mocking is used. A browser exercises A→B→A without reloading and retains screenshots, list-request namespaces, fixture/source revisions, deployed image IDs and JUnit.
+
+This is not OIDC, real central-dashboard postMessage integration, a rolling upgrade, or production ingress validation. The ephemeral GitHub runner bounds fixture lifetime; no images/tags/releases are published. The workflow has read-only token permissions and runs only on manual fork dispatch.

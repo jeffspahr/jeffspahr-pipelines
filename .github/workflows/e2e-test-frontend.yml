@@ -1,152 +1,55 @@
-name: KFP e2e frontend tests
-
+name: 2.18 exact-source namespace switching
 on:
-  merge_group:
-    types: [checks_requested]
-    branches: [release-2.18]
-  push:
-    branches: [master]
-
-  pull_request:
-    paths:
-      - '.github/workflows/e2e-test-frontend.yml'
-      - '.github/workflows/image-builds.yml'
-      - '.github/actions/deploy/**'
-      - '.github/resources/**'
-      - 'frontend/**'
-      - 'backend/Makefile'
-      - 'third_party/metadata_envoy/**'
-      - 'manifests/kustomize/**'
-      - 'test/server-integration-test/**'
-      - 'test/frontend-integration-test/**'
-      - '!**/*.md'
-      - '!**/OWNERS'
-
+  workflow_dispatch:
 permissions:
   contents: read
-
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+  actions: read
 jobs:
   build:
-    permissions:
-      actions: read
-      contents: read
-    uses: ./.github/workflows/image-builds.yml
-
-  frontend-integration-dependency-checks:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    name: Frontend Integration Dependency Checks
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
-        with:
-          node-version-file: frontend/.nvmrc
-
-      - name: Install dependencies
-        working-directory: ./test/frontend-integration-test
-        run: npm ci
-
-      - name: Dependency compatibility checks
-        working-directory: ./test/frontend-integration-test
-        run: npm run test:dependencies
-
-  frontend-integration-test:
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/namespace-live-build.yml
+  browser:
+    needs: build
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
-    permissions:
-      actions: read
-      contents: read
-    strategy:
-      matrix:
-        k8s_version: [ "v1.33.12", "v1.36.1" ]
-        pod_to_pod_tls_enabled: [ "true", "false" ]
-    name: Frontend Integration Tests - K8s ${{ matrix.k8s_version }} pod_to_pod_tls_enabled=${{ matrix.pod_to_pod_tls_enabled }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - uses: actions/checkout@v7
         with:
-          python-version: "3.10"
-
-
-      - name: Create KFP cluster
-        id: create-kfp-cluster
-        uses: ./.github/actions/create-cluster
+          repository: kubeflow/pipelines
+          ref: e2ccfb1022fcdc748d7f4126d33e99b1c8e58e67
+      - uses: actions/checkout@v7
         with:
-          k8s_version: ${{ matrix.k8s_version }}
-        continue-on-error: true
-
-      - name: Deploy
-        id: deploy
-        uses: ./.github/actions/deploy
-        if: ${{ steps.create-kfp-cluster.outcome == 'success' }}
+          path: fixture
+      - uses: ./.github/actions/create-cluster
+        with:
+          k8s_version: v1.36.1
+      - uses: ./.github/actions/deploy
         with:
           image_path: images_${{ github.run_id }}
           image_tag: latest
           image_registry: kind-registry:5000
-          load_tensorboard_image: 'true'
-          pod_to_pod_tls_enabled: ${{ matrix.pod_to_pod_tls_enabled }}
-
-      - name: Forward Frontend port
-        id: forward-frontend-port
-        if: ${{ steps.deploy.outcome == 'success' }}
-        run: ./.github/resources/scripts/forward-port.sh "kubeflow" "ml-pipeline-ui" 3000 3000
-        continue-on-error: true
-
-      - name: Server integration tests
-        id: server-tests
-        if: ${{ steps.forward-frontend-port.outcome == 'success' }}
-        working-directory: ./test/server-integration-test
+      - name: Configure isolated namespace fixture
+        run: bash fixture/.github/namespace-live/setup.sh
+      - name: Build browser runner
+        run: docker build --build-arg "NODE_VERSION=$(tr -d 'v' < frontend/.nvmrc)" -t namespace-browser test/frontend-integration-test
+      - name: Exercise real UI and private pipeline APIs
         run: |
-          node server-test.js --url http://localhost:3000 --timeout 30000
-          node k8s-integration-test.js --url http://localhost:3000
-        continue-on-error: true
-
-      - name: Build frontend integration tests image
-        working-directory: ./test/frontend-integration-test
-        run: docker build --build-arg "NODE_VERSION=$(tr -d 'v' < ../../frontend/.nvmrc)" -t kfp-frontend-integration-test:local .
-
-      - name: Prepare frontend integration test artifacts
-        if: ${{ steps.forward-frontend-port.outcome == 'success' }}
+          docker run --net=host --rm \
+            -e KFP_BASE_URL=http://localhost:3001 \
+            -e WDIO_SPECS=./namespace-switch.spec.js \
+            -e FRONTEND_INTEGRATION_SCREENSHOT_DIR=/tmp/evidence \
+            -e WDIO_JUNIT_OUTPUT_DIR=/tmp/evidence \
+            -v "$PWD/fixture/.github/namespace-live/namespace-switch.spec.js:/src/namespace-switch.spec.js:ro" \
+            -v /tmp/namespace-evidence:/tmp/evidence namespace-browser
+      - name: Collect source and image identities
+        if: always()
         run: |
-          mkdir -p /tmp/frontend-integration-artifacts/screenshots
-          chmod -R 777 /tmp/frontend-integration-artifacts
-
-      - name: Frontend integration tests
-        id: tests
-        if: ${{ steps.forward-frontend-port.outcome == 'success' }}
-        run: |
-          docker run \
-            --net=host \
-            -v /tmp/frontend-integration-artifacts:/tmp/frontend-integration-artifacts \
-            -e FRONTEND_INTEGRATION_ARTIFACT_DIR=/tmp/frontend-integration-artifacts \
-            kfp-frontend-integration-test:local
-        continue-on-error: true
-
-      - name: Collect failed logs
-        if: ${{ steps.deploy.outcome != 'success' || steps.forward-frontend-port.outcome != 'success' || steps.server-tests.outcome != 'success' || steps.tests.outcome != 'success' }}
-        run: |
-          ./.github/resources/scripts/collect-logs.sh --ns kubeflow --output /tmp/tmp_pod_log.txt
-          exit 1
-
-      - name: Collect test results
-        if: failure() || cancelled()
-        uses: actions/upload-artifact@v7
+          mkdir -p /tmp/namespace-evidence
+          git rev-parse HEAD > /tmp/namespace-evidence/application-sha.txt
+          git -C fixture rev-parse HEAD > /tmp/namespace-evidence/fixture-sha.txt
+          kubectl -n kubeflow get pods -o json > /tmp/namespace-evidence/pods.json
+          kubectl -n kubeflow logs deployment/ml-pipeline --tail=100 > /tmp/namespace-evidence/api.log || true
+      - uses: actions/upload-artifact@v7
+        if: always()
         with:
-          name: kfp-frontend-integration-test-artifacts-k8s-${{ matrix.k8s_version }} pod_to_pod_tls_enabled=${{ matrix.pod_to_pod_tls_enabled }}
-          if-no-files-found: warn
-          path: |
-            /tmp/tmp*/*
-            /tmp/frontend-integration-artifacts/**/*
+          name: namespace-switch-evidence
+          path: /tmp/namespace-evidence

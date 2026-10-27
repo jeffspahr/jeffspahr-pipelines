@@ -1,0 +1,307 @@
+name: Namespace fixture exact-source builds
+on:
+  workflow_call:
+    outputs:
+      IMAGE_PATH:
+        description: 'A description of my output'
+        value: ${{ jobs.image-build.outputs.image_path }}
+      IMAGE_TAG:
+        description: 'A description of my output'
+        value: ${{ jobs.image-build.outputs.image_tag }}
+      IMAGE_REGISTRY:
+        description: 'A description of my output'
+        value: ${{ jobs.image-build.outputs.registry }}
+
+env:
+  IMAGE_TAG: "latest"
+  REGISTRY: "kind-registry:5000"
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_SHA: ${{ github.sha }}
+
+jobs:
+  runtime-base-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    env:
+      ARTIFACT_NAME: "runtime-base-images"
+      ARTIFACTS_PATH: "runtime-base-images-cache"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          repository: kubeflow/pipelines
+          ref: e2ccfb1022fcdc748d7f4126d33e99b1c8e58e67
+
+      - name: Configure runtime base image artifact
+        id: configure-runtime-base-images
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_fingerprint=$(python3 \
+            .github/resources/scripts/runtime_base_image_artifacts.py fingerprint \
+            .github/resources/runtime-base-images.txt \
+            .github/resources/scripts/helper-functions.sh \
+            .github/resources/scripts/build-runtime-base-images.sh \
+            .github/workflows/runtime-base-images.yml \
+            test_data/sdk_compiled_pipelines/valid/critical/modelcar/Dockerfile)
+          echo "artifact-name=runtime-base-images-${archive_fingerprint}" >> "$GITHUB_OUTPUT"
+
+      - name: Find runtime base image producer
+        id: runtime-base-images-producer
+        shell: bash
+        env:
+          ARTIFACT_NAME: ${{ steps.configure-runtime-base-images.outputs.artifact-name }}
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REQUIRE_SOURCE_SHA: ${{ github.event_name == 'merge_group' }}
+        run: |
+          set -euo pipefail
+
+          queue_runs_file=""
+          if [[ "${REQUIRE_SOURCE_SHA}" == "true" ]]; then
+            queue_runs_file=$(mktemp)
+            trap 'rm -f "${queue_runs_file}"' EXIT
+          fi
+
+          for attempt in $(seq 1 3); do
+            producer_run_id=""
+            if artifacts=$(gh api --method GET \
+                "repos/${GITHUB_REPOSITORY}/actions/artifacts" \
+                -f name="${ARTIFACT_NAME}" \
+                -f per_page=100); then
+              producer_args=(--source-sha "${SOURCE_SHA}")
+              producer_runs_available=true
+              if [[ "${REQUIRE_SOURCE_SHA}" == "true" ]]; then
+                producer_args+=(--require-source-sha)
+                if gh api --method GET \
+                    "repos/${GITHUB_REPOSITORY}/actions/workflows/runtime-base-images-merge-group.yml/runs" \
+                    -f head_sha="${SOURCE_SHA}" \
+                    -f event=merge_group \
+                    -f per_page=100 > "${queue_runs_file}"; then
+                  producer_args+=(--queue-runs-file "${queue_runs_file}")
+                else
+                  echo "::warning::Failed to query runtime base image producer runs"
+                  producer_runs_available=false
+                fi
+              fi
+              if [[ "${producer_runs_available}" == "true" ]]; then
+                producer_run_id=$(python3 \
+                  .github/resources/scripts/runtime_base_image_artifacts.py \
+                  select-producer \
+                  "${producer_args[@]}" <<< "${artifacts}")
+              fi
+            else
+              echo "::warning::Failed to query runtime base image artifacts"
+            fi
+
+            if [[ -n "${producer_run_id}" ]]; then
+              echo "run-id=${producer_run_id}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [[ "${attempt}" -lt 3 ]]; then
+              echo "Runtime base image artifact not ready; retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+
+          echo "::warning::No eligible shared runtime image archive found; building from this checkout."
+
+      - name: Download runtime base images from producer
+        id: download-runtime-base-images
+        if: steps.runtime-base-images-producer.outputs.run-id != ''
+        continue-on-error: true
+        uses: ./.github/actions/download-artifact-with-retry
+        with:
+          name: ${{ steps.configure-runtime-base-images.outputs.artifact-name }}
+          path: ${{ env.ARTIFACTS_PATH }}
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.runtime-base-images-producer.outputs.run-id }}
+
+      - name: Configure Docker Hub mirror
+        if: steps.download-runtime-base-images.outcome != 'success'
+        shell: bash
+        run: bash ./.github/resources/scripts/configure-docker-hub-mirror.sh
+
+      - name: Build runtime base image archives
+        if: steps.download-runtime-base-images.outcome != 'success'
+        shell: bash
+        run: bash .github/resources/scripts/build-runtime-base-images.sh "${ARTIFACTS_PATH}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACTS_PATH }}
+          if-no-files-found: error
+          retention-days: 1
+
+  image-build:
+    runs-on: ${{ matrix.runs_on || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    outputs:
+      image_path: ${{ steps.configure.outputs.artifact_path }}
+      image_tag: ${{ steps.configure.outputs.image_tag }}
+      registry: ${{ steps.configure.outputs.registry }}
+    strategy:
+      # A single failing image build must not cancel the other builds in the
+      # matrix: cancelled jobs skip their rebuild fallback (a cancelled build
+      # step has outcome 'cancelled', not 'failure'), so fail-fast turns one
+      # transient failure into a full workflow failure.
+      fail-fast: false
+      matrix:
+        include:
+          - image: apiserver
+            dockerfile: backend/Dockerfile
+            context: .
+          - image: persistenceagent
+            dockerfile: backend/Dockerfile.persistenceagent
+            context: .
+          - image: scheduledworkflow
+            dockerfile: backend/Dockerfile.scheduledworkflow
+            context: .
+          - image: launcher
+            dockerfile: backend/Dockerfile.launcher
+            context: .
+          - image: driver
+            dockerfile: backend/Dockerfile.driver
+            context: .
+          - image: frontend
+            dockerfile: frontend/Dockerfile
+            context: .
+          - image: metadata-writer
+            dockerfile: backend/metadata_writer/Dockerfile
+            context: .
+          - image: viewer-crd-controller
+            dockerfile: backend/Dockerfile.viewercontroller
+            context: .
+          - image: visualization-server
+            dockerfile: backend/Dockerfile.visualization
+            context: .
+          # Exercise compiled Python wheels on the other published architecture.
+          - image: visualization-server
+            dockerfile: backend/Dockerfile.visualization
+            context: .
+            runs_on: ubuntu-24.04-arm
+            artifact_name: visualization-server-arm64
+          - image: tensorboard
+            dockerfile: backend/Dockerfile.tensorboard
+            context: .
+          - image: cache-deployer
+            dockerfile: backend/src/cache/deployer/Dockerfile
+            context: .
+          - image: cache-server
+            dockerfile: backend/Dockerfile.cacheserver
+            context: .
+          - image: metadata-envoy
+            dockerfile: third_party/metadata_envoy/Dockerfile
+            context: .
+    env:
+      ARTIFACT_NAME: "${{ matrix.artifact_name || matrix.image }}"
+      ARTIFACTS_PATH: "images_${{ github.run_id }}"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          repository: kubeflow/pipelines
+          ref: e2ccfb1022fcdc748d7f4126d33e99b1c8e58e67
+
+      - name: Read frontend Node version
+        id: frontend_node
+        run: echo "version=$(tr -d '\r\n' < frontend/.nvmrc | sed 's/^v//')" >> "$GITHUB_OUTPUT"
+
+      - name: Create Artifacts Path Directory
+        id: configure
+        run: |
+          mkdir -p ${{ env.ARTIFACTS_PATH }}
+          {
+            echo "artifact_path=${{ env.ARTIFACTS_PATH }}"
+            echo "image_tag=${{ env.IMAGE_TAG }}"
+            echo "registry=${{ env.REGISTRY }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure Docker Hub mirror
+        shell: bash
+        run: bash ./.github/resources/scripts/configure-docker-hub-mirror.sh
+
+      - name: Set up Docker Buildx
+        if: matrix.image != 'frontend'
+        shell: bash
+        run: bash ./.github/resources/scripts/setup-buildx-with-retry.sh
+
+      - name: Build frontend with bounded recovery
+        if: matrix.image == 'frontend'
+        id: frontend-build
+        env:
+          FRONTEND_NODE_VERSION: ${{ steps.frontend_node.outputs.version }}
+        run: |
+          python3 .github/resources/scripts/build_frontend_image.py \
+            --context . --dockerfile frontend/Dockerfile \
+            --tag "${REGISTRY}/frontend:${IMAGE_TAG}" \
+            --node-version "${FRONTEND_NODE_VERSION}" \
+            --output "${ARTIFACTS_PATH}/frontend.tar"
+
+      - name: Build and save Docker image
+        if: matrix.image != 'frontend'
+        uses: docker/build-push-action@v7
+        id: save-image
+        continue-on-error: true
+        env:
+          # Disable the job summary report in the GitHub Actions UI
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          build-args: |
+            NODE_VERSION=${{ steps.frontend_node.outputs.version }}
+          tags: ${{ env.REGISTRY }}/${{ matrix.image }}:${{ env.IMAGE_TAG }}
+          outputs: type=docker,dest=${{ env.ARTIFACTS_PATH }}/${{ env.ARTIFACT_NAME }}.tar
+
+      - name: Wait before rebuilding
+        if: ${{ steps.save-image.outcome == 'failure' }}
+        run: sleep 10
+
+      - name: Rebuild Images in case of failure
+        uses: docker/build-push-action@v7
+        if: ${{ steps.save-image.outcome == 'failure' }}
+        id: rebuild
+        env:
+          # Disable the job summary report in the GitHub Actions UI
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          no-cache: true
+          build-args: |
+            NODE_VERSION=${{ steps.frontend_node.outputs.version }}
+          tags: ${{ env.REGISTRY }}/${{ matrix.image }}:${{ env.IMAGE_TAG }}
+          outputs: type=docker,dest=${{ env.ARTIFACTS_PATH }}/${{ env.ARTIFACT_NAME }}.tar
+
+      - name: Verify Python runtime images
+        if: matrix.image == 'visualization-server' || matrix.image == 'metadata-writer'
+        env:
+          RUNTIME_IMAGE: ${{ matrix.image }}
+        run: |
+          docker load --input "${ARTIFACTS_PATH}/${ARTIFACT_NAME}.tar"
+          image="${REGISTRY}/${RUNTIME_IMAGE}:${IMAGE_TAG}"
+          docker run --rm --entrypoint python3 "$image" -c \
+            "import importlib.util; assert importlib.util.find_spec('pip') is None; assert importlib.util.find_spec('ensurepip') is None"
+          if [[ "$RUNTIME_IMAGE" == visualization-server ]]; then
+            docker run --rm --entrypoint python3 "$image" /src/test_runtime_image.py
+          else
+            docker run --rm --env PYTHONPATH=/kfp/metadata_writer --entrypoint python3 \
+              "$image" -m unittest discover -s /kfp/metadata_writer -p '*_test.py'
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        if: ${{ success() && (steps.frontend-build.outcome == 'success' || steps.save-image.outcome == 'success' || steps.rebuild.outcome == 'success') }}
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACTS_PATH }}/${{ env.ARTIFACT_NAME }}.tar
+          retention-days: 1
