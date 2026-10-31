@@ -1,0 +1,62 @@
+# Fork-only validation, excluded from measured PR workflow sets.
+name: Native API dry-run inventory
+on:
+  push:
+    branches: [codex/native-api-dry-run]
+permissions:
+  contents: read
+jobs:
+  validate-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 8372432ec31f5698efc771b0cc952a0026b65fba
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install inventory verifier dependency
+        run: python3 -m pip install PyYAML==6.0.3
+      - name: Compile actual registered API suite once
+        run: go test -c -o "$RUNNER_TEMP/api.test" ./backend/test/v2/api
+      - name: Dry-run all and complementary shards for both upload modes
+        working-directory: backend/test/v2/api
+        run: |
+          set -euo pipefail
+          for upload in true false; do
+            output="$GITHUB_WORKSPACE/native-api-inventory/$upload"
+            mkdir -p "$output" reports
+            for shard in all A B; do
+              case "$shard" in
+                all) label='ApiServerTests' ;;
+                A) label='(ApiServerTests) && (ApiPipelineShardA || Pipeline)' ;;
+                B) label='(ApiServerTests) && !(ApiPipelineShardA || Pipeline)' ;;
+              esac
+              "$RUNNER_TEMP/api.test" -test.run '^TestAPIs$' -ginkgo.dry-run \
+                -ginkgo.label-filter "$label" -pipelineStoreKubernetes=true \
+                -uploadPipelinesWithKubernetes="$upload"
+              cp reports/api.json "$output/$shard.json"
+            done
+          done
+      - name: Validate real disjoint coverage and migration ownership
+        working-directory: .github/resources/scripts
+        run: |
+          set -euo pipefail
+          for upload in true false; do
+            NATIVE_API_DRY_RUN_REPORTS="$GITHUB_WORKSPACE/native-api-inventory/$upload" \
+              python3 -m unittest api_native_shards_test.ApiNativeShardsTest.test_real_ginkgo_inventory_is_complete_and_disjoint -v
+          done
+      - name: Upload small inventory reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: native-api-dry-run-reports
+          path: native-api-inventory
+          if-no-files-found: error
+          retention-days: 7

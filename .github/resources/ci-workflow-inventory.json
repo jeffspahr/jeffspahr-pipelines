@@ -569,6 +569,12 @@
       }
     },
     {
+      "path": ".github/workflows/native-api-dry-run.yml",
+      "name": "Native API dry-run inventory",
+      "header_sha256": "ab0e898c6d53d16b5b605e1b2917dd1ccd1c040071f965fee934a10ff76f845d",
+      "pull_request": null
+    },
+    {
       "path": ".github/workflows/osv-scanner.yml",
       "name": "OSV-Scanner Vulnerability Scan",
       "header_sha256": "93918884dd870756eaddb7fb40807a892ecd58e28874425ea2ed06dc0579c262",
