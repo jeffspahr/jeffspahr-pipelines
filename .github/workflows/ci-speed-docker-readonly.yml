@@ -1,23 +1,28 @@
-# Benchmark harness only; not part of the upstream PR.
-# The source-change jobs use fresh hosted runners and fresh BuildKit daemons.
-name: CI speed Docker
+# Fork-only benchmark of the final import-only PR cache policy.
+# Replace d1bcdc26a80d7473f5aac6efd68eb5e5d920addd with the exact final commit before pushing.
+name: CI speed Docker read-only cache
 on:
   push:
     branches: [codex/ci-speed-benchmark]
 permissions:
   contents: read
 jobs:
-  baseline-cold:
+  baseline:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Checkout exact benchmark source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: 25159131f7a6cf64e3b1958a6b6e16c9e5f3d45e
           persist-credentials: false
       - name: Configure Docker Hub mirror
         run: bash .github/resources/scripts/configure-docker-hub-mirror.sh
-      - name: Build frontend (baseline, cold)
+      - name: Change source without changing dependency manifests
+        # Different from the seed-run comment so application build layers must rerun.
+        run: |
+          printf '\n// CI cache benchmark: read-only source-only change.\n' >> frontend/src/Css.tsx
+      - name: Build frontend (baseline)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -28,57 +33,25 @@ jobs:
             --context . --dockerfile frontend/Dockerfile \
             --tag ci-speed-frontend:test --node-version "$node_version" \
             --platform linux/amd64 --output "$RUNNER_TEMP/frontend.tar" 2>&1 | tee "$RUNNER_TEMP/build.log"
-          echo "baseline cold: $(($(date +%s) - start)) seconds" >> "$GITHUB_STEP_SUMMARY"
+          seconds=$(($(date +%s) - start))
+          echo "baseline wrapper: $seconds seconds" | tee -a "$RUNNER_TEMP/build.log" "$GITHUB_STEP_SUMMARY"
           docker load --input "$RUNNER_TEMP/frontend.tar"
           docker run --rm --entrypoint node ci-speed-frontend:test -e "require('fs').accessSync('/client/index.html'); require('fs').accessSync('/server/dist/server.js')"
       - name: Upload build evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: docker-baseline-cold
+          name: docker-readonly-baseline
           path: ${{ runner.temp }}/build.log
           retention-days: 7
-  baseline-source-change:
-    needs: baseline-cold
+  optimized-warm:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Checkout exact benchmark source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 25159131f7a6cf64e3b1958a6b6e16c9e5f3d45e
-          persist-credentials: false
-      - name: Configure Docker Hub mirror
-        run: bash .github/resources/scripts/configure-docker-hub-mirror.sh
-      - name: Change source without changing dependency manifests
-        run: printf '\n// CI cache benchmark source-only change.\n' >> frontend/src/Css.tsx
-      - name: Build frontend (baseline, source-change)
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          node_version=$(tr -d '\r\n' < frontend/.nvmrc | sed 's/^v//')
-          start=$(date +%s)
-          python3 .github/resources/scripts/build_frontend_image.py \
-            --context . --dockerfile frontend/Dockerfile \
-            --tag ci-speed-frontend:test --node-version "$node_version" \
-            --platform linux/amd64 --output "$RUNNER_TEMP/frontend.tar" 2>&1 | tee "$RUNNER_TEMP/build.log"
-          echo "baseline source-change: $(($(date +%s) - start)) seconds" >> "$GITHUB_STEP_SUMMARY"
-          docker load --input "$RUNNER_TEMP/frontend.tar"
-          docker run --rm --entrypoint node ci-speed-frontend:test -e "require('fs').accessSync('/client/index.html'); require('fs').accessSync('/server/dist/server.js')"
-      - name: Upload build evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: docker-baseline-source-change
-          path: ${{ runner.temp }}/build.log
-          retention-days: 7
-  optimized-cold:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: abeb784eb57fd1ed4afee127c3ff85130e89c94d
+          ref: d1bcdc26a80d7473f5aac6efd68eb5e5d920addd
           persist-credentials: false
       - name: Configure Docker Hub mirror
         run: bash .github/resources/scripts/configure-docker-hub-mirror.sh
@@ -89,10 +62,14 @@ jobs:
             for (const name of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_RESULTS_URL']) {
               const value = process.env[name];
               if (!value) throw new Error(`Missing ${name}`);
-              core.setSecret(value);
+              if (name === 'ACTIONS_RUNTIME_TOKEN') core.setSecret(value);
               core.exportVariable(name, value);
             }
-      - name: Build frontend (optimized, cold)
+      - name: Change source without changing dependency manifests
+        # Different from the seed-run comment so application build layers must rerun.
+        run: |
+          printf '\n// CI cache benchmark: read-only source-only change.\n' >> frontend/src/Css.tsx
+      - name: Build frontend (optimized-warm)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -103,26 +80,26 @@ jobs:
             --context . --dockerfile frontend/Dockerfile \
             --tag ci-speed-frontend:test --node-version "$node_version" \
             --platform linux/amd64 --output "$RUNNER_TEMP/frontend.tar" \
-            --cache-from "type=gha,version=2,scope=ci-speed-${{ github.run_id }}-frontend-amd64,timeout=60s" \
-            --cache-to "type=gha,version=2,scope=ci-speed-${{ github.run_id }}-frontend-amd64,mode=max,timeout=120s,ignore-error=true" 2>&1 | tee "$RUNNER_TEMP/build.log"
-          echo "optimized cold: $(($(date +%s) - start)) seconds" >> "$GITHUB_STEP_SUMMARY"
+            --cache-from "type=gha,version=2,scope=ci-speed-41207006115-frontend-amd64,timeout=60s" 2>&1 | tee "$RUNNER_TEMP/build.log"
+          seconds=$(($(date +%s) - start))
+          echo "optimized-warm wrapper: $seconds seconds" | tee -a "$RUNNER_TEMP/build.log" "$GITHUB_STEP_SUMMARY"
           docker load --input "$RUNNER_TEMP/frontend.tar"
           docker run --rm --entrypoint node ci-speed-frontend:test -e "require('fs').accessSync('/client/index.html'); require('fs').accessSync('/server/dist/server.js')"
       - name: Upload build evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: docker-optimized-cold
+          name: docker-readonly-optimized-warm
           path: ${{ runner.temp }}/build.log
           retention-days: 7
-  optimized-source-change:
-    needs: optimized-cold
+  optimized-cold-miss:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Checkout exact benchmark source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: abeb784eb57fd1ed4afee127c3ff85130e89c94d
+          ref: d1bcdc26a80d7473f5aac6efd68eb5e5d920addd
           persist-credentials: false
       - name: Configure Docker Hub mirror
         run: bash .github/resources/scripts/configure-docker-hub-mirror.sh
@@ -133,12 +110,14 @@ jobs:
             for (const name of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_RESULTS_URL']) {
               const value = process.env[name];
               if (!value) throw new Error(`Missing ${name}`);
-              core.setSecret(value);
+              if (name === 'ACTIONS_RUNTIME_TOKEN') core.setSecret(value);
               core.exportVariable(name, value);
             }
       - name: Change source without changing dependency manifests
-        run: printf '\n// CI cache benchmark source-only change.\n' >> frontend/src/Css.tsx
-      - name: Build frontend (optimized, source-change)
+        # Different from the seed-run comment so application build layers must rerun.
+        run: |
+          printf '\n// CI cache benchmark: read-only source-only change.\n' >> frontend/src/Css.tsx
+      - name: Build frontend (optimized-cold-miss)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -149,15 +128,15 @@ jobs:
             --context . --dockerfile frontend/Dockerfile \
             --tag ci-speed-frontend:test --node-version "$node_version" \
             --platform linux/amd64 --output "$RUNNER_TEMP/frontend.tar" \
-            --cache-from "type=gha,version=2,scope=ci-speed-${{ github.run_id }}-frontend-amd64,timeout=60s" \
-            --cache-to "type=gha,version=2,scope=ci-speed-${{ github.run_id }}-frontend-amd64,mode=max,timeout=120s,ignore-error=true" 2>&1 | tee "$RUNNER_TEMP/build.log"
-          echo "optimized source-change: $(($(date +%s) - start)) seconds" >> "$GITHUB_STEP_SUMMARY"
+            --cache-from "type=gha,version=2,scope=ci-speed-readonly-miss-${{ github.run_id }}-frontend-amd64,timeout=60s" 2>&1 | tee "$RUNNER_TEMP/build.log"
+          seconds=$(($(date +%s) - start))
+          echo "optimized-cold-miss wrapper: $seconds seconds" | tee -a "$RUNNER_TEMP/build.log" "$GITHUB_STEP_SUMMARY"
           docker load --input "$RUNNER_TEMP/frontend.tar"
           docker run --rm --entrypoint node ci-speed-frontend:test -e "require('fs').accessSync('/client/index.html'); require('fs').accessSync('/server/dist/server.js')"
       - name: Upload build evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: docker-optimized-source-change
+          name: docker-readonly-optimized-cold-miss
           path: ${{ runner.temp }}/build.log
           retention-days: 7
