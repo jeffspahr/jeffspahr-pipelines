@@ -1,0 +1,83 @@
+# Benchmark harness only; not part of the upstream PR.
+# Exact source ref: 25159131f7a6cf64e3b1958a6b6e16c9e5f3d45e
+name: CI speed frontend baseline
+on:
+  push:
+    branches: [codex/ci-speed-benchmark]
+permissions:
+  contents: read
+concurrency:
+  group: benchmark-frontend-baseline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        ref: 25159131f7a6cf64e3b1958a6b6e16c9e5f3d45e
+        persist-credentials: false
+
+    - name: Set up Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+      with:
+        node-version-file: frontend/.nvmrc
+
+    - name: Set up Python for profile-controller regression tests
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with:
+        python-version: '3.13'
+
+    - name: Set up npm
+      working-directory: frontend
+      run: |
+        npm install --global "$(node -p 'require("./package.json").packageManager')"
+        npm --version
+
+    - name: Check for toolchain version drift
+      if: github.event_name == 'pull_request'
+      run: |
+        git fetch origin ${{ github.base_ref }} --depth=1
+        git fetch --deepen=100 2>/dev/null || true
+        cd frontend && node scripts/check-lockfile-drift.mjs --base-ref "origin/${{ github.base_ref }}"
+
+    - name: Clean npm cache
+      run: npm cache clean --force
+
+    - name: Install dependencies
+      run: cd ./frontend && npm ci
+
+    - name: Verify generated API clients are up to date
+      run: |
+        cd ./frontend
+        npm run apis:all
+        git diff --exit-code -- \
+          src/apis \
+          src/apisv2 \
+          server/src/generated/apis \
+          server/src/generated/apisv2
+
+    - name: Verify pipeline and platform spec generation
+      working-directory: frontend
+      run: |
+        # Protobuf only needs Ubuntu sources, not the runner's third-party repositories.
+        test -s /etc/apt/sources.list.d/ubuntu.sources
+        apt_sources=(
+          -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources
+          -o Dir::Etc::sourceparts=-
+        )
+        sudo apt-get "${apt_sources[@]}" update
+        sudo apt-get "${apt_sources[@]}" install --yes protobuf-compiler
+        bash scripts/check-spec-generation.sh
+
+    - name: Run Frontend Tests
+      run: cd ./frontend && npm run test:ci
+
+    - name: Verify production bundle startup
+      working-directory: frontend
+      run: |
+        npx playwright install --with-deps chromium
+        npm run test:bundle
