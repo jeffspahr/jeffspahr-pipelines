@@ -75,6 +75,36 @@
       }
     },
     {
+      "path": ".github/workflows/benchmark-baseline-a.yml",
+      "name": "Shared-image benchmark baseline a",
+      "header_sha256": "de8b4283013362b428e6ae8d999300e968e00a3c0131fab2516735d5167f433d",
+      "pull_request": null
+    },
+    {
+      "path": ".github/workflows/benchmark-baseline-b.yml",
+      "name": "Shared-image benchmark baseline b",
+      "header_sha256": "5b32a87b2f3640289e6a6d31a1a3e1dca96e7a3150f060e10eacf81a896c5ac7",
+      "pull_request": null
+    },
+    {
+      "path": ".github/workflows/benchmark-image-builds-baseline.yml",
+      "name": "Benchmark baseline Build Images",
+      "header_sha256": "725008134cf46eb825a4d05544688082bea7088fdff45c4f10686faefadbccdc",
+      "pull_request": null
+    },
+    {
+      "path": ".github/workflows/benchmark-shared-a.yml",
+      "name": "Shared-image benchmark shared a",
+      "header_sha256": "30493cfd652ce6733cb09e6a2e0e35ed4a301021c6aedb9e3cf126bed1a02daf",
+      "pull_request": null
+    },
+    {
+      "path": ".github/workflows/benchmark-shared-b.yml",
+      "name": "Shared-image benchmark shared b",
+      "header_sha256": "0b2544c14bf1654a50663a2e0963967947d06af58b793578ab46fcdc1975d220",
+      "pull_request": null
+    },
+    {
       "path": ".github/workflows/build-and-push.yml",
       "name": "Build and Push images",
       "header_sha256": "69c2fd667ef7aed48863a2273eb0ff65c101642a38f734aace901bf79aea32fb",
@@ -137,69 +167,8 @@
     {
       "path": ".github/workflows/ci-images.yml",
       "name": "Shared CI Images",
-      "header_sha256": "57418d642e7987801872db3b2ac736e3df5f77b82adc1676598ebd4bba41ebc1",
-      "pull_request": {
-        "paths": [
-          "**/pyproject.toml",
-          ".dockerignore",
-          ".github/actions/arm64-smoke/**",
-          ".github/actions/create-cluster/**",
-          ".github/actions/deploy/**",
-          ".github/actions/download-artifact-with-retry/**",
-          ".github/actions/github-disk-cleanup/**",
-          ".github/actions/install-dra-driver/**",
-          ".github/actions/install-fgo-fake/**",
-          ".github/actions/junit-summary/**",
-          ".github/actions/protobuf/**",
-          ".github/actions/setup-python/**",
-          ".github/actions/shared-ci-images/**",
-          ".github/actions/test-and-report/**",
-          ".github/resources/**",
-          ".github/resources/buildkitd.toml",
-          ".github/resources/curl-retry/**",
-          ".github/resources/scripts/**",
-          ".github/workflows/api-server-tests.yml",
-          ".github/workflows/arm64-presubmit.yml",
-          ".github/workflows/ci-images.yml",
-          ".github/workflows/e2e-test-frontend.yml",
-          ".github/workflows/e2e-test.yml",
-          ".github/workflows/image-builds.yml",
-          ".github/workflows/kfp-kubernetes-native-migration-tests.yaml",
-          ".github/workflows/kfp-sdk-client-tests.yml",
-          ".github/workflows/kfp-webhooks.yml",
-          ".github/workflows/legacy-v2-api-integration-tests.yml",
-          "api/**",
-          "api/v2alpha1/**",
-          "backend/**",
-          "backend/src/apiserver/**",
-          "backend/src/common/**",
-          "backend/test/constants/**",
-          "frontend/**",
-          "frontend/server/handlers/artifacts.ts",
-          "go.mod",
-          "go.sum",
-          "kubernetes_platform/**",
-          "manifests/kustomize/**",
-          "proxy/**",
-          "pyproject.toml",
-          "samples/**",
-          "sdk/**",
-          "sdk/python/**",
-          "test/**",
-          "test/artifact-proxy/**",
-          "test/frontend-integration-test/**",
-          "test/kfp-kubernetes-native-migration-tests/**",
-          "test/seaweedfs/**",
-          "test/server-integration-test/**",
-          "test_data/pipeline_files/valid/**",
-          "test_data/sdk_compiled_pipelines/**",
-          "third_party/**",
-          "tools/k8s-native/**",
-          "uv.lock",
-          "!**/*.md",
-          "!**/OWNERS"
-        ]
-      }
+      "header_sha256": "693ae482f44a32f732b8a1ae78a6628bc25ba47a05299645535c030ba74a668d",
+      "pull_request": null
     },
     {
       "path": ".github/workflows/ci-passed-stale-revoke.yml",
@@ -751,21 +720,8 @@
     {
       "path": ".github/workflows/runtime-base-images.yml",
       "name": "Runtime Base Images",
-      "header_sha256": "844f3bc71c1a2b4dbff70423773723c49d67858a3b07377db752355f11b9d3f0",
-      "pull_request": {
-        "paths": [
-          ".github/workflows/runtime-base-images.yml",
-          ".github/workflows/image-builds.yml",
-          ".github/resources/runtime-base-images.txt",
-          ".github/resources/scripts/helper-functions.sh",
-          ".github/resources/scripts/build-runtime-base-images.sh",
-          ".github/resources/scripts/configure-docker-hub-mirror.sh",
-          ".github/resources/scripts/configure_docker_registry_mirror.py",
-          ".github/resources/scripts/prune_runtime_base_image_caches.py",
-          ".github/resources/scripts/runtime_base_image_artifacts.py",
-          "test_data/sdk_compiled_pipelines/valid/critical/modelcar/Dockerfile"
-        ]
-      }
+      "header_sha256": "9e66798b31a9e5bdad4db7376eaf56ea566652a64422a70f4f5225d4dd51f9f4",
+      "pull_request": null
     },
     {
       "path": ".github/workflows/sdk-docformatter.yml",
