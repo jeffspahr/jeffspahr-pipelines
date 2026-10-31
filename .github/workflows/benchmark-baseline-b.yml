@@ -1,25 +1,13 @@
 # Fork-only benchmark harness; not part of the upstream PR.
 name: Shared-image benchmark baseline b
 on:
-  push:
-    branches: [codex/shared-image-benchmark]
+  workflow_dispatch:
+
 permissions:
   contents: read
   actions: read
 jobs:
-  runtime-ready:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Wait for common runtime preparation
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 .github/benchmarks/wait-runtime.py
   build:
-    needs: runtime-ready
     uses: ./.github/workflows/benchmark-image-builds-baseline.yml
     with:
       architecture: amd64

@@ -1,8 +1,8 @@
 # Fork-only benchmark harness; not part of the upstream PR.
 name: Shared CI Images
 on:
-  push:
-    branches: [codex/shared-image-benchmark]
+  workflow_dispatch:
+
 permissions:
   contents: read
   actions: read
@@ -27,10 +27,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Wait for common runtime preparation
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 .github/benchmarks/wait-runtime.py
       - name: Record checked-out source identity
         run: python3 .github/resources/scripts/shared_ci_images.py source --output source.json
       - name: Publish source identity before image builds
@@ -44,7 +40,10 @@ jobs:
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node .github/resources/scripts/shared_ci_image_plan.js
+        run: |
+          # Benchmark-only override: seven native AMD64 images in each phase.
+          echo 'amd64=true' >> "$GITHUB_OUTPUT"
+          echo 'arm64=false' >> "$GITHUB_OUTPUT"
 
   amd64:
     needs: source

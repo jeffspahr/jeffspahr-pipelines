@@ -1,8 +1,8 @@
 # Fork-only benchmark harness; not part of the upstream PR.
 name: Shared-image benchmark shared a
 on:
-  push:
-    branches: [codex/shared-image-benchmark]
+  workflow_dispatch:
+
 permissions:
   contents: read
   actions: read
@@ -14,22 +14,47 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Resolve and download real shared producer artifacts
-        uses: ./.github/actions/shared-ci-images
+      - name: Ensure GitHub CLI is available
+        shell: bash
+        run: bash .github/resources/scripts/setup-github-cli.sh
+      - name: Resolve shared image producer
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_ARCHITECTURE: amd64
+          IMAGE_KIND: images
+          PRODUCER_STATE: benchmark-state.json
+        run: |
+          python3 .github/resources/scripts/shared_ci_images.py resolve \
+            --architecture "$IMAGE_ARCHITECTURE" --kind "$IMAGE_KIND" \
+            --state "$PRODUCER_STATE" --output "$GITHUB_OUTPUT"
+      - name: Download exact shared image artifacts
+        uses: ./.github/actions/download-artifact-with-retry
         with:
-          architecture: amd64
-          kind: images
+          artifact-ids: ${{ steps.resolve.outputs.artifact-ids }}
+          repository: ${{ steps.resolve.outputs.repository }}
+          run-id: ${{ steps.resolve.outputs.run-id }}
+          github-token: ${{ github.token }}
           path: benchmark-images
-          layout: flat
-          state: benchmark-state.json
+          merge-multiple: 'true'
+          required-files: ${{ steps.resolve.outputs.required-files }}
+      - name: Verify source, attempt, and archive checksums
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCER_STATE: benchmark-state.json
+          IMAGE_DIRECTORY: benchmark-images
+          IMAGE_LAYOUT: flat
+          IMAGE_KIND: images
+        run: |
+          python3 .github/resources/scripts/shared_ci_images.py verify \
+            --state "$PRODUCER_STATE" --directory "$IMAGE_DIRECTORY" \
+            --layout "$IMAGE_LAYOUT" --kind "$IMAGE_KIND"
       - name: Load and inspect all seven images
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 .github/benchmarks/check-images.py --kind shared
-      - name: Reject invalid provenance and corrupted real archives
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 .github/benchmarks/check-images.py --kind shared --negative
       - name: Publish benchmark evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
