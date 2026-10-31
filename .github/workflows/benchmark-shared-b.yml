@@ -1,0 +1,39 @@
+# Fork-only benchmark harness; not part of the upstream PR.
+name: Shared-image benchmark shared b
+on:
+  push:
+    branches: [codex/shared-image-benchmark]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  consume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Resolve and download real shared producer artifacts
+        uses: ./.github/actions/shared-ci-images
+        with:
+          architecture: amd64
+          kind: images
+          path: benchmark-images
+          layout: flat
+          state: benchmark-state.json
+      - name: Load and inspect all seven images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/benchmarks/check-images.py --kind shared
+      - name: Publish benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: benchmark-shared-b-attempt-${{ github.run_attempt }}
+          path: |
+            benchmark-images.json
+            benchmark-state.json
+            benchmark-negative-results.json
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,62 @@
+# Fork-only benchmark harness; not part of the upstream PR.
+name: Shared-image benchmark baseline a
+on:
+  push:
+    branches: [codex/shared-image-benchmark]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  runtime-ready:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Wait for common runtime preparation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/benchmarks/wait-runtime.py
+  build:
+    needs: runtime-ready
+    uses: ./.github/workflows/benchmark-image-builds-baseline.yml
+    with:
+      architecture: amd64
+  consume:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Download own seven image artifacts
+        uses: ./.github/actions/download-artifact-with-retry
+        with:
+          pattern: '{apiserver,scheduledworkflow,persistenceagent,frontend,viewer-crd-controller,driver,launcher}'
+          path: benchmark-images
+          merge-multiple: 'true'
+          required-files: |
+            apiserver.tar
+            scheduledworkflow.tar
+            persistenceagent.tar
+            frontend.tar
+            viewer-crd-controller.tar
+            driver.tar
+            launcher.tar
+      - name: Load and inspect all seven images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/benchmarks/check-images.py --kind baseline
+      - name: Publish benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: benchmark-baseline-a-attempt-${{ github.run_attempt }}
+          path: |
+            benchmark-images.json
+            benchmark-state.json
+            benchmark-negative-results.json
+          if-no-files-found: error
+          retention-days: 7
