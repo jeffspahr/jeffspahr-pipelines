@@ -569,6 +569,12 @@
       }
     },
     {
+      "path": ".github/workflows/multiuser-api-dry-run.yml",
+      "name": "Multi-user API dry-run inventory",
+      "header_sha256": "a20d7b7d6c39aa0e893377c38937fc527f8a247eaf3f766be1593b058b721738",
+      "pull_request": null
+    },
+    {
       "path": ".github/workflows/osv-scanner.yml",
       "name": "OSV-Scanner Vulnerability Scan",
       "header_sha256": "93918884dd870756eaddb7fb40807a892ecd58e28874425ea2ed06dc0579c262",

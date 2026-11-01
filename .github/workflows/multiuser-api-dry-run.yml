@@ -1,0 +1,94 @@
+# Fork-only inventory proof, excluded from CI timing cohorts.
+name: Multi-user API dry-run inventory
+on:
+  push:
+    branches: [codex/multiuser-api-dry-run-exact]
+permissions:
+  contents: read
+jobs:
+  validate-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: e553f42141eeb661b151fa780778659a2a0438da
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install inventory verifier dependency
+        run: python3 -m pip install PyYAML==6.0.3
+      - name: Compile actual registered API suite once
+        run: go test -c -o "$RUNNER_TEMP/api.test" ./backend/test/v2/api
+      - name: Dry-run actual baseline and candidate workflow filters
+        env:
+          KFP_SCHEDULE_TEST_SERVICE_ACCOUNT: kfp-schedule-test
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          import yaml
+
+          root = Path.cwd()
+          sys.path.insert(0, str(root / '.github/resources/scripts'))
+          import api_multi_user_shards_test as contract
+
+          baseline = yaml.safe_load(subprocess.check_output([
+              'git', 'show', '8372432ec31f5698efc771b0cc952a0026b65fba:.github/workflows/api-server-tests.yml'
+          ], text=True))
+          case = contract.ApiMultiUserShardsTest()
+          case.setUp()
+          candidate = case.workflow
+          output = root / 'multiuser-api-inventory'
+          suite = root / 'backend/test/v2/api'
+          (suite / 'reports').mkdir(exist_ok=True)
+          selections = []
+          for cache in ('true', 'false'):
+              directory = output / cache
+              directory.mkdir(parents=True, exist_ok=True)
+              for revision, workflow, shards in (
+                  ('baseline', baseline, ('A', 'B')),
+                  ('candidate', candidate, ('A', 'B', 'C') if cache == 'true' else ('A', 'B')),
+              ):
+                  case.workflow = workflow
+                  case.job = workflow['jobs']['api-test-multi-user']
+                  base_label = next(row['test_label'] for row in case.job['strategy']['matrix']['include'] if row.get('cache_enabled') == cache)
+                  for shard in shards:
+                      row = dict(k8s_version='v1.36.1', multi_user='true', cache_enabled=cache, db_type='mysql', test_shard=shard, test_label=base_label)
+                      configured = case.configure(row, 'pull_request', {})
+                      name = f'baseline-{shard}' if revision == 'baseline' else shard
+                      label = configured['TEST_LABEL']
+                      selections.append(dict(cache=cache, revision=revision, shard=shard, label=label))
+                      subprocess.run([
+                          str(Path(os.environ['RUNNER_TEMP']) / 'api.test'),
+                          '-test.run', '^TestAPIs$', '-ginkgo.dry-run',
+                          '-ginkgo.label-filter', label, '-multiUserMode=true',
+                          '-pipelineStoreKubernetes=false', '-uploadPipelinesWithKubernetes=false',
+                          '-namespace=kubeflow', '-userNamespace=kubeflow-user-example-com',
+                      ], cwd=suite, check=True)
+                      (directory / f'{name}.json').write_bytes((suite / 'reports/api.json').read_bytes())
+          (output / 'workflow-selections.json').write_text(json.dumps(selections, indent=2) + '\n')
+          PYTHON
+      - name: Verify inventories, configuration and fixture ownership
+        working-directory: .github/resources/scripts
+        env:
+          MULTI_USER_API_DRY_RUN_REPORTS: ${{ github.workspace }}/multiuser-api-inventory
+        run: python3 -m unittest api_multi_user_shards_test -v
+      - name: Upload small inventory reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: multiuser-api-dry-run-reports
+          path: multiuser-api-inventory
+          if-no-files-found: error
+          retention-days: 7
