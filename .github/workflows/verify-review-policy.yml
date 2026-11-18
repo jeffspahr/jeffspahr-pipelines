@@ -1,0 +1,24 @@
+name: Verify hosted review policy access
+on:
+  push:
+    branches: [codex/verify-15771-hosted-policy]
+permissions:
+  contents: read
+jobs:
+  read-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read the upstream conversation policy with the job token
+        env:
+          GH_TOKEN: ${{ github.token }}
+          POLICY_QUERY: |
+            query AdmissionReviewPolicy($owner:String!, $repo:String!, $branch:String!) {
+                repository(owner:$owner, name:$repo) { nameWithOwner ref(qualifiedName:$branch) {
+                  name refUpdateRule { requiresConversationResolution }
+                } }
+              }
+        run: |
+          set -euo pipefail
+          gh api graphql -f query="$POLICY_QUERY" -f owner=kubeflow -f repo=pipelines -f branch=refs/heads/main > policy.json
+          jq -e '.data.repository | .nameWithOwner == "kubeflow/pipelines" and .ref.name == "main" and (.ref.refUpdateRule.requiresConversationResolution | type == "boolean")' policy.json
+          jq -c .data policy.json
