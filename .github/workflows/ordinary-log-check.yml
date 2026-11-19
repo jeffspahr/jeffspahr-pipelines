@@ -28,7 +28,15 @@ jobs:
           kubectl -n "$ns" create rolebinding log-check --clusterrole=kubeflow-edit --serviceaccount="$ns:log-check"
           kubectl create namespace log-reader-control
           kubectl -n log-reader-control create sa control
-          kubectl -n log-reader-control create role list-experiments --verb=list --resource=experiments.pipelines.kubeflow.org
+          kubectl apply -f - <<'ROLE'
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata: {name: list-experiments, namespace: log-reader-control}
+          rules:
+            - apiGroups: [pipelines.kubeflow.org]
+              resources: [experiments]
+              verbs: [list]
+          ROLE
           kubectl -n log-reader-control create rolebinding control --role=list-experiments --serviceaccount=log-reader-control:control
           kubectl -n kubeflow port-forward svc/ml-pipeline 18888:8888 >/tmp/port-forward.log 2>&1 &
           for i in {1..30}; do curl -sSf localhost:18888/apis/v2beta1/healthz >/dev/null && break; sleep 2; done
