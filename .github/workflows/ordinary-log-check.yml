@@ -39,6 +39,7 @@ jobs:
           ROLE
           kubectl -n log-reader-control create rolebinding control --role=list-experiments --serviceaccount=log-reader-control:control
           kubectl -n kubeflow port-forward svc/ml-pipeline 18888:8888 >/tmp/port-forward.log 2>&1 &
+          kubectl -n kubeflow port-forward svc/ml-pipeline 18889:8888 >/tmp/control-forward.log 2>&1 &
           for i in {1..30}; do curl -sSf localhost:18888/apis/v2beta1/healthz >/dev/null && break; sleep 2; done
           python3 -m pip install --quiet --target=/tmp/log-check-deps pyyaml
           PYTHONPATH=/tmp/log-check-deps python3 - <<'PY'
@@ -49,15 +50,17 @@ jobs:
               return subprocess.check_output(["kubectl","-n",ns,*args])
           token=kube("create","token","log-check","--audience=pipelines.kubeflow.org").decode().strip()
           def api(path,body=None,identity=token):
-              request=urllib.request.Request("http://localhost:18888"+path,
+              port=18888 if identity==token else 18889
+              request=urllib.request.Request(f"http://localhost:{port}"+path,
                   data=json.dumps(body).encode() if body else None,
                   headers={"Authorization":"Bearer "+identity,"Content-Type":"application/json"})
               with urllib.request.urlopen(request,timeout=15) as response:
-                  return response.read(512*1024)
+                  return response.read(8*1024*1024+1)
           exp=json.loads(api("/apis/v2beta1/experiments",{"display_name":"log-check","namespace":ns}))["experiment_id"]
           spec=yaml.safe_load(Path("backend/test/v2/resources/hello-world.yaml").read_text())
           marker="historical-log-check-219"
-          spec["deploymentSpec"]["executors"]["exec-echo"]["container"]["args"]=[marker]
+          container=spec["deploymentSpec"]["executors"]["exec-echo"]["container"]
+          container.update(command=["python3","-c"],args=['for i in range(32768):\n    print(f"INFO epoch={i//1024:02d} batch={i%1024:04d} samples=64 loss={1/(1+i/200):.7f} accuracy={0.5+i/70000:.5f} optimizer=adam split=train learning_rate=0.001")\nprint("historical-log-check-219")'])
           run=json.loads(api("/apis/v2beta1/runs",{"display_name":"ordinary-log","experiment_id":exp,"pipeline_spec":spec}))["run_id"]
           for i in range(120):
               state=json.loads(api("/apis/v2beta1/runs/"+run))["state"]
@@ -68,7 +71,7 @@ jobs:
           pods=json.loads(kube("get","pods","-l","pipeline/runid="+run,"-o","json"))["items"]
           for pod in pods:
               name=pod["metadata"]["name"]
-              if marker.encode() in kube("logs",name,"-c","main"): break
+              if marker.encode() in kube("logs",name,"-c","main").splitlines(): break
           else: raise RuntimeError("fixture task pod absent")
           route="/apis/v1alpha1/runs/"+run+"/nodes/"+name+"/log"
           assert marker.encode() in api(route)
@@ -85,18 +88,41 @@ jobs:
               result=json.loads(api("/apis/v2beta1/experiments?namespace=log-reader-control",identity=other))
               assert isinstance(result,dict)
               return round((time.monotonic()-start)*1000,2)
-          def read_log(gate):
-              gate.wait(timeout=5)
-              assert marker.encode() in api(route)
+          from threading import Event
+          def read_log(started):
+              request=urllib.request.Request("http://localhost:18888"+route,headers={"Authorization":"Bearer "+token})
+              with urllib.request.urlopen(request,timeout=30) as response:
+                  first=response.read(1024)
+                  started.set()
+                  data=first+response.read(8*1024*1024)
+                  finished=time.monotonic()
+              assert 3*1024*1024<=len(data)<8*1024*1024 and marker.encode() in data.splitlines()
+              return finished,len(data)
+          def paired_read(worker):
+              started=Event()
+              task=worker.submit(read_log,started)
+              if not started.wait(15):
+                  task.result(30)
+                  raise RuntimeError("archive stream did not start")
+              begin=time.monotonic()
+              latency=control_read()
+              end=time.monotonic()
+              finished,size=task.result(30)
+              return latency,round(1000*(min(end,finished)-begin),2),size
           control_read()
-          baseline,paired=[],[]
+          baseline,paired,overlap=[],[],[]
           with ThreadPoolExecutor(max_workers=1) as worker:
-              for i in range(5):
-                  baseline.append(control_read())
-                  gate=Barrier(2)
-                  task=worker.submit(read_log,gate)
-                  gate.wait(timeout=5)
-                  paired.append(control_read())
-                  task.result(timeout=20)
-          print("Second namespace ordinary-read wall time, milliseconds:",json.dumps({"baseline":baseline,"paired":paired,"median_baseline":median(baseline),"median_paired":median(paired)}))
+              for i in range(12):
+                  if i%2==0:
+                      baseline.append(control_read())
+                      time.sleep(1)
+                  elapsed,concurrent_ms,size=paired_read(worker)
+                  paired.append(elapsed)
+                  overlap.append(concurrent_ms)
+                  time.sleep(1)
+                  if i%2:
+                      baseline.append(control_read())
+                      time.sleep(1)
+          print("LARGE_LOG_RESULT",json.dumps(dict(bytes=size,baseline_ms=baseline,paired_ms=paired,
+              overlap_ms=overlap,median_baseline=median(baseline),median_paired=median(paired))))
           PY
