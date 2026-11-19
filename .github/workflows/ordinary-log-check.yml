@@ -26,6 +26,10 @@ jobs:
           ns=kubeflow-user-example-com
           kubectl -n "$ns" create sa log-check
           kubectl -n "$ns" create rolebinding log-check --clusterrole=kubeflow-edit --serviceaccount="$ns:log-check"
+          kubectl create namespace log-reader-control
+          kubectl -n log-reader-control create sa control
+          kubectl -n log-reader-control create role list-experiments --verb=list --resource=experiments.pipelines.kubeflow.org
+          kubectl -n log-reader-control create rolebinding control --role=list-experiments --serviceaccount=log-reader-control:control
           kubectl -n kubeflow port-forward svc/ml-pipeline 18888:8888 >/tmp/port-forward.log 2>&1 &
           for i in {1..30}; do curl -sSf localhost:18888/apis/v2beta1/healthz >/dev/null && break; sleep 2; done
           python3 -m pip install --quiet --target=/tmp/log-check-deps pyyaml
@@ -36,10 +40,10 @@ jobs:
           def kube(*args):
               return subprocess.check_output(["kubectl","-n",ns,*args])
           token=kube("create","token","log-check","--audience=pipelines.kubeflow.org").decode().strip()
-          def api(path,body=None):
+          def api(path,body=None,identity=token):
               request=urllib.request.Request("http://localhost:18888"+path,
                   data=json.dumps(body).encode() if body else None,
-                  headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"})
+                  headers={"Authorization":"Bearer "+identity,"Content-Type":"application/json"})
               with urllib.request.urlopen(request,timeout=15) as response:
                   return response.read(512*1024)
           exp=json.loads(api("/apis/v2beta1/experiments",{"display_name":"log-check","namespace":ns}))["experiment_id"]
@@ -64,4 +68,27 @@ jobs:
           assert not kube("get","pod",name,"--ignore-not-found","-o","name").strip()
           assert marker.encode() in api(route)
           print("PASS: authorized ordinary task log was readable before and after pod removal")
+          from concurrent.futures import ThreadPoolExecutor
+          from statistics import median
+          from threading import Barrier
+          other=subprocess.check_output(["kubectl","-n","log-reader-control","create","token","control","--audience=pipelines.kubeflow.org"]).decode().strip()
+          def control_read():
+              start=time.monotonic()
+              result=json.loads(api("/apis/v2beta1/experiments?namespace=log-reader-control",identity=other))
+              assert isinstance(result,dict)
+              return round((time.monotonic()-start)*1000,2)
+          def read_log(gate):
+              gate.wait(timeout=5)
+              assert marker.encode() in api(route)
+          control_read()
+          baseline,paired=[],[]
+          with ThreadPoolExecutor(max_workers=1) as worker:
+              for i in range(5):
+                  baseline.append(control_read())
+                  gate=Barrier(2)
+                  task=worker.submit(read_log,gate)
+                  gate.wait(timeout=5)
+                  paired.append(control_read())
+                  task.result(timeout=20)
+          print("Second namespace ordinary-read wall time, milliseconds:",json.dumps({"baseline":baseline,"paired":paired,"median_baseline":median(baseline),"median_paired":median(paired)}))
           PY
