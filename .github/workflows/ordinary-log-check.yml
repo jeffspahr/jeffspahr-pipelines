@@ -1,0 +1,67 @@
+name: Historical log compatibility
+on:
+  push:
+    branches: [codex/ordinary-log-check-2181]
+permissions:
+  contents: read
+jobs:
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/create-cluster
+        with:
+          k8s_version: v1.36.1
+          cluster_name: kfp
+      - name: Install the release images with the CI profile fixture
+        run: |
+          set -euo pipefail
+          sed 's|TEST_MANIFESTS="${TEST_MANIFESTS}/default"|TEST_MANIFESTS="manifests/kustomize/env/platform-agnostic-multi-user"|' .github/resources/scripts/deploy-kfp.sh > .github/resources/scripts/deploy-release.sh
+          bash .github/resources/scripts/deploy-release.sh --multi-user
+          kubectl -n kubeflow get deploy ml-pipeline -o json | jq -e '.spec.template.spec.containers|any(.image=="ghcr.io/kubeflow/kfp-api-server:2.18.1")'
+      - name: Run a normal task and read its historical log
+        run: |
+          set -euo pipefail
+          ns=kubeflow-user-example-com
+          kubectl -n "$ns" create sa log-check
+          kubectl -n "$ns" create rolebinding log-check --clusterrole=kubeflow-edit --serviceaccount="$ns:log-check"
+          kubectl -n kubeflow port-forward svc/ml-pipeline 18888:8888 >/tmp/port-forward.log 2>&1 &
+          for i in {1..30}; do curl -sSf localhost:18888/apis/v2beta1/healthz >/dev/null && break; sleep 2; done
+          python3 -m pip install --quiet --target=/tmp/log-check-deps pyyaml
+          PYTHONPATH=/tmp/log-check-deps python3 - <<'PY'
+          import json, subprocess, time, urllib.request, yaml
+          from pathlib import Path
+          ns="kubeflow-user-example-com"
+          def kube(*args):
+              return subprocess.check_output(["kubectl","-n",ns,*args])
+          token=kube("create","token","log-check","--audience=pipelines.kubeflow.org").decode().strip()
+          def api(path,body=None):
+              request=urllib.request.Request("http://localhost:18888"+path,
+                  data=json.dumps(body).encode() if body else None,
+                  headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"})
+              with urllib.request.urlopen(request,timeout=15) as response:
+                  return response.read(512*1024)
+          exp=json.loads(api("/apis/v2beta1/experiments",{"display_name":"log-check","namespace":ns}))["experiment_id"]
+          spec=yaml.safe_load(Path("backend/test/v2/resources/hello-world.yaml").read_text())
+          marker="historical-log-check-219"
+          spec["deploymentSpec"]["executors"]["exec-echo"]["container"]["args"]=[marker]
+          run=json.loads(api("/apis/v2beta1/runs",{"display_name":"ordinary-log","experiment_id":exp,"pipeline_spec":spec}))["run_id"]
+          for i in range(120):
+              state=json.loads(api("/apis/v2beta1/runs/"+run))["state"]
+              if state=="SUCCEEDED": break
+              if state in ("FAILED","CANCELED","ERROR"): raise RuntimeError("run ended "+state)
+              time.sleep(5)
+          else: raise TimeoutError("run completion")
+          pods=json.loads(kube("get","pods","-l","pipeline/runid="+run,"-o","json"))["items"]
+          for pod in pods:
+              name=pod["metadata"]["name"]
+              if marker.encode() in kube("logs",name,"-c","main"): break
+          else: raise RuntimeError("fixture task pod absent")
+          route="/apis/v1alpha1/runs/"+run+"/nodes/"+name+"/log"
+          assert marker.encode() in api(route)
+          kube("delete","pod",name,"--wait=true","--timeout=120s")
+          assert not kube("get","pod",name,"--ignore-not-found","-o","name").strip()
+          assert marker.encode() in api(route)
+          print("PASS: authorized ordinary task log was readable before and after pod removal")
+          PY
