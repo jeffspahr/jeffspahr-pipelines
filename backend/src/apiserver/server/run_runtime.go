@@ -73,7 +73,7 @@ func (s *RunArtifactServer) ReadRunRuntime(w http.ResponseWriter, r *http.Reques
 // Each KFP driver carries the IR task name. Its sibling DAG carries the overall
 // executor state, and the launcher pod inside that DAG carries publication receipts.
 func workflowRuntimeTasks(workflow *wf.Workflow) []runtimeTask {
-	nodes := workflow.Status.Nodes
+	nodes := logicalRuntimeNodes(workflow.Status.Nodes)
 	byName := make(map[string]wf.NodeStatus, len(nodes))
 	for _, node := range nodes {
 		byName[node.Name] = node
@@ -144,6 +144,75 @@ func workflowRuntimeTasks(workflow *wf.Workflow) []runtimeTask {
 		result = append(result, *task)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].NodeID < result[j].NodeID })
+	return result
+}
+
+// Argo records the retry wrapper and each concrete attempt separately. Use
+// the wrapper's logical identity and the latest attempt's resolved inputs and
+// outputs. A nested launcher points to the concrete executor DAG as its boundary.
+func logicalRuntimeNodes(nodes wf.Nodes) wf.Nodes {
+	logicalID := map[string]string{}
+	replaced := map[string]bool{}
+	discarded := map[string]bool{}
+	boundaryChildren := map[string][]string{}
+	for id, node := range nodes {
+		boundaryChildren[node.BoundaryID] = append(boundaryChildren[node.BoundaryID], id)
+		if node.Type != wf.NodeTypeRetry {
+			continue
+		}
+		latest := ""
+		for _, childID := range node.Children {
+			child, ok := nodes[childID]
+			if ok && child.NodeFlag != nil && child.NodeFlag.Hooked {
+				continue
+			}
+			if latest != "" {
+				discarded[latest] = true
+			}
+			latest = ""
+			if ok {
+				latest = childID
+			}
+		}
+		if latest != "" {
+			logicalID[latest] = id
+			replaced[id] = true
+		}
+	}
+	// Child tasks of an abandoned DAG attempt must not contribute states or
+	// publications to the final attempt.
+	var pending []string
+	for id := range discarded {
+		pending = append(pending, id)
+	}
+	for len(pending) > 0 {
+		id := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		for _, child := range boundaryChildren[id] {
+			if !discarded[child] {
+				discarded[child] = true
+				pending = append(pending, child)
+			}
+		}
+	}
+	result := make(wf.Nodes, len(nodes))
+	for id, node := range nodes {
+		if discarded[id] || replaced[id] {
+			continue
+		}
+		if wrapperID, ok := logicalID[id]; ok {
+			wrapper := nodes[wrapperID]
+			node.ID, node.Name, node.DisplayName = wrapper.ID, wrapper.Name, wrapper.DisplayName
+			if node.Phase != wf.NodeSucceeded {
+				node.Outputs = nil
+			}
+			node.Phase = wrapper.Phase
+		}
+		if boundaryID, ok := logicalID[node.BoundaryID]; ok {
+			node.BoundaryID = boundaryID
+		}
+		result[node.ID] = node
+	}
 	return result
 }
 
