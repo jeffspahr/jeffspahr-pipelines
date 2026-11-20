@@ -22,6 +22,14 @@ spec:
 YAML
 )
 
+# This CI overlay installs KFP's aggregate roles independently of the dashboard.
+# Give each profile user only the permissions needed in their own namespace.
+kubectl wait --for=create "namespace/$foreign_namespace" --timeout=120s
+kubectl create rolebinding "profile-run-owner-${foreign_namespace#profile-run-reader-}" \
+  -n "$namespace" --clusterrole=kubeflow-pipelines-edit --user="$owner"
+kubectl create rolebinding profile-run-reader \
+  -n "$foreign_namespace" --clusterrole=kubeflow-pipelines-view --user="$foreign"
+
 # Establish a working second profile before checking access to the owner's run.
 foreign_runs="$api/runs?namespace=$foreign_namespace&page_size=1"
 for attempt in {1..60}; do
