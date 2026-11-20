@@ -67,7 +67,11 @@ prepare_run() {
     case "$state" in
       SUCCEEDED) break ;;
       FAILED|CANCELED|CANCELING|SKIPPED|PAUSED)
-        echo "Fixture run $prepared_run_id reached $state" >&2; exit 1 ;;
+        echo "Fixture run $prepared_run_id in $namespace reached $state" >&2
+        kubectl -n "$namespace" get workflows -l "pipeline/runid=$prepared_run_id" -o json |
+          jq '[.items[].status.nodes[]? | select(.phase == "Failed" or .phase == "Error") |
+            {displayName, phase, message}]' >&2
+        exit 1 ;;
     esac
     if [[ $attempt == 120 ]]; then
       echo "Fixture run $prepared_run_id timed out in $state" >&2
@@ -90,6 +94,12 @@ if [[ ${PROFILE_CATALOG_PARITY:-false} == true ]]; then
   kubectl create rolebinding profile-catalog-producer \
     -n "$foreign_namespace" --clusterrole=kubeflow-pipelines-edit --user="$foreign"
   kubectl -n "$foreign_namespace" wait --for=create serviceaccount/default-editor --timeout=120s
+  kubectl -n "$foreign_namespace" wait --for=create secret/mlpipeline-minio-artifact --timeout=300s
+  # The CI deployment's workload ingress policy lists only its original test profile.
+  # Give the second fixture's workload the same network access inside this disposable cluster.
+  kubectl -n kubeflow patch networkpolicy allow-user-namespace-access --type=json \
+    -p "$(jq -cn --arg ns "$foreign_namespace" '[{op:"add",
+      path:"/spec/ingress/0/from/0/namespaceSelector/matchExpressions/0/values/-", value:$ns}]')"
   prepare_run "$foreign_namespace" "$foreign"
   echo "foreign_run_id=$prepared_run_id" >> "$GITHUB_OUTPUT"
 fi
