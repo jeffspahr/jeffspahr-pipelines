@@ -34,9 +34,15 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'backend/**'
-      # Artifact authorization changes must exercise the multi-user artifact
-      # proxy and SeaweedFS namespace-isolation checks below.
-      - 'frontend/server/handlers/artifacts.ts'
+      # Exercise the multi-user run-details and artifact access paths.
+      - 'frontend/server/**'
+      - 'frontend/src/pages/RunDetails*'
+      - 'frontend/src/mlmd/**'
+      - 'frontend/src/lib/v2/**'
+      - 'frontend/src/components/graph/**'
+      - 'frontend/src/components/tabs/**'
+      - 'frontend/scripts/ui-smoke-test/**'
+      - 'test/frontend-integration-test/prepare-profile-run.sh'
       - 'proxy/**'
       - 'manifests/kustomize/**'
       # The artifact-proxy E2E script is exercised only by this workflow, so
@@ -369,6 +375,30 @@ jobs:
             echo "TEST_LABEL=$TEST_LABEL"
             echo "NAMESPACE=$NAMESPACE"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Prepare completed profile run
+        if: matrix.cache_enabled == 'false' && matrix.test_label != 'E2ECriticalShardB'
+        id: profile-run
+        run: |
+          ./.github/resources/scripts/forward-port.sh kubeflow ml-pipeline-ui 3000 3000
+          bash test/frontend-integration-test/prepare-profile-run.sh
+
+      - uses: actions/setup-node@v7.1.0
+        if: steps.profile-run.outcome == 'success'
+        with:
+          node-version-file: frontend/.nvmrc
+
+      - name: Verify profile run details in Chromium
+        if: steps.profile-run.outcome == 'success'
+        working-directory: frontend/scripts/ui-smoke-test
+        env:
+          PROFILE_RUN_ID: ${{ steps.profile-run.outputs.run_id }}
+          PROFILE_OWNER: ${{ steps.profile-run.outputs.owner }}
+          PROFILE_FOREIGN: ${{ steps.profile-run.outputs.foreign }}
+        run: |
+          npm ci
+          npx playwright install --with-deps --only-shell chromium
+          node --test profile-run-details.test.js
 
       - name: Test Artifact Proxy
         id: test-artifact-proxy
