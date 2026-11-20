@@ -46,33 +46,39 @@ for attempt in {1..60}; do
   sleep 3
 done
 
-spec=test_data/sdk_compiled_pipelines/valid/critical/two_step_pipeline_containerized.yaml
-# A unique input forces a fresh producer execution even on cache-enabled clusters.
-name="profile-run-details-$(date +%s)-$RANDOM"
-run_id=$(
-  yq -o=json '.' "$spec" |
-    jq --arg namespace "$namespace" --arg name "$name" \
-      '{namespace: $namespace, display_name: $name, pipeline_spec: .,
-        service_account: "default-editor", runtime_config: {parameters: {text: $name}}}' |
-    curl --fail-with-body -sS -H "kubeflow-userid: $owner" -H 'Content-Type: application/json' \
-      --data-binary @- "$api/runs" |
-    jq -er '.run_id | select(type == "string" and length > 0)'
-)
+prepare_run() {
+  local namespace=$1 owner=$2 run state attempt spec
+  spec=test_data/sdk_compiled_pipelines/valid/critical/two_step_pipeline_containerized.yaml
+  # A unique input forces a fresh producer execution even on cache-enabled clusters.
+  local name="profile-run-details-$(date +%s)-$RANDOM"
+  prepared_run_id=$(
+    yq -o=json '.' "$spec" |
+      jq --arg namespace "$namespace" --arg name "$name" \
+        '{namespace: $namespace, display_name: $name, pipeline_spec: .,
+          service_account: "default-editor", runtime_config: {parameters: {text: $name}}}' |
+      curl --fail-with-body -sS -H "kubeflow-userid: $owner" -H 'Content-Type: application/json' \
+        --data-binary @- "$api/runs" |
+      jq -er '.run_id | select(type == "string" and length > 0)'
+  )
 
-for attempt in {1..120}; do
-  run=$(curl --fail-with-body -sS -H "kubeflow-userid: $owner" "$api/runs/$run_id")
-  state=$(jq -er '.state // "RUNTIME_STATE_UNSPECIFIED"' <<<"$run")
-  case "$state" in
-    SUCCEEDED) break ;;
-    FAILED|CANCELED|CANCELING|SKIPPED|PAUSED)
-      echo "Fixture run $run_id reached $state" >&2; exit 1 ;;
-  esac
-  if [[ $attempt == 120 ]]; then
-    echo "Fixture run $run_id timed out in $state" >&2
-    exit 1
-  fi
-  sleep 5
-done
+  for attempt in {1..120}; do
+    run=$(curl --fail-with-body -sS -H "kubeflow-userid: $owner" "$api/runs/$prepared_run_id")
+    state=$(jq -er '.state // "RUNTIME_STATE_UNSPECIFIED"' <<<"$run")
+    case "$state" in
+      SUCCEEDED) break ;;
+      FAILED|CANCELED|CANCELING|SKIPPED|PAUSED)
+        echo "Fixture run $prepared_run_id reached $state" >&2; exit 1 ;;
+    esac
+    if [[ $attempt == 120 ]]; then
+      echo "Fixture run $prepared_run_id timed out in $state" >&2
+      exit 1
+    fi
+    sleep 5
+  done
+}
+
+prepare_run "$namespace" "$owner"
+run_id=$prepared_run_id
 
 status=$(curl -sS -o /dev/null -w '%{http_code}' -H "kubeflow-userid: $foreign" "$api/runs/$run_id")
 if [[ $status != 403 && $status != 404 ]]; then
@@ -80,8 +86,18 @@ if [[ $status != 403 && $status != 404 ]]; then
   exit 1
 fi
 
+if [[ ${PROFILE_CATALOG_PARITY:-false} == true ]]; then
+  kubectl create rolebinding profile-catalog-producer \
+    -n "$foreign_namespace" --clusterrole=kubeflow-pipelines-edit --user="$foreign"
+  kubectl -n "$foreign_namespace" wait --for=create serviceaccount/default-editor --timeout=120s
+  prepare_run "$foreign_namespace" "$foreign"
+  echo "foreign_run_id=$prepared_run_id" >> "$GITHUB_OUTPUT"
+fi
+
 {
   echo "run_id=$run_id"
+  echo "owner_namespace=$namespace"
+  echo "foreign_namespace=$foreign_namespace"
   echo "owner=$owner"
   echo "foreign=$foreign"
 } >> "$GITHUB_OUTPUT"
