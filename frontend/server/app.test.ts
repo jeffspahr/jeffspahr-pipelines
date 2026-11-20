@@ -180,11 +180,12 @@ describe('UIServer apis', () => {
         json: () => Promise.reject('Unknown error'),
       }));
 
-      const configs = loadConfigs(argv, {});
+      const configs = loadConfigs(argv, { ENABLE_AUTHZ: 'true' });
       app = new UIServer(configs);
       const res = await requests(app.app).get('/apis/v1beta1/healthz').expect(200);
       expect(res.body).toMatchObject({
         apiServerReady: false,
+        frontendAuthEnabled: true,
         frontendCommitHash: commitHash,
         frontendTagName: tagName,
       });
@@ -208,6 +209,7 @@ describe('UIServer apis', () => {
         apiServerCommitHash: 'commit_sha',
         apiServerTagName: '1.0.0',
         apiServerMultiUser: false,
+        frontendAuthEnabled: false,
         multi_user: false,
         apiServerReady: true,
         frontendCommitHash: commitHash,

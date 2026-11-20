@@ -16,6 +16,8 @@
 
 import { act, fireEvent, queryByText, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { queryKeys } from 'src/hooks/queryKeys';
 
 import { V2beta1Run, V2beta1RuntimeState } from 'src/apisv2beta1/run';
 import { V2beta1Experiment, V2beta1ExperimentStorageState } from 'src/apisv2beta1/experiment';
@@ -52,7 +54,7 @@ describe('RunDetailsV2', () => {
   let updateToolbarSpy: any;
   let historyPushSpy: any;
 
-  function generateProps(): RunDetailsInternalProps & PageProps {
+  function generateProps(): RunDetailsInternalProps & PageProps & { multiUser: boolean } {
     const pageProps: PageProps = {
       history: { push: historyPushSpy } as any,
       location: '' as any,
@@ -71,6 +73,7 @@ describe('RunDetailsV2', () => {
       updateToolbar: updateToolbarSpy,
     };
     return Object.assign(pageProps, {
+      multiUser: false,
       gkeMetadata: {},
     });
   }
@@ -119,6 +122,70 @@ describe('RunDetailsV2', () => {
     vi.spyOn(Api.getInstance().metadataStoreService, 'getArtifactTypes').mockResolvedValue(
       new metadataStoreServicePb.GetArtifactTypesResponse(),
     );
+  });
+
+  it('shows reported task state and only confirmed outputs without shared MLMD in multi-user mode', async () => {
+    const runtime = vi.spyOn(Apis, 'getRunRuntime').mockResolvedValue({
+      tasks: [
+        {
+          nodeId: 'producer-node',
+          taskName: 'preprocess',
+          state: V2beta1RuntimeState.SUCCEEDED,
+          outputArtifactNames: ['output_dataset_one'],
+        },
+      ],
+    });
+    vi.spyOn(Apis.experimentServiceApiV2, 'getExperiment').mockResolvedValue(TEST_EXPERIMENT);
+    render(
+      <CommonTestWrapper>
+        <RunDetailsV2
+          {...generateProps()}
+          multiUser={true}
+          pipeline_job={v2YamlTemplateString}
+          run={TEST_RUN}
+        />
+      </CommonTestWrapper>,
+    );
+    await screen.findByTestId('artifact-icon-live');
+    expect(screen.getAllByTestId('artifact-icon-live')).toHaveLength(1);
+    fireEvent.click(screen.getByText('preprocess'));
+    fireEvent.click(screen.getByRole('button', { name: 'Task Details' }));
+    expect(screen.getByText('Complete')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('close'));
+    fireEvent.click(screen.getByText('output_dataset_one'));
+    expect(screen.getByText('Live')).toBeInTheDocument();
+    expect(runtime).toHaveBeenCalledWith(RUN_ID);
+    expect(Api.getInstance().metadataStoreService.getContextByTypeAndName).not.toHaveBeenCalled();
+    expect(Api.getInstance().metadataStoreService.getArtifactTypes).not.toHaveBeenCalled();
+  });
+
+  it('clears the runtime error after an authorized refetch without using the shared proxy', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const runtime = vi.spyOn(Apis, 'getRunRuntime').mockRejectedValueOnce(new Error('Forbidden'));
+    vi.spyOn(Apis.experimentServiceApiV2, 'getExperiment').mockResolvedValue(TEST_EXPERIMENT);
+    render(
+      <CommonTestWrapper>
+        <QueryClientProvider client={client}>
+          <RunDetailsV2
+            {...generateProps()}
+            multiUser
+            pipeline_job={v2YamlTemplateString}
+            run={TEST_RUN}
+          />
+        </QueryClientProvider>
+      </CommonTestWrapper>,
+    );
+    await waitFor(() =>
+      expect(updateBannerSpy).toHaveBeenLastCalledWith({
+        message: 'Cannot get runtime details for this run.',
+        additionalInfo: 'Forbidden',
+        mode: 'error',
+      }),
+    );
+    runtime.mockResolvedValue({ tasks: [] });
+    await act(() => client.invalidateQueries({ queryKey: queryKeys.runRuntime(RUN_ID) }));
+    await waitFor(() => expect(updateBannerSpy).toHaveBeenLastCalledWith({}));
+    expect(Api.getInstance().metadataStoreService.getContextByTypeAndName).not.toHaveBeenCalled();
   });
 
   it('renders the graph canvas without a top border', async () => {

@@ -23,6 +23,9 @@ import (
 )
 
 const (
+	PublishedArtifactsParameter    = "kfp-published-artifacts"
+	MaxPublishedArtifactNamesBytes = 4096
+
 	// LabelKeyScheduledWorkflowEnabled is a label on a ScheduledWorkflow.
 	// It captures whether the ScheduledWorkflow is enabled.
 	LabelKeyScheduledWorkflowEnabled = constants.FullName + "/enabled"

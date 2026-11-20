@@ -161,7 +161,7 @@ func (l *ImportLauncher) Execute(ctx context.Context) (err error) {
 	if err := l.metadataClient.PublishExecution(ctx, createdExecution, nil, outputArtifacts, pb.Execution_COMPLETE); err != nil {
 		return fmt.Errorf("failed to publish results of importer execution to ML Metadata: %w", err)
 	}
-
+	ReportPublishedArtifacts(SystemPublishedArtifactsPath, outputArtifacts)
 	return nil
 }
 

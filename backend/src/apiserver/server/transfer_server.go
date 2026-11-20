@@ -50,7 +50,7 @@ func NewTransferServer(service TransferService) *TransferServer {
 	return &TransferServer{service: service, active: make(chan struct{}, 1), maxArchiveBytes: transfer.MaxArchiveBytes}
 }
 
-func transferContext(r *http.Request) context.Context {
+func httpRequestContext(r *http.Request) context.Context {
 	md := metadata.MD{}
 	for key, values := range r.Header {
 		md.Set(key, values...)
@@ -66,7 +66,7 @@ func (s *TransferServer) begin(w http.ResponseWriter, r *http.Request, importing
 		writeTransferError(w, http.StatusMethodNotAllowed, "Use POST for export and import")
 		return nil, false
 	}
-	ctx := transferContext(r)
+	ctx := httpRequestContext(r)
 	if err := s.service.AuthorizeTransfer(ctx, r.URL.Query().Get("namespace"), importing); err != nil {
 		transferServiceError(w, err)
 		return nil, false

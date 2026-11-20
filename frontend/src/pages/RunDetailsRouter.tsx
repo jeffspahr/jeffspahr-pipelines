@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
 import * as JsYaml from 'js-yaml';
 import { useQuery } from '@tanstack/react-query';
 import { V2beta1Run } from 'src/apisv2beta1/run';
 import { RouteParams } from 'src/components/Router';
+import { BuildInfoContext } from 'src/lib/BuildInfo';
 import { Apis } from 'src/lib/Apis';
 import { errorToMessage } from 'src/lib/Utils';
 import * as WorkflowUtils from 'src/lib/v2/WorkflowUtils';
@@ -33,6 +34,7 @@ export default function RunDetailsRouter(
   props: RunDetailsProps & RouteComponentProps<RunDetailsV2Params>,
 ) {
   const { updateBanner } = props;
+  const buildInfo = useContext(BuildInfoContext);
   const runId = props.match.params[RouteParams.runId];
   let pipelineManifest: string | undefined;
 
@@ -88,7 +90,14 @@ export default function RunDetailsRouter(
   if (getV2RunSuccess && v2Run && templateString) {
     const isV2Pipeline = WorkflowUtils.isPipelineSpec(templateString);
     if (isV2Pipeline) {
-      return <RunDetailsV2 pipeline_job={templateString} run={v2Run} {...props} />;
+      return (
+        <RunDetailsV2
+          multiUser={buildInfo?.frontendAuthEnabled ?? buildInfo?.apiServerMultiUser ?? true}
+          pipeline_job={templateString}
+          run={v2Run}
+          {...props}
+        />
+      );
     }
   }
 

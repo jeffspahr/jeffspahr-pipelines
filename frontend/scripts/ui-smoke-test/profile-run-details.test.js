@@ -48,6 +48,8 @@ test('the profile owner sees the completed producer and its live output', async 
 test('another profile cannot open the same run', async t => {
   const { page, response } = await openRun(t, process.env.PROFILE_FOREIGN);
   assert.ok([403, 404].includes(response.status()), 'Expected a denied run read, got ' + response.status());
+  const runtime = await page.request.get(runPath + '/runtime');
+  assert.ok([403, 404].includes(runtime.status()), 'Expected a denied runtime read, got ' + runtime.status());
   await page.getByText('Error: failed to retrieve run: ' + runId + '.').waitFor();
   assert.equal(await page.getByTitle('output_gcs', { exact: true }).count(), 0);
 });

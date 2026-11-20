@@ -294,6 +294,7 @@ func (c *workflowCompiler) addContainerDriverTemplate() string {
 			Env:                      append(proxy.GetConfig().GetEnvVars(), commonEnvs...),
 		},
 	}
+	configurePublishedArtifactOutput(template, component.SystemPublishedArtifactsPath)
 	setRuntimeRole(template, util.ExecutionRuntimeRoleDriver)
 	applySecurityContextToTemplate(template)
 
@@ -306,6 +307,17 @@ func (c *workflowCompiler) addContainerDriverTemplate() string {
 	c.templates[name] = template
 	c.wf.Spec.Templates = append(c.wf.Spec.Templates, *template)
 	return name
+}
+
+func configurePublishedArtifactOutput(template *wfapi.Template, path string) {
+	if !common.IsMultiUserMode() {
+		return
+	}
+	template.Container.Env = append(template.Container.Env, k8score.EnvVar{Name: component.EnvReportPublishedArtifacts, Value: "true"})
+	template.Outputs.Parameters = append(template.Outputs.Parameters, wfapi.Parameter{
+		Name:      component.PublishedArtifactsParameter,
+		ValueFrom: &wfapi.ValueFrom{Path: path, Default: wfapi.AnyStringPtr("[]")},
+	})
 }
 
 type containerExecutorInputs struct {
@@ -589,6 +601,7 @@ func (c *workflowCompiler) addContainerExecutorTemplate(task *pipelinespec.Pipel
 			Env:     commonEnvs,
 		},
 	}
+	configurePublishedArtifactOutput(executor, component.PublishedArtifactsPath)
 	setRuntimeRole(executor, util.ExecutionRuntimeRoleLauncher)
 	// If CABUNDLE_SECRET_NAME or CABUNDLE_CONFIGMAP_NAME is set, add the custom CA bundle to the executor.
 	if common.GetCaBundleSecretName() != "" || common.GetCaBundleConfigMapName() != "" {

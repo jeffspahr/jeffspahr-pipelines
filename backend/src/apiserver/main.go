@@ -108,6 +108,7 @@ type HTTPRouterDeps struct {
 	ReadRunLogV1            http.HandlerFunc
 	ReadArtifactV1          http.HandlerFunc
 	ReadArtifact            http.HandlerFunc
+	ReadRunRuntime          http.HandlerFunc
 }
 
 func parseTLSVersion(version string) (uint16, error) {
@@ -610,6 +611,7 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, usePipelinesKuber
 		ReadRunLogV1:            runLogServer.ReadRunLogV1,
 		ReadArtifactV1:          runArtifactServer.ReadArtifactV1,
 		ReadArtifact:            runArtifactServer.ReadArtifact,
+		ReadRunRuntime:          runArtifactServer.ReadRunRuntime,
 	}
 
 	topMux := buildHTTPRouter(handlerDeps, runtimeMux, pipelineStore)
@@ -695,6 +697,8 @@ func buildHTTPRouter(handlerDeps HTTPRouterDeps, grpcGatewayHandler http.Handler
 	// Artifact reading endpoints (implemented with streaming for memory efficiency)
 	topMux.HandleFunc("/apis/v1beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", handlerDeps.ReadArtifactV1).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", handlerDeps.ReadArtifact).Methods(http.MethodGet)
+
+	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/runtime", handlerDeps.ReadRunRuntime).Methods(http.MethodGet)
 
 	topMux.PathPrefix("/apis/").Handler(clearTagsMiddleware(grpcGatewayHandler))
 

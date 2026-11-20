@@ -23,10 +23,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/common/plugins"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -400,7 +402,55 @@ func (l *LauncherV2) publish(
 		return fmt.Errorf("failed to publish results to ML Metadata: %w", err)
 	}
 
+	ReportPublishedArtifacts(PublishedArtifactsPath, outputArtifacts)
 	return nil
+}
+
+// ReportPublishedArtifacts makes a successful publication visible to Run Details
+// when the compiled workflow requested it. Reporting is best effort.
+func ReportPublishedArtifacts(path string, artifacts []*metadata.OutputArtifact) {
+	if os.Getenv(EnvReportPublishedArtifacts) != "true" {
+		return
+	}
+	if err := writePublishedArtifacts(path, artifacts); err != nil {
+		glog.Warningf("Could not record published artifact names for Run Details: %v", err)
+	}
+}
+
+// Record only the output names whose LIVE state was successfully published for
+// this execution. The Argo parameter defaults to [] on older launcher images.
+func writePublishedArtifacts(path string, artifacts []*metadata.OutputArtifact) error {
+	names := make([]string, 0, len(artifacts))
+	for _, a := range artifacts {
+		if a != nil && a.Name != "" && a.Name != "executor-logs" && a.Artifact.GetState() == pb.Artifact_LIVE {
+			names = append(names, a.Name)
+		}
+	}
+	slices.Sort(names)
+	data, err := json.Marshal(slices.Compact(names))
+	if err != nil {
+		return err
+	}
+	// Keep the additional per-node workflow status bounded.
+	if len(data) > util.MaxPublishedArtifactNamesBytes {
+		return fmt.Errorf("published artifact names exceed %d bytes", util.MaxPublishedArtifactNamesBytes)
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), ".published-artifacts-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	_, err = f.Write(data)
+	if err == nil {
+		// Argo's wait container may run under a different UID. The receipt
+		// contains only names and must be readable on the shared pod volume.
+		err = f.Chmod(0644)
+	}
+	closeErr := f.Close()
+	if err != nil || closeErr != nil {
+		return errors.Join(err, closeErr)
+	}
+	return os.Rename(f.Name(), path)
 }
 
 // executeV2 handles placeholder substitution for inputs, calls execute to

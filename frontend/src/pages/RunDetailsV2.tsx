@@ -36,6 +36,7 @@ import {
   getNodeMlmdInfo,
   updateFlowElementsState,
 } from 'src/lib/v2/DynamicFlow';
+import { applyRunRuntime, indexRunRuntimeTasks } from 'src/lib/v2/RunRuntimeFlow';
 import type { LayerElementsResolver, LayerFlowElement } from 'src/lib/v2/FlowTypes';
 import { convertFlowElements, getNodeName } from 'src/lib/v2/StaticFlow';
 import * as WorkflowUtils from 'src/lib/v2/WorkflowUtils';
@@ -70,6 +71,7 @@ export interface NodeMlmdInfo {
 }
 
 interface RunDetailsV2Info {
+  multiUser: boolean;
   pipeline_job: string;
   run: V2beta1Run;
 }
@@ -83,7 +85,7 @@ export type RunDetailsV2Props = RunDetailsV2Info &
   RouteComponentProps<RunDetailsV2Params>;
 
 export function RunDetailsV2(props: RunDetailsV2Props) {
-  const { updateBanner } = props;
+  const { updateBanner, multiUser } = props;
   const runId = props.match.params[RouteParams.runId];
   const run = props.run;
   const pipelineJobStr = props.pipeline_job;
@@ -95,14 +97,14 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
 
   const [selectedTab, setSelectedTab] = useState(0);
   const [selectedNode, setSelectedNode] = useState<LayerFlowElement | null>(null);
-  const [selectedNodeMlmdInfo, setSelectedNodeMlmdInfo] = useState<NodeMlmdInfo | null>(null);
   const [, forceUpdate] = useState();
   const runStateKey = `${run.run_id || runId}:${run.state || ''}`;
   const [retriedCurrentRunState, setRetriedCurrentRunState] = useKeyedState(runStateKey, false);
   const runFinished = hasFinishedV2(run.state) && !retriedCurrentRunState;
 
   // Retrieves MLMD states from the MLMD store.
-  const { isSuccess, isError, error, data } = useQuery<MlmdPackage, Error>({
+  const mlmd = useQuery<MlmdPackage, Error>({
+    enabled: !multiUser,
     queryKey: queryKeys.mlmdPackage(runId),
     queryFn: async () => {
       const context = await getKfpV2RunContext(runId);
@@ -116,6 +118,20 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
     refetchInterval: QUERY_REFETCH_INTERVAL,
   });
 
+  const runtime = useQuery({
+    enabled: multiUser,
+    queryKey: queryKeys.runRuntime(runId),
+    queryFn: () => Apis.getRunRuntime(runId),
+    staleTime: QUERY_STALE_TIME,
+    refetchInterval: QUERY_REFETCH_INTERVAL,
+  });
+  const data = multiUser ? undefined : mlmd.data;
+  const runtimeTasks = useMemo(
+    () => indexRunRuntimeTasks(runtime.isSuccess ? runtime.data.tasks : []),
+    [runtime.data, runtime.isSuccess],
+  );
+  const { isSuccess, isError, error } = multiUser ? runtime : mlmd;
+
   // Retrieves experiment detail.
   const experimentId = run.experiment_id || null;
   const {
@@ -128,11 +144,13 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
   });
   const namespace = experiment?.namespace;
 
-  // Single banner effect with clear precedence: MLMD error > experiment error > clear on success.
+  // Synchronize the page banner with the active runtime source and experiment query.
   useEffect(() => {
     if (isError && error) {
       updateBanner({
-        message: 'Cannot get MLMD objects from Metadata store.',
+        message: multiUser
+          ? 'Cannot get runtime details for this run.'
+          : 'Cannot get MLMD objects from Metadata store.',
         additionalInfo: error.message,
         mode: 'error',
       });
@@ -145,9 +163,10 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
     } else if (isSuccess) {
       updateBanner({});
     }
-  }, [isError, isSuccess, error, experimentIsError, experimentError, updateBanner]);
+  }, [isError, isSuccess, error, experimentIsError, experimentError, updateBanner, multiUser]);
 
   const dynamicFlowElements = useMemo(() => {
+    if (multiUser) return applyRunRuntime(initialElements, ROOT_LAYERS, runtimeTasks);
     if (!isSuccess || !data) {
       return initialElements;
     }
@@ -159,7 +178,7 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
       data.events,
       data.artifacts,
     );
-  }, [data, initialElements, isSuccess]);
+  }, [data, initialElements, isSuccess, multiUser, runtimeTasks]);
 
   const getSubDagElements = useCallback<LayerElementsResolver>(
     (layers) => {
@@ -168,6 +187,7 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
         layers,
         data ? data.executions : [],
       );
+      if (multiUser) return applyRunRuntime(elements, layers, runtimeTasks);
       if (!data) {
         return elements;
       }
@@ -179,17 +199,28 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
         data.artifacts,
       );
     },
-    [data, pipelineSpec],
+    [data, pipelineSpec, multiUser, runtimeTasks],
   );
 
   const onElementSelection = (_event: ReactMouseEvent, selection: LayerFlowElement) => {
     setSelectedNode(selection);
-    if (data) {
-      setSelectedNodeMlmdInfo(
-        getNodeMlmdInfo(selection.element, data.executions, data.events, data.artifacts),
-      );
-    }
   };
+  // Resolve the current snapshot so an open panel follows task transitions and refetch errors.
+  const selectedElement = useMemo(() => {
+    if (!selectedNode) return undefined;
+    const layerElements =
+      selectedNode.layers.length === 1
+        ? dynamicFlowElements
+        : getSubDagElements(selectedNode.layers);
+    return layerElements.find((element) => element.id === selectedNode.element.id);
+  }, [selectedNode, dynamicFlowElements, getSubDagElements]);
+  const selectedNodeMlmdInfo = useMemo(
+    () =>
+      selectedElement && data
+        ? getNodeMlmdInfo(selectedElement, data.executions, data.events, data.artifacts)
+        : null,
+    [selectedElement, data],
+  );
 
   // Update page title and experiment information.
   useEffect(() => {
@@ -249,7 +280,8 @@ export function RunDetailsV2(props: RunDetailsV2Props) {
                   layers={selectedNode?.layers ?? ROOT_LAYERS}
                   pipelineJobString={pipelineJobStr}
                   runId={runId}
-                  element={selectedNode?.element}
+                  element={selectedElement}
+                  runScoped={multiUser}
                   elementMlmdInfo={selectedNodeMlmdInfo}
                   namespace={namespace}
                 ></RuntimeNodeDetailsV2>

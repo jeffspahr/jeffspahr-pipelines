@@ -789,6 +789,7 @@ func newNoOpHTTPRouterDeps() HTTPRouterDeps {
 		ReadRunLogV1:            noOpHandler,
 		ReadArtifactV1:          noOpHandler,
 		ReadArtifact:            noOpHandler,
+		ReadRunRuntime:          noOpHandler,
 	}
 }
 
@@ -827,6 +828,7 @@ func TestBuildHTTPRouter_AllRoutesRegistered(t *testing.T) {
 		{"/apis/v1alpha1/runs/{run_id}/nodes/{node_id}/log", nil},
 		{"/apis/v1beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", []string{"GET"}},
 		{"/apis/v2beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", []string{"GET"}},
+		{"/apis/v2beta1/runs/{run_id}/runtime", []string{"GET"}},
 		{"/metrics", nil},
 	}
 

@@ -14,9 +14,17 @@
 
 package component
 
+import "github.com/kubeflow/pipelines/backend/src/common/util"
+
 const (
 	VolumePathKFPLauncher = "/kfp-launcher"
 	KFPLauncherPath       = VolumePathKFPLauncher + "/launch"
+
+	PublishedArtifactsParameter = util.PublishedArtifactsParameter
+	PublishedArtifactsPath      = VolumePathKFPLauncher + "/" + PublishedArtifactsParameter
+	// Driver and importer containers do not mount the launcher installation volume.
+	SystemPublishedArtifactsPath = "/tmp/" + PublishedArtifactsParameter
+	EnvReportPublishedArtifacts  = "KFP_REPORT_PUBLISHED_ARTIFACTS"
 
 	// Env var names
 	EnvPodName    = "KFP_POD_NAME"

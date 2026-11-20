@@ -24,10 +24,12 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import MD2Tabs from 'src/atoms/MD2Tabs';
 import { commonCss, padding } from 'src/Css';
-import { Apis } from 'src/lib/Apis';
+import { Apis, RunRuntimeTask } from 'src/lib/Apis';
+import { statusProtoMap } from 'src/lib/StatusUtils';
+import { V2beta1RuntimeState } from 'src/apisv2beta1/run';
 import { KeyValue } from 'src/lib/StaticGraphParser';
 import { errorToMessage } from 'src/lib/Utils';
-import { getTaskKeyFromNodeKey, NodeTypeNames } from 'src/lib/v2/StaticFlow';
+import { getTaskKeyFromNodeKey, isNode, NodeTypeNames } from 'src/lib/v2/StaticFlow';
 import type { PipelineFlowElement } from 'src/lib/v2/FlowTypes';
 import {
   EXECUTION_KEY_CACHED_EXECUTION_ID,
@@ -43,7 +45,7 @@ import { useArtifactTypes } from 'src/hooks/useArtifactTypes';
 import { queryKeys } from 'src/hooks/queryKeys';
 import WorkflowParser from 'src/lib/WorkflowParser';
 import { NodeMlmdInfo } from 'src/pages/RunDetailsV2';
-import { ArtifactType, Execution } from 'src/third_party/mlmd';
+import { Artifact, ArtifactType, Execution } from 'src/third_party/mlmd';
 import ArtifactPreview from 'src/components/ArtifactPreview';
 import Banner from 'src/components/Banner';
 import DetailsTable from 'src/components/DetailsTable';
@@ -85,6 +87,7 @@ const NODE_STATE_UNAVAILABLE = (
 );
 
 interface RuntimeNodeDetailsV2Props {
+  runScoped?: boolean;
   layers: string[];
   pipelineJobString?: string;
   runId?: string;
@@ -94,6 +97,7 @@ interface RuntimeNodeDetailsV2Props {
 }
 
 export function RuntimeNodeDetailsV2({
+  runScoped,
   layers,
   pipelineJobString,
   runId,
@@ -103,6 +107,31 @@ export function RuntimeNodeDetailsV2({
 }: RuntimeNodeDetailsV2Props) {
   if (!element) {
     return NODE_INFO_UNKNOWN;
+  }
+
+  if (runScoped) {
+    if (!isNode(element)) return NODE_INFO_UNKNOWN;
+    if (element.type === NodeTypeNames.ARTIFACT) {
+      return element.data?.state === Artifact.State.LIVE ? (
+        <DetailsTable
+          title='Artifact Details'
+          fields={[
+            ['Name', element.data.label],
+            ['Status', 'Live'],
+          ]}
+        />
+      ) : (
+        NODE_STATE_UNAVAILABLE
+      );
+    }
+    return (
+      <ReportedTaskDetails
+        task={element.data?.reportedTask}
+        element={element}
+        layers={layers}
+        pipelineJobString={pipelineJobString}
+      />
+    );
   }
 
   return (() => {
@@ -137,6 +166,57 @@ export function RuntimeNodeDetailsV2({
     }
     return NODE_INFO_UNKNOWN;
   })();
+}
+
+function ReportedTaskDetails({
+  task,
+  element,
+  layers,
+  pipelineJobString,
+}: {
+  task?: RunRuntimeTask;
+  element: PipelineFlowElement;
+  layers: string[];
+  pipelineJobString?: string;
+}) {
+  const [selectedTab, setSelectedTab] = useState(0);
+  const fields = getTaskDetailsFields(element);
+  if (task) {
+    const status =
+      task.state === V2beta1RuntimeState.SUCCEEDED ? 'Complete' : statusProtoMap.get(task.state);
+    fields.push(['Task name', task.taskName], ['Status', status ?? '-']);
+  }
+  return (
+    <div className={commonCss.page}>
+      <MD2Tabs
+        tabs={['Outputs', 'Task Details']}
+        selectedTab={selectedTab}
+        onSwitch={setSelectedTab}
+      />
+      <div className={padding(20)}>
+        {selectedTab === 0 ? (
+          task?.outputArtifactNames?.length ? (
+            <DetailsTable
+              title='Output artifacts'
+              fields={task.outputArtifactNames.map((name) => [name, 'Live'])}
+            />
+          ) : (
+            'No published outputs reported.'
+          )
+        ) : (
+          <>
+            <DetailsTable title='Task Details' fields={fields} />
+            {element.type === NodeTypeNames.EXECUTION && (
+              <DetailsTable
+                title='Volume Mounts'
+                fields={getNodeVolumeMounts(layers, pipelineJobString, element)}
+              />
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 interface TaskNodeDetailProps {

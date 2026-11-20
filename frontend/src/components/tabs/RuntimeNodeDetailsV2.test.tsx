@@ -176,33 +176,38 @@ describe('RuntimeNodeDetailsV2', () => {
     screen.getByTestId(TEST_LOG_VIEW_ID); // Still can load log view window
   });
 
-  it('displays volume mounts in details tab on side panel of execution node', async () => {
-    render(
-      <CommonTestWrapper>
-        <RuntimeNodeDetailsV2
-          layers={['root']}
-          pipelineJobString={V2_PVC_TEMPLATE_STRING}
-          runId={TEST_RUN_ID}
-          element={{
-            data: {
-              label: 'producer',
-            },
-            id: 'task.producer',
-            position: { x: 100, y: 100 },
-            type: 'EXECUTION',
-          }}
-          elementMlmdInfo={TSET_MLMD_INFO}
-          namespace={undefined}
-        ></RuntimeNodeDetailsV2>
-      </CommonTestWrapper>,
-    );
+  it.each([false, true])(
+    'displays task ID and volume mounts when run-scoped mode is %s',
+    async (runScoped) => {
+      render(
+        <CommonTestWrapper>
+          <RuntimeNodeDetailsV2
+            runScoped={runScoped}
+            layers={['root']}
+            pipelineJobString={V2_PVC_TEMPLATE_STRING}
+            runId={TEST_RUN_ID}
+            element={{
+              data: {
+                label: 'producer',
+              },
+              id: 'task.producer',
+              position: { x: 100, y: 100 },
+              type: 'EXECUTION',
+            }}
+            elementMlmdInfo={TSET_MLMD_INFO}
+            namespace={undefined}
+          ></RuntimeNodeDetailsV2>
+        </CommonTestWrapper>,
+      );
 
-    const detailsTab = await screen.findByText('Task Details');
-    fireEvent.click(detailsTab); // Switch details tab
+      const detailsTab = await screen.findByText('Task Details');
+      fireEvent.click(detailsTab); // Switch details tab
 
-    screen.getByText('/data');
-    screen.getByText('createpvc');
-  });
+      screen.getByText('task.producer');
+      screen.getByText('/data');
+      screen.getByText('createpvc');
+    },
+  );
 
   describe('artifact visualization', () => {
     function renderArtifactNode(typeName: string) {

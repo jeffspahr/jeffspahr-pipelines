@@ -26,6 +26,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	"github.com/kubeflow/pipelines/backend/src/v2/cacheutils"
 	"github.com/kubeflow/pipelines/backend/src/v2/common/plugins"
+	"github.com/kubeflow/pipelines/backend/src/v2/component"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	pb "github.com/kubeflow/pipelines/third_party/ml-metadata/go/ml_metadata"
@@ -256,6 +257,7 @@ func Container(ctx context.Context, opts Options, mlmd *metadata.Client, cacheCl
 			if err := mlmd.PublishExecution(ctx, createdExecution, executorOutput.GetParameterValues(), outputArtifacts, pb.Execution_CACHED); err != nil {
 				return execution, fmt.Errorf("failed to publish cached execution: %w", err)
 			}
+			component.ReportPublishedArtifacts(component.SystemPublishedArtifactsPath, outputArtifacts)
 			glog.Infof("Use cache for task %s", opts.Task.GetTaskInfo().GetName())
 			*execution.Cached = true
 			return execution, nil

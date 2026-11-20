@@ -32,6 +32,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"github.com/kubeflow/pipelines/backend/src/v2/objectstore"
+	pb "github.com/kubeflow/pipelines/third_party/ml-metadata/go/ml_metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob"
@@ -932,4 +933,24 @@ func Test_uploadArtifactPreviewSibling(t *testing.T) {
 			assert.Equal(t, float64(3), metadata.Fields["rows"].GetNumberValue())
 		})
 	}
+}
+
+func TestWritePublishedArtifacts(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "outputs")
+	live := &pb.Artifact{State: pb.Artifact_LIVE.Enum()}
+	require.NoError(t, writePublishedArtifacts(path, []*metadata.OutputArtifact{
+		{Name: "second", Artifact: live}, {Name: "first", Artifact: live},
+		{Name: "first", Artifact: live}, {Name: "pending", Artifact: &pb.Artifact{}},
+		{Name: "executor-logs", Artifact: live}, nil,
+	}))
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.JSONEq(t, `["first","second"]`, string(data))
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0644), info.Mode().Perm())
+	require.NoError(t, writePublishedArtifacts(path, nil))
+	data, err = os.ReadFile(path)
+	require.NoError(t, err)
+	assert.JSONEq(t, "[]", string(data))
 }

@@ -44,6 +44,7 @@ import {
 } from 'src/apis/run';
 import {
   Configuration as RunConfigurationV2,
+  V2beta1RuntimeState,
   RunServiceApi as RunServiceApiV2,
 } from 'src/apisv2beta1/run';
 import {
@@ -72,12 +73,22 @@ export interface ListRequest {
   sortBy?: string;
 }
 
+/** Workflow runtime reported by the API server for a single authorized run. */
+export interface RunRuntimeTask {
+  taskName: string;
+  nodeId: string;
+  parentNodeId?: string;
+  state: V2beta1RuntimeState;
+  outputArtifactNames: string[];
+}
+
 export interface BuildInfo {
   apiServerCommitHash?: string;
   apiServerTagName?: string;
   apiServerReady?: boolean;
   apiServerMultiUser?: boolean;
   buildDate?: string;
+  frontendAuthEnabled?: boolean;
   frontendCommitHash?: string;
   frontendTagName?: string;
   pipelineStore?: string;
@@ -299,6 +310,10 @@ export class Apis {
    */
   public static async getBuildInfo(): Promise<BuildInfo> {
     return await this._fetchAndParse<BuildInfo>('/healthz', v2beta1Prefix);
+  }
+
+  public static getRunRuntime(runId: string): Promise<{ tasks: RunRuntimeTask[] }> {
+    return this._fetchAndParse('/runs/' + encodeURIComponent(runId) + '/runtime', v2beta1Prefix);
   }
 
   /**

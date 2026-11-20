@@ -26,6 +26,7 @@ export interface HealthzStats {
   multi_user: boolean;
   apiServerReady: boolean;
   buildDate: string;
+  frontendAuthEnabled: boolean;
   frontendCommitHash: string;
   frontendTagName: string;
   pipelineStore: string;

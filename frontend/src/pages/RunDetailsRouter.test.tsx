@@ -22,6 +22,7 @@ import { CommonTestWrapper } from 'src/TestWrapper';
 import { RouteParams } from 'src/components/Router';
 import { queryKeys } from 'src/hooks/queryKeys';
 import { Apis } from 'src/lib/Apis';
+import { BuildInfoContext } from 'src/lib/BuildInfo';
 import { queryClientTest } from 'src/TestUtils';
 import { V2beta1Run } from 'src/apisv2beta1/run';
 import { V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
@@ -31,7 +32,11 @@ import { vi } from 'vitest';
 
 vi.mock('src/pages/RunDetailsV2', () => ({
   RunDetailsV2: (props: any) => (
-    <div data-testid='run-details-v2' data-pipeline-job={props.pipeline_job} />
+    <div
+      data-testid='run-details-v2'
+      data-pipeline-job={props.pipeline_job}
+      data-multi-user={props.multiUser}
+    />
   ),
 }));
 
@@ -111,8 +116,25 @@ describe('RunDetailsRouter', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('run-details-v2')).toBeInTheDocument();
+      expect(screen.getByTestId('run-details-v2')).toHaveAttribute('data-multi-user', 'true');
     });
+  });
+
+  it('uses the frontend proxy authorization mode when health information arrives', async () => {
+    getRunSpy.mockResolvedValue({ run_id: TEST_RUN_ID, pipeline_spec: v2PipelineSpec });
+    const renderRouter = (frontendAuthEnabled: boolean) => (
+      <CommonTestWrapper>
+        <BuildInfoContext.Provider
+          value={{ frontendAuthEnabled, apiServerMultiUser: !frontendAuthEnabled }}
+        >
+          <RunDetailsRouter {...generateProps()} />
+        </BuildInfoContext.Provider>
+      </CommonTestWrapper>
+    );
+    const view = render(renderRouter(true));
+    expect(await screen.findByTestId('run-details-v2')).toHaveAttribute('data-multi-user', 'true');
+    view.rerender(renderRouter(false));
+    expect(screen.getByTestId('run-details-v2')).toHaveAttribute('data-multi-user', 'false');
   });
 
   it('renders EnhancedRunDetails (V1) when template is not a v2 pipeline spec', async () => {

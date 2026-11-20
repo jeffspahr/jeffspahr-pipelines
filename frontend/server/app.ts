@@ -156,7 +156,7 @@ function createUIServer(options: UIConfigs) {
     `/${apiVersion1Prefix}/healthz`,
     getHealthzHandler({
       healthzEndpoint: getHealthzEndpoint(apiServerAddress, apiVersion1Prefix),
-      healthzStats: getBuildMetadata(currDir),
+      healthzStats: { ...getBuildMetadata(currDir), frontendAuthEnabled: options.auth.enabled },
     }),
   );
 
@@ -165,7 +165,7 @@ function createUIServer(options: UIConfigs) {
     `/${apiVersion2Prefix}/healthz`,
     getHealthzHandler({
       healthzEndpoint: getHealthzEndpoint(apiServerAddress, apiVersion2Prefix),
-      healthzStats: getBuildMetadata(currDir),
+      healthzStats: { ...getBuildMetadata(currDir), frontendAuthEnabled: options.auth.enabled },
     }),
   );
 

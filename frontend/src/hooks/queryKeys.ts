@@ -54,6 +54,7 @@ export const queryKeys = {
 
   runArtifacts: (runIds: string[]) => ['run_artifacts', { runIds }] as const,
 
+  runRuntime: (runId: string) => ['run_runtime', runId] as const,
   mlmdPackage: (runId: string) => ['mlmd_package', { id: runId }] as const,
 
   executionArtifact: (executionId: number, executionState: number) =>

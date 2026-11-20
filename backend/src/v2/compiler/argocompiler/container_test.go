@@ -15,6 +15,10 @@
 package argocompiler
 
 import (
+	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
+	"github.com/kubeflow/pipelines/backend/src/v2/component"
+	"github.com/spf13/viper"
+	k8score "k8s.io/api/core/v1"
 	"testing"
 
 	wfapi "github.com/argoproj/argo-workflows/v4/pkg/apis/workflow/v1alpha1"
@@ -196,5 +200,46 @@ func Test_extendPodMetadata(t *testing.T) {
 			extendPodMetadata(tt.podMetadata, tt.kubernetesExecutorConfig)
 			assert.Equal(t, tt.expected, tt.podMetadata)
 		})
+	}
+}
+
+func TestPublishedArtifactParameter(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	t.Cleanup(func() { viper.Set(common.MultiUserMode, nil) })
+	for _, multiUser := range []bool{false, true} {
+		viper.Set(common.MultiUserMode, multiUser)
+		c := &workflowCompiler{
+			templates: make(map[string]*wfapi.Template),
+			wf:        &wfapi.Workflow{},
+			spec:      &pipelinespec.PipelineSpec{},
+			job:       &pipelinespec.PipelineJob{},
+		}
+		c.addContainerExecutorTemplate(&pipelinespec.PipelineTaskSpec{}, &kubernetesplatform.KubernetesExecutorConfig{})
+		for templateName, path := range map[string]string{
+			"system-container-impl":        component.PublishedArtifactsPath,
+			c.addContainerDriverTemplate(): component.SystemPublishedArtifactsPath,
+			c.addImporterTemplate(false):   component.SystemPublishedArtifactsPath,
+			c.addImporterTemplate(true):    component.SystemPublishedArtifactsPath,
+		} {
+			template := c.templates[templateName]
+			require.NotNil(t, template)
+			flag := k8score.EnvVar{Name: component.EnvReportPublishedArtifacts, Value: "true"}
+			var p *wfapi.Parameter
+			for i := range template.Outputs.Parameters {
+				if template.Outputs.Parameters[i].Name == component.PublishedArtifactsParameter {
+					p = &template.Outputs.Parameters[i]
+					break
+				}
+			}
+			if multiUser {
+				require.NotNil(t, p, templateName)
+				assert.Equal(t, path, p.ValueFrom.Path)
+				assert.Equal(t, "[]", p.ValueFrom.Default.String())
+				assert.Contains(t, template.Container.Env, flag)
+			} else {
+				assert.Nil(t, p, templateName)
+				assert.NotContains(t, template.Container.Env, flag)
+			}
+		}
 	}
 }
