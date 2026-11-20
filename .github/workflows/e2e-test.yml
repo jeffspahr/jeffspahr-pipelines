@@ -308,7 +308,8 @@ jobs:
 
   end-to-end-critical-scenario-multi-user-tests:
     needs: build
-    runs-on: ubuntu-latest
+    # The locked Playwright Chromium build supports Ubuntu 24.04.
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: read
@@ -398,7 +399,12 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps --only-shell chromium
-          node --test profile-run-details.test.js
+          if ! node --test profile-run-details.test.js; then
+            kubectl -n "$USER_NAMESPACE" get workflows -l "pipeline/runid=$PROFILE_RUN_ID" -o json |
+              jq '[.items[].status.nodes[]? | {id, name, boundaryID, templateName, phase,
+                publications: [.outputs.parameters[]? | select(.name == "kfp-published-artifacts") | .value]}]'
+            exit 1
+          fi
 
       - name: Test Artifact Proxy
         id: test-artifact-proxy

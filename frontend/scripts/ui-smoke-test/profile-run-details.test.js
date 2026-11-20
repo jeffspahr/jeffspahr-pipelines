@@ -22,6 +22,7 @@ async function openRun(t, identity) {
   const context = await browser.newContext({ baseURL, extraHTTPHeaders: { 'kubeflow-userid': identity } });
   t.after(() => context.close());
   const page = await context.newPage();
+  page.on('pageerror', error => t.diagnostic(error.message));
   const [response] = await Promise.all([
     page.waitForResponse(res => new URL(res.url()).pathname === runPath && res.request().method() === 'GET'),
     page.goto('/#/runs/details/' + encodeURIComponent(runId)),
@@ -32,6 +33,14 @@ async function openRun(t, identity) {
 test('the profile owner sees the completed producer and its live output', async t => {
   const { page, response } = await openRun(t, process.env.PROFILE_OWNER);
   assert.equal(response.status(), 200);
+  const runtime = await page.request.get(runPath + '/runtime');
+  assert.equal(runtime.status(), 200);
+  const { tasks } = await runtime.json();
+  const producer = tasks.find(task => task.taskName === 'component1');
+  assert.ok(producer, 'Runtime report omitted component1: ' + JSON.stringify(tasks));
+  assert.equal(producer.state, 'SUCCEEDED');
+  assert.ok(producer.outputArtifactNames.includes('output_gcs'),
+    'Runtime report omitted the published dataset: ' + JSON.stringify(producer));
 
   // A static pipeline graph contains both names even when every metadata lookup fails.
   const liveOutput = page.getByTitle('output_gcs', { exact: true }).getByTestId('artifact-icon-live');
