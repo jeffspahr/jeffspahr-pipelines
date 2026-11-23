@@ -50,7 +50,8 @@ test('Artifacts lists the completed run’s dataset and links to its details', a
   const page = await context.newPage();
   t.after(() => page.close());
   await page.goto('/#/artifacts');
-  const row = page.getByTestId('table-row').filter({ hasText: runId });
+  const datasetLink = page.getByRole('link', { name: 'output_gcs', exact: true });
+  const row = page.getByTestId('table-row').filter({ hasText: runId }).filter({ has: datasetLink });
   await row.waitFor({ timeout: 60000 });
   const uri = new URL(await row.getByText(/^(?:s3|minio|gs):\/\//).innerText());
   assert.ok(uri.pathname.split('/').includes(runId));
