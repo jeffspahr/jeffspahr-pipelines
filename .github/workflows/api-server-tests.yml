@@ -1,359 +1,71 @@
-# This workflow runs tests to verify all the API Server REST Endpoints
-name: API Server Tests
-env:
-  API_TESTS_DIR: "./backend/test/v2/api"
-  TESTS_LABEL: "ApiServerTests"
-  NUMBER_OF_PARALLEL_NODES: 5
-  NUMBER_OF_MULTI_USER_PARALLEL_NODES: 2
-  CLUSTER_NAME: "kfp"
-  NAMESPACE: "kubeflow"
-  USER_NAMESPACE: "kubeflow-user-example-com"
-  PYTHON_VERSION: "3.10"
-  CA_CERT_PATH: ""
-
+name: Istio image compatibility on KFP 2.18.2
 on:
-  merge_group:
-    types: [checks_requested]
-    branches: [release-2.18]
-  push:
-    branches: [master]
-
   workflow_dispatch:
-    inputs:
-      queue_head_sha:
-        description: Exact queue candidate SHA (internal queue dispatch)
-        required: false
-        type: string
-        default: ''
-      queue_base_ref:
-        description: Queue target branch, release-2.18 (internal queue dispatch)
-        required: false
-        type: string
-        default: ''
-      queue_base_sha:
-        description: Current target branch SHA (internal queue dispatch)
-        required: false
-        type: string
-        default: ''
-      test_label:
-        description: "Test label that you want to filter on and run"
-        default: 'ApiServerTests'
-        required: true
-        type: string
-      number_of_parallel_tests:
-        description: "Number of ginkgo nodes that you want run in parallel, it essentially is equivalent to number of parallel tests with some caveats"
-        default: 10
-        required: true
-        type: number
-      namespace:
-        description: "Namespace where you want to create your pipelines in"
-        default: "kubeflow"
-        required: true
-        type: string
-
-  pull_request:
-    paths:
-      - '.github/workflows/api-server-tests.yml'
-      - '.github/workflows/image-builds.yml'
-      - '.github/actions/create-cluster/**'
-      - '.github/actions/deploy/**'
-      - '.github/actions/test-and-report/**'
-      - '.github/actions/junit-summary/**'
-      - '.github/resources/**'
-      - 'backend/api/v2beta1/**'
-      - 'backend/src/**'
-      - 'backend/metadata_writer/**'
-      - 'backend/test/v2/api/**'
-      - 'manifests/kustomize/**'
-      - 'test_data/sdk_compiled_pipelines/**'
-      - '!**/*.md'
-      - '!**/OWNERS'
-
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  queue-dispatch-guard:
-    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/gh-readonly-queue/')
-    permissions:
-      contents: read
-    uses: ./.github/workflows/queue-dispatch-guard.yml
-    with:
-      queue_head_sha: ${{ inputs.queue_head_sha }}
-      queue_base_ref: ${{ inputs.queue_base_ref }}
-      queue_base_sha: ${{ inputs.queue_base_sha }}
-
-  build:
-    permissions:
-      actions: read
-      contents: read
-    uses: ./.github/workflows/image-builds.yml
-
-  api-test-standalone:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
     strategy:
+      fail-fast: false
       matrix:
-        k8s_version: [ "v1.36.1" ]
-        cache_enabled: [ "true", "false" ]
-        proxy: [ "true", "false" ]
-        argo_version: [ "v3.7.18", "v4.1.6" ]
-        pipeline_store: [ "database" ]
-        pod_to_pod_tls_enabled: [ "false" ]
-        # PostgreSQL deployments are unsupported in 2.18; see #14353.
-        db_type: [ "mysql" ]
-        include:
-          - k8s_version: "v1.33.12"
-            cache_enabled: "true"
-            argo_version: "v3.7.18"
-            db_type: "mysql"
-          - k8s_version: "v1.33.12"
-            cache_enabled: "true"
-            argo_version: "v4.1.6"
-            db_type: "mysql"
-          - k8s_version: "v1.36.1"
-            cache_enabled: "true"
-            pod_to_pod_tls_enabled: "true"
-            db_type: "mysql"
-      fail-fast: false # So that failure in 1 type of parameterized job does not cause other jobs to terminate prematurely
-    name: KFP API Server tests Standalone - K8sVersion=${{ matrix.k8s_version }} argo_version=${{ matrix.argo_version }} cacheEnabled=${{ matrix.cache_enabled }} proxyEnabled=${{ matrix.proxy }} pod_to_pod_tls_enabled=${{ matrix.pod_to_pod_tls_enabled }} dbType=${{ matrix.db_type }}
-
+        variant: [standard, distroless]
+    env:
+      VARIANT: ${{ matrix.variant }}
+      COMMUNITY_SHA: 2b97be072f7d8889a2404c00fcaac2027bdac17c
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Create cluster
-        uses: ./.github/actions/create-cluster
-        id: create-cluster
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          k8s_version: ${{ matrix.k8s_version }}
-          cluster_name: ${{ env.CLUSTER_NAME }}
-
-      - name: Deploy KFP
-        uses: ./.github/actions/deploy
-        id: deploy
-        if: ${{ steps.create-cluster.outcome == 'success' }}
-        with:
-          image_artifacts_ready: ${{ needs.build.outputs.IMAGE_ARTIFACTS_READY }}
-          pipeline_store: ${{ matrix.pipeline_store }}
-          cache_enabled: ${{ matrix.cache_enabled }}
-          proxy: ${{ matrix.proxy }}
-          argo_version: ${{ matrix.argo_version }}
-          pod_to_pod_tls_enabled: ${{ matrix.pod_to_pod_tls_enabled }}
-          db_type: ${{ matrix.db_type }}
-          image_path: images_${{ github.run_id }}
-          image_tag: latest
-          image_registry: kind-registry:5000
-
-      - name: Configure Cluster CA Cert for TLS-Enabled Tests
-        shell: bash
-        if: ${{ matrix.pod_to_pod_tls_enabled == 'true'}}
+          persist-credentials: false
+      - name: Start isolated Kubernetes cluster
+        run: kind create cluster --name probe --image kindest/node:v1.36.1 --wait 120s
+      - name: Install pinned Istio CRDs, namespace and mesh
         run: |
-          kubectl get secret kfp-api-tls-cert -n kubeflow -o jsonpath='{.data.ca\.crt}' | base64 -d > "${{ github.workspace }}/ca.crt"
-          echo "CA_CERT_PATH=${{ github.workspace }}/ca.crt" >> "$GITHUB_ENV"
-
-
-      - name: Configure Input Variables
-        shell: bash
-        id: configure
-        if: ${{ steps.deploy.outcome == 'success' }}
-        env:
-          DISPATCH_NUMBER_OF_NODES: ${{ inputs.number_of_parallel_tests }}
-          DISPATCH_TEST_LABEL: ${{ inputs.test_label }}
-          DISPATCH_NAMESPACE: ${{ inputs.namespace }}
+          set -euo pipefail
+          kubectl create ns kubeflow
+          kubectl apply -k "https://github.com/kubeflow/community-distribution/common/istio/istio-crds/base?ref=$COMMUNITY_SHA"
+          kubectl apply -k "https://github.com/kubeflow/community-distribution/common/istio/istio-namespace/base?ref=$COMMUNITY_SHA"
+          overlay=manifests/kustomize/third-party/istio/install
+          if [[ "$VARIANT" == distroless ]]; then
+            sed -i 's/newTag: 1.31.4$/newTag: 1.31.4-distroless/' "$overlay/kustomization.yaml"
+            sed -i 's/"variant": ""/"variant": "distroless"/' "$overlay/injector-values.json"
+          fi
+          kubectl apply -k "$overlay"
+          kubectl -n kube-system rollout status daemonset/istio-cni-node --timeout=240s
+          kubectl -n istio-system rollout status deployment/istiod --timeout=240s
+          kubectl -n istio-system rollout status deployment/istio-ingressgateway --timeout=240s
+      - name: Verify injected sidecar, gateway routing and mTLS principal policy
         run: |
-          NUMBER_OF_NODES=${{ env.NUMBER_OF_PARALLEL_NODES }}
-          TEST_LABEL=${{ env.TESTS_LABEL }}
-          NAMESPACE=${{ env.NAMESPACE }}
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${GITHUB_REF:-}" != refs/heads/gh-readonly-queue/* ]]; then
-            NUMBER_OF_NODES=$DISPATCH_NUMBER_OF_NODES
-            TEST_LABEL=$DISPATCH_TEST_LABEL
-            NAMESPACE=$DISPATCH_NAMESPACE
-          fi
-
-          PROXY=${{ matrix.proxy }}
-          if [ -z "${PROXY:-}" ]; then
-            PROXY=false
-          fi
-
-          {
-            echo "NUMBER_OF_NODES=$NUMBER_OF_NODES"
-            echo "TEST_LABEL=$TEST_LABEL"
-            echo "NAMESPACE=$NAMESPACE"
-          } >> "$GITHUB_OUTPUT"
-
-
-      - name: Run Tests
-        uses: ./.github/actions/test-and-report
-        if: ${{ steps.configure.outcome == 'success' }}
-        id: test-run
-        env:
-          ARGO_COMPATIBILITY_TESTS: ${{ matrix.argo_version == 'v4.1.6' && matrix.k8s_version == 'v1.36.1' && matrix.cache_enabled == 'true' && matrix.proxy == 'false' && matrix.pod_to_pod_tls_enabled == 'false' }}
-        with:
-          pipeline_store: ${{ matrix.pipeline_store }}
-          cache_enabled: ${{ matrix.cache_enabled }}
-          proxy: ${{ matrix.proxy }}
-          test_directory: ${{ env.API_TESTS_DIR }}
-          test_label: ${{ steps.configure.outputs.TEST_LABEL }}
-          num_parallel_nodes: ${{ steps.configure.outputs.NUMBER_OF_NODES }}
-          default_namespace: ${{ steps.configure.outputs.NAMESPACE }}
-          python_version: ${{ env.PYTHON_VERSION }}
-          report_name: "Standalone_k8sVersion=${{ matrix.k8s_version }}_argoVersion=${{ matrix.argo_version }}_cacheEnabled=${{ matrix.cache_enabled }}_proxyEnabled=${{ matrix.proxy }}_dbType=${{ matrix.db_type }}_pipelineStore=${{ matrix.pipeline_store }}_tlsEnabled=${{ matrix.pod_to_pod_tls_enabled }}"
-          tls_enabled: ${{ matrix.pod_to_pod_tls_enabled }}
-          ca_cert_path: ${{ env.CA_CERT_PATH }}
-
-
-  api-test-k8s-native:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-    strategy:
-      matrix:
-        k8s_version: [ "v1.36.1", "v1.33.12" ]
-        cache_enabled: [ "true" ]
-        uploadPipelinesWithKubernetesClient: [ "true", "false" ]
-        argo_version: [ "v3.7.18", "v4.1.6" ]
-        pipeline_store: [ "kubernetes" ]
-      fail-fast: false # So that failure in 1 type of parameterized job does not cause other jobs to terminate prematurely
-    name: KFP API Server tests K8s Native API - K8sVersion=${{ matrix.k8s_version }} cacheEnabled=${{ matrix.cache_enabled }} argoVersion=${{ matrix.argo_version }} uploadPipelinesWithKubernetesClient=${{ matrix.uploadPipelinesWithKubernetesClient }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Create cluster
-        uses: ./.github/actions/create-cluster
-        id: create-cluster
-        with:
-          k8s_version: ${{ matrix.k8s_version }}
-          cluster_name: ${{ env.CLUSTER_NAME }}
-
-      - name: Deploy KFP
-        uses: ./.github/actions/deploy
-        id: deploy
-        if: ${{ steps.create-cluster.outcome == 'success' }}
-        with:
-          image_artifacts_ready: ${{ needs.build.outputs.IMAGE_ARTIFACTS_READY }}
-          pipeline_store: ${{ matrix.pipeline_store }}
-          cache_enabled: ${{ matrix.cache_enabled }}
-          argo_version: ${{ matrix.argo_version }}
-          image_path: images_${{ github.run_id }}
-          image_tag: latest
-          image_registry: kind-registry:5000
-
-      - name: Run Tests
-        uses: ./.github/actions/test-and-report
-        if: ${{ steps.deploy.outcome == 'success' }}
-        id: test-run
-        with:
-          pipeline_store: ${{ matrix.pipeline_store }}
-          cache_enabled: ${{ matrix.cache_enabled }}
-          upload_pipelines_with_kubernetes_client: ${{ matrix.uploadPipelinesWithKubernetesClient }}
-          test_directory: ${{ env.API_TESTS_DIR }}
-          test_label: ${{ env.TESTS_LABEL }}
-          num_parallel_nodes: ${{ env.NUMBER_OF_PARALLEL_NODES }}
-          default_namespace: ${{ env.NAMESPACE }}
-          python_version: ${{ env.PYTHON_VERSION }}
-          report_name: "K8Native_k8sVersion=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_argoVersion=${{ matrix.argo_version }}_uploadPipelinesWithKubernetesClient=${{ matrix.uploadPipelinesWithKubernetesClient }}"
-
-
-  api-test-multi-user:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-    strategy:
-      matrix:
-        # Partition the API surface across the two existing cache variants.
-        # Complementary filters guarantee that every ApiServerTests spec runs
-        # exactly once, while explicit cache labels divide the expensive run
-        # matrix evenly between matching deployments.
-        # PostgreSQL deployments are unsupported in 2.18; see #14353.
-        include:
-          - k8s_version: "v1.36.1"
-            cache_enabled: "true"
-            multi_user: "true"
-            db_type: "mysql"
-            test_label: "ApiServerTests && (PipelineUpload || PipelineCacheEnabled)"
-          - k8s_version: "v1.36.1"
-            cache_enabled: "false"
-            multi_user: "true"
-            db_type: "mysql"
-            test_label: "ApiServerTests && !(PipelineUpload || PipelineCacheEnabled)"
-      fail-fast: false # So that failure in 1 type of parameterized job does not cause other jobs to terminate prematurely
-    name: KFP API Server Multi User Tests - K8sVersion=${{ matrix.k8s_version }} cacheEnabled=${{ matrix.cache_enabled }} multiUser=${{ matrix.multi_user }} dbType=${{ matrix.db_type }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Create cluster
-        uses: ./.github/actions/create-cluster
-        id: create-cluster
-        with:
-          k8s_version: ${{ matrix.k8s_version }}
-          cluster_name: ${{ env.CLUSTER_NAME }}
-
-      - name: Deploy KFP
-        uses: ./.github/actions/deploy
-        id: deploy
-        if: ${{ steps.create-cluster.outcome == 'success' }}
-        with:
-          image_artifacts_ready: ${{ needs.build.outputs.IMAGE_ARTIFACTS_READY }}
-          cache_enabled: ${{ matrix.cache_enabled }}
-          multi_user: ${{ matrix.multi_user }}
-          db_type: ${{ matrix.db_type }}
-          image_path: images_${{ github.run_id }}
-          image_tag: latest
-          image_registry: kind-registry:5000
-
-      - name: Configure Input Variables
-        shell: bash
-        id: configure
-        if: ${{ steps.deploy.outcome == 'success' }}
-        env:
-          AUTOMATIC_TEST_LABEL: ${{ matrix.test_label }}
-          DISPATCH_NUMBER_OF_NODES: ${{ inputs.number_of_parallel_tests }}
-          DISPATCH_TEST_LABEL: ${{ inputs.test_label }}
-          DISPATCH_NAMESPACE: ${{ inputs.namespace }}
+          set -euo pipefail
+          kubectl label ns kubeflow istio-injection=enabled --overwrite
+          kubectl apply -f .github/resources/mesh-probe.yaml
+          kubectl -n kubeflow wait --for=condition=Ready pod/mesh-echo --timeout=180s
+          actual=$(kubectl -n kubeflow get pod mesh-echo -o jsonpath='{.spec.containers[?(@.name=="istio-proxy")].image}{.spec.initContainers[?(@.name=="istio-proxy")].image}')
+          expected=docker.io/istio/proxyv2:1.31.4
+          if [[ "$VARIANT" == distroless ]]; then expected+=-distroless; fi
+          echo "Injected $actual, expected $expected"
+          test "$actual" = "$expected"
+          kubectl -n istio-system port-forward service/istio-ingressgateway 18080:80 >/tmp/forward.log 2>&1 &
+          port_forward_pid=$!
+          trap 'kill "$port_forward_pid" || true' EXIT
+          wait_for_http() {
+            for try in {1..60}; do
+              actual_status=$(curl -s -m 3 -o /tmp/probe-body -w '%{http_code}' -H 'Host: kfp-probe.test' http://127.0.0.1:18080/ || true)
+              if [[ "$actual_status" == "$1" ]]; then echo "Observed HTTP $1"; return 0; fi
+              sleep 2
+            done
+            cat /tmp/forward.log; cat /tmp/probe-body || true
+            return 1
+          }
+          wait_for_http 200
+          grep -Fx 'kfp-2182-mesh-ok' /tmp/probe-body
+          kubectl -n kubeflow delete authorizationpolicy allow-probe-gateway
+          wait_for_http 403
+      - name: Diagnostics
+        if: failure()
         run: |
-          NUMBER_OF_NODES=${{ env.NUMBER_OF_MULTI_USER_PARALLEL_NODES }}
-          TEST_LABEL=$AUTOMATIC_TEST_LABEL
-          NAMESPACE=${{ env.NAMESPACE }}
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${GITHUB_REF:-}" != refs/heads/gh-readonly-queue/* ]]; then
-            NUMBER_OF_NODES=$DISPATCH_NUMBER_OF_NODES
-            TEST_LABEL=$DISPATCH_TEST_LABEL
-            NAMESPACE=$DISPATCH_NAMESPACE
-          fi
-          {
-            echo "NUMBER_OF_NODES=$NUMBER_OF_NODES"
-            echo "TEST_LABEL=$TEST_LABEL"
-            echo "NAMESPACE=$NAMESPACE"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Run Tests
-        uses: ./.github/actions/test-and-report
-        id: test-run
-        if: ${{ steps.configure.outcome == 'success' }}
-        env:
-          LOCAL_API_SERVER: "true"
-        with:
-          cache_enabled: ${{ matrix.cache_enabled }}
-          test_directory: ${{ env.API_TESTS_DIR }}
-          test_label: ${{ steps.configure.outputs.TEST_LABEL }}
-          num_parallel_nodes: ${{ steps.configure.outputs.NUMBER_OF_NODES }}
-          default_namespace: ${{ steps.configure.outputs.NAMESPACE }}
-          python_version: ${{ env.PYTHON_VERSION }}
-          user_namespace: ${{ env.USER_NAMESPACE }}
-          multi_user: ${{ matrix.multi_user }}
-          report_name: "MultiUser_k8sVersion=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_multiUser=${{ matrix.multi_user }}_dbType=${{ matrix.db_type }}"
+          kubectl get pods -A -o wide
+          kubectl get events -A --sort-by=.metadata.creationTimestamp | tail -80
+          kubectl -n istio-system logs -l app=istiod --tail=20 || true
+          kubectl -n kube-system logs -l k8s-app=istio-cni-node --tail=20 || true

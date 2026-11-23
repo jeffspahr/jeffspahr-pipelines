@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mesh-echo
+  namespace: kubeflow
+  labels:
+    app: mesh-echo
+spec:
+  containers:
+  - name: responder
+    image: busybox:1.37
+    command: ["sh","-ec","mkdir -p /tmp/site && echo kfp-2182-mesh-ok > /tmp/site/index.html && exec httpd -f -p 8080 -h /tmp/site"]
+    ports:
+    - name: http
+      containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mesh-echo
+  namespace: kubeflow
+spec:
+  selector: {app: mesh-echo}
+  ports:
+  - {name: http, port: 8080, targetPort: 8080}
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: mesh-echo
+  namespace: kubeflow
+spec:
+  hosts: [kfp-probe.test]
+  gateways: [istio-system/istio-ingressgateway]
+  http:
+  - route:
+    - destination: {host: mesh-echo.kubeflow.svc.cluster.local, port: {number: 8080}}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-probe-gateway
+  namespace: kubeflow
+spec:
+  selector: {matchLabels: {app: mesh-echo}}
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"]
